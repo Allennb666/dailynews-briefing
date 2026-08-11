@@ -67,3 +67,21 @@ test('生成后的新闻排名从 1 到 5', () => {
   assert.equal(briefing.schemaVersion, 2)
   assert.ok(briefing.stories.every((story) => story.impactChain.length >= 3))
 })
+
+test('模型已经选满五条时不会继续追加规则候选', () => {
+  const candidates = Array.from({ length: 8 }, (_, index) => candidate(
+    `item-${index}`,
+    `Unique model story ${index}`,
+    `source-${index}`,
+    100 - index,
+  ))
+  const preferredIds = candidates.slice(3).map((item) => item.id)
+  const briefing = buildRulesBriefing(
+    { domain: 'ai-tech', candidates, fetched: 8, sourceCount: 8, warnings: [] },
+    new Date('2026-08-11T01:00:00.000Z'),
+    preferredIds,
+  )
+
+  assert.equal(briefing.stories.length, 5)
+  assert.deepEqual(briefing.stories.map((story) => story.id), preferredIds)
+})

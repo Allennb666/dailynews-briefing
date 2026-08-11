@@ -214,8 +214,8 @@ export function buildRulesBriefing(collection: CollectionResult, now = new Date(
   const preferred = preferredIds.map((id) => deduped.find((candidate) => candidate.id === id)).filter((candidate): candidate is Candidate => Boolean(candidate))
   const selected = [...preferred]
   for (const candidate of selectDiverseStories(deduped)) {
+    if (selected.length >= 5) break
     if (!selected.some((item) => item.id === candidate.id)) selected.push(candidate)
-    if (selected.length === 5) break
   }
   if (selected.length < 5) throw new Error(`${config.title}可用新闻不足 5 条（当前 ${selected.length} 条），已停止生成，避免用旧内容补位。`)
   const date = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(now)
