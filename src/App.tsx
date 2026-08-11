@@ -192,7 +192,7 @@ function App() {
   const loadBriefing = useCallback(async () => {
     setState('loading'); setError('')
     try {
-      const response = await fetch('/data/briefings/daily-latest.json', { cache: 'no-store' })
+      const response = await fetch(`${import.meta.env.BASE_URL}data/briefings/daily-latest.json`, { cache: 'no-store' })
       if (!response.ok) throw new Error(`数据文件返回 ${response.status}`)
       const data: unknown = await response.json()
       if (!isDailyDigest(data)) throw new Error('四领域数据结构不完整')

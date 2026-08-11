@@ -1,6 +1,7 @@
 # DailyNews
 
 [![CI](https://github.com/Allennb666/dailynews-briefing/actions/workflows/ci.yml/badge.svg)](https://github.com/Allennb666/dailynews-briefing/actions/workflows/ci.yml)
+[![Live Site](https://img.shields.io/badge/Live-GitHub%20Pages-0b62d6.svg)](https://allennb666.github.io/dailynews-briefing/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0b62d6.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-19-111820.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-111820.svg)](https://www.typescriptlang.org/)
@@ -8,6 +9,12 @@
 一个面向中文读者的个人每日新闻简报。DailyNews 从公开 RSS 发现新闻，经过时效与相关性过滤、相似标题去重、来源多样性排序和可选的 AI 深度分析，将当天值得关注的信息整理成一张适合先扫读、再深读的“晨间调度单”。
 
 ![DailyNews 桌面端首页](artifacts/screenshots/home-desktop.png)
+
+## 在线预览
+
+访问 [DailyNews GitHub Pages](https://allennb666.github.io/dailynews-briefing/) 查看最新发布版本。
+
+公开网站只读取已经生成的静态 JSON，不会在浏览器中携带或调用模型密钥。Qwen、DeepSeek 或 OpenAI 调用发生在 GitHub Actions 的生成任务中；生成完成后，Pages 工作流会重新构建并发布网站。
 
 ## 功能亮点
 
@@ -138,6 +145,8 @@ npm run dev
 - 推荐 Node.js：22
 
 自动化生成的新 JSON 提交到默认分支后，连接该仓库的部署平台可以自动发布新版本。
+
+仓库内置 `.github/workflows/pages.yml`，会在人工推送 `main`、手动触发，以及每日简报生成任务成功完成后部署 GitHub Pages。
 
 ## 项目结构
 
