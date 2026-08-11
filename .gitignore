@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env*
+!.env.example
+.DS_Store
+*.log
+coverage/
+*.tsbuildinfo
+
+# Local Codex and design-workbench state
+.codex/
+.agents/
+.impeccable/
