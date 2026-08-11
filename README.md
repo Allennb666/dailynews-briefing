@@ -134,7 +134,7 @@ npm run dev
 4. 运行生产构建；
 5. 仅在数据发生变化时提交最新简报和每日归档。
 
-启用模型时，在仓库 **Settings → Secrets and variables → Actions** 中配置 `DASHSCOPE_API_KEY`、`DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`。同时需要在 **Actions → General → Workflow permissions** 中允许工作流写入仓库。
+启用模型时，在仓库 **Settings → Secrets and variables → Actions** 中配置 `DASHSCOPE_API_KEY`、`DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`。使用自定义 Qwen 兼容接口时，将地址保存为 `QWEN_BASE_URL` Secret；未配置时使用 DashScope 默认接口。同时需要在 **Actions → General → Workflow permissions** 中允许工作流写入仓库。
 
 ## 部署
 
