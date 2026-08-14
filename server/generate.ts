@@ -30,7 +30,7 @@ async function main() {
     console.log(`[DailyNews] 正在整理：${title}`)
     const briefing = await buildBriefing(collection, startedAt)
     briefings.push(briefing)
-    console.log(`[DailyNews] 已完成：${title}，模式 ${briefing.mode}`)
+    console.log(`[DailyNews] 已完成：${title}，${briefing.pipeline.afterDedup} 篇文章聚合为 ${briefing.pipeline.afterClustering} 个事件，模式 ${briefing.mode}`)
   }
 
   const date = briefings[0].date

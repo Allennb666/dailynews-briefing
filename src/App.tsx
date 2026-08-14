@@ -38,6 +38,27 @@ function modeLabel(mode?: DailyBriefing['mode']) {
   return mode ? labels[mode] : '正在读取数据'
 }
 
+function evidenceLabel(story: BriefingStory) {
+  if (!story.evidence) {
+    const legacyConfidence = (story as BriefingStory & { confidence?: string }).confidence
+    return legacyConfidence ? `历史置信度${legacyConfidence}` : '证据待验证'
+  }
+  const labels = {
+    confirmed: '已确认',
+    corroborated: '多源印证',
+    'single-source': '单一来源',
+    unverified: '待验证',
+  }
+  return `${labels[story.evidence.level]} · ${story.evidence.sourceCount} 个来源`
+}
+
+function sourceLabel(story: BriefingStory) {
+  if (story.source.reliability === 'primary') return '一手来源'
+  if (story.source.reliability === 'tier-1') return '一级媒体'
+  if (story.source.reliability === 'tier-2') return '二级媒体'
+  return story.source.type === 'official' ? '官方源' : '其他来源'
+}
+
 function SettingsIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="settings-icon">
@@ -115,7 +136,7 @@ function DetailSection({ title, children, className = '' }: { title: string; chi
 function StoryRow({ story }: { story: BriefingStory }) {
   return (
     <article className="story-row">
-      <div className="story-register"><span className="story-rank">{String(story.rank).padStart(2, '0')}</span><span>{story.source.name}</span><time dateTime={story.publishedAt}>{formatTime(story.publishedAt)}</time><span>{story.source.type === 'official' ? '官方源' : '专业媒体'} · 置信度{story.confidence}</span></div>
+      <div className="story-register"><span className="story-rank">{String(story.rank).padStart(2, '0')}</span><span>{story.source.name}</span><time dateTime={story.publishedAt}>{formatTime(story.publishedAt)}</time><span>{sourceLabel(story)} · {evidenceLabel(story)}</span></div>
       <div className="story-main"><div className="story-tags">{story.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><h3><a href={story.url} target="_blank" rel="noreferrer">{story.title}<ArrowIcon /></a></h3><p>{story.summary}</p></div>
       <div className="story-analysis"><h4>为何重要</h4><p>{story.whyItMatters}</p></div>
       <details className="story-deep-dive">

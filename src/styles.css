@@ -19,6 +19,7 @@
   --type-micro: 0.68rem;
   --type-term: 0.875rem;
   --type-mobile-brand: 1.75rem;
+  --transition-color: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
 }
 
 * {
@@ -65,7 +66,8 @@ a {
   align-items: center;
   gap: 32px;
   padding: 0 36px;
-  border-bottom: 1px solid rgba(17, 24, 32, 0.68);
+  border-bottom: 1px solid var(--line);
+  background: rgba(242, 244, 243, 0.96);
 }
 
 .brand-group {
@@ -81,6 +83,8 @@ a {
   font-weight: 760;
   letter-spacing: -0.035em;
   line-height: 1;
+  color: var(--ink);
+  transition: var(--transition-color);
 }
 
 .mast-divider {
@@ -152,10 +156,11 @@ a {
   align-items: center;
   gap: 8px;
   border: 0;
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--line-soft);
   padding: 0 0 0 22px;
   color: var(--muted);
   background: transparent;
+  transition: var(--transition-color);
 }
 
 .settings-button:disabled {
@@ -391,6 +396,7 @@ a {
 
 .domain-line:not(.is-live) .signal-bar {
   background: var(--steel);
+  min-height: 38px;
 }
 
 .domain-line:not(.is-live) .domain-route::after {
@@ -403,6 +409,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
+  min-height: 60px;
 }
 
 .domain-name {
@@ -410,6 +417,7 @@ a {
   align-items: stretch;
   gap: 14px;
   min-width: 0;
+  flex: 1;
 }
 
 .signal-bar {
@@ -447,6 +455,7 @@ a {
   gap: 8px;
   color: var(--muted);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .unread-dot {
@@ -464,6 +473,7 @@ a {
   position: relative;
   margin-top: 16px;
   overflow: hidden;
+  min-height: 40px;
 }
 
 .domain-route::before,
@@ -496,12 +506,18 @@ a {
   list-style: none;
   margin: 0;
   padding: 0;
+  min-height: 40px;
 }
 
 .domain-route li {
   position: relative;
   min-width: 0;
   padding-top: 18px;
+  transition: var(--transition-color);
+}
+
+.domain-route li:hover {
+  color: var(--signal);
 }
 
 .station-dot {
@@ -513,6 +529,11 @@ a {
   border: 2px solid var(--ink);
   border-radius: 50%;
   background: var(--paper);
+  transition: var(--transition-color);
+}
+
+.domain-route li:hover .station-dot {
+  border-color: var(--signal);
 }
 
 .is-active .station-dot {
@@ -535,10 +556,17 @@ a {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  transition: var(--transition-color);
+}
+
+.domain-route li:hover .station-label {
+  color: var(--signal);
 }
 
 .domain-summary {
   margin-top: 14px;
+  min-height: 60px;
 }
 
 .domain-summary p {
@@ -693,6 +721,7 @@ a {
 .story-analysis {
   min-width: 0;
   padding: 25px clamp(22px, 2.4vw, 36px) 27px;
+  min-height: 120px;
 }
 
 .story-register,
@@ -745,6 +774,8 @@ a {
   line-height: 1.38;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
+  min-height: 40px;
+  transition: color 180ms ease;
 }
 
 .story-main h3 a {
@@ -768,12 +799,17 @@ a {
   transform: translateX(4px);
 }
 
+.story-main h3 a {
+  transition: color 180ms ease;
+}
+
 .story-main > p,
 .story-analysis > p {
   margin: 9px 0 0;
   color: #46515b;
   font-size: var(--type-reading);
   line-height: 1.72;
+  min-height: 40px;
 }
 
 .story-analysis h4 {
@@ -803,6 +839,13 @@ a {
   cursor: pointer;
   font-size: var(--type-control);
   font-weight: 720;
+  transition: var(--transition-color);
+}
+
+.domain-analysis > summary:hover,
+.story-deep-dive > summary:hover,
+.daily-radar > summary:hover {
+  background: rgba(11, 98, 214, 0.03);
 }
 
 .domain-analysis > summary::marker,
@@ -828,6 +871,7 @@ a {
 .daily-radar[open] > summary {
   color: var(--ink);
   border-bottom: 1px solid var(--line-soft);
+  background: rgba(11, 98, 214, 0.05);
 }
 
 .domain-analysis-grid {
@@ -838,6 +882,7 @@ a {
 .domain-analysis-grid section {
   min-width: 0;
   padding: 26px 30px 30px;
+  min-height: 120px;
 }
 
 .domain-analysis-grid section:nth-child(odd) {
@@ -900,6 +945,7 @@ a {
   min-width: 0;
   padding: 30px 0 34px;
   border-bottom: 1px solid var(--line-soft);
+  min-height: 100px;
 }
 
 .deep-section:nth-child(odd):not(.is-wide) {
@@ -1064,6 +1110,7 @@ a {
   gap: 18px;
   padding: 24px 36px 27px;
   border-bottom: 1px solid var(--line-soft);
+  min-height: 100px;
 }
 
 .radar-grid article:nth-child(odd) {
@@ -1105,6 +1152,12 @@ a {
   padding: 0 18px;
   color: var(--signal);
   border: 1px solid var(--signal);
+  transition: var(--transition-color);
+}
+
+.domain-load-error button:hover {
+  background: var(--signal);
+  color: white;
 }
 
 .ledger-state {
@@ -1142,6 +1195,7 @@ a {
   background: var(--signal);
   cursor: pointer;
   white-space: nowrap;
+  transition: var(--transition-color);
 }
 
 .ledger-state button:hover {
@@ -1164,12 +1218,12 @@ a {
 }
 
 .insight-strip article {
-  min-height: 138px;
   display: grid;
-  grid-template-columns: 54px 1fr auto;
+  grid-template-columns: 54px minmax(0, 1fr);
   align-items: start;
   gap: 18px;
   padding: 23px 32px 21px;
+  min-height: 138px;
 }
 
 .insight-strip article:not(:last-child) {
@@ -1190,6 +1244,7 @@ a {
   margin: 0;
   font-size: 1.18rem;
   letter-spacing: -0.02em;
+  min-height: 30px;
 }
 
 .insight-copy p {
@@ -1198,6 +1253,7 @@ a {
   color: #46515b;
   font-size: var(--type-supporting);
   line-height: 1.65;
+  min-height: 60px;
 }
 
 .insight-strip .text-link {

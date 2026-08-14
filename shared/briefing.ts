@@ -2,9 +2,21 @@ export type BriefingMode = 'rules' | 'qwen' | 'deepseek' | 'openai'
 
 export type DomainId = 'ai-tech' | 'markets' | 'world' | 'learning'
 
+export type SourceReliability = 'primary' | 'tier-1' | 'tier-2' | 'other'
+
+export type EvidenceConfidence = 'confirmed' | 'corroborated' | 'single-source' | 'unverified'
+
 export type NewsSource = {
   name: string
   type: 'official' | 'media'
+  reliability: SourceReliability
+}
+
+export type EventEvidence = {
+  level: EvidenceConfidence
+  sourceCount: number
+  independentSourceCount: number
+  primarySourcePresent: boolean
 }
 export type GlossaryTerm = {
   term: string
@@ -19,6 +31,7 @@ export type StoryTrend = {
 
 export type BriefingStory = {
   id: string
+  eventId: string
   rank: number
   title: string
   summary: string
@@ -32,8 +45,9 @@ export type BriefingStory = {
   trend: StoryTrend
   url: string
   source: NewsSource
+  sources: NewsSource[]
   publishedAt: string
-  confidence: '高' | '中'
+  evidence: EventEvidence
   tags: string[]
 }
 
@@ -67,6 +81,7 @@ export type DailyBriefing = {
   pipeline: {
     fetched: number
     afterDedup: number
+    afterClustering: number
     sourceCount: number
     warnings: string[]
   }

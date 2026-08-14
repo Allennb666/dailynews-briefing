@@ -1,6 +1,6 @@
 import type { BriefingMode, DailyBriefing, GlossaryTerm, StoryTrend, TrendRadarItem } from '../shared/briefing.js'
 import { DOMAIN_CONFIGS } from './sources.js'
-import type { Candidate, CollectionResult } from './pipeline.js'
+import type { CollectionResult, NewsEvent } from './pipeline.js'
 import { buildCandidatePool, buildRulesBriefing } from './pipeline.js'
 
 type ProviderConfig = {
@@ -150,19 +150,28 @@ function mergeModelBriefing(baseline: DailyBriefing, value: unknown, mode: Exclu
   } satisfies DailyBriefing
 }
 
-function modelInput(candidates: Candidate[]) {
-  return candidates.map((item) => ({
-    id: item.id,
-    title: item.title,
-    material: item.description.slice(0, 1_800),
-    source: item.source.name,
-    sourceType: item.source.type,
-    publishedAt: item.publishedAt,
-    url: item.url,
+function modelInput(events: NewsEvent[]) {
+  return events.map((event) => ({
+    id: event.id,
+    canonicalTitle: event.canonicalTitle,
+    entities: event.entities,
+    topicTags: event.topicTags,
+    publishedAt: event.publishedAt,
+    latestUpdateAt: event.latestUpdateAt,
+    evidence: event.evidence,
+    articles: event.articles.map((article) => ({
+      title: article.title,
+      material: article.description.slice(0, 1_800),
+      source: article.source.name,
+      sourceType: article.source.type,
+      sourceReliability: article.source.reliability,
+      publishedAt: article.publishedAt,
+      url: article.url,
+    })),
   }))
 }
 
-async function requestAnalysis(provider: ProviderConfig, collection: CollectionResult, candidates: Candidate[]) {
+async function requestAnalysis(provider: ProviderConfig, collection: CollectionResult, events: NewsEvent[]) {
   const config = DOMAIN_CONFIGS[collection.domain]
   const prompt = `你是 DailyNews 的中文深度简报编辑，当前领域是“${config.title}”。请先从候选材料中选择最重要的 5 条，再整理成既适合晨间速览、又能折叠深读的结构化简报。
 
@@ -170,7 +179,8 @@ async function requestAnalysis(provider: ProviderConfig, collection: CollectionR
 1. 优先全球或行业影响大、改变政策/资本/技术/教育结构、未来仍需持续跟踪的事件。
 2. 兼顾来源可信度、主题多样性和不同参与方；同一来源最多 2 条，同一狭窄子话题不要重复占位。
 3. 不因标题猎奇、情绪强烈或只是最新就提高排名；地方性事件只有具备更广泛示范意义时才入选。
-4. stories 必须恰好输出 5 条，并按重要性从高到低排列；id 必须来自候选材料。
+4. 输入单位已经是聚类后的事件；stories 必须恰好输出 5 个事件，并按重要性从高到低排列；id 必须来自输入事件。
+5. 不得把同一事件的多个来源重新当成多条新闻；优先结合 articles 中的多来源材料整理共同事实与差异。
 
 事实边界：
 1. title、summary、keyFacts 中的具体事实、数字、日期、引语和机构立场只能来自输入材料；材料不足时明确写“材料未提供”。
@@ -204,7 +214,7 @@ async function requestAnalysis(provider: ProviderConfig, collection: CollectionR
   }]
 }
 
-输入材料：${JSON.stringify(modelInput(candidates))}`
+输入事件：${JSON.stringify(modelInput(events))}`
 
   const response = await fetch(`${provider.baseUrl.replace(/\/$/, '')}/chat/completions`, {
     method: 'POST',

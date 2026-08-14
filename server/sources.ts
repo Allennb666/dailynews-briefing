@@ -1,10 +1,11 @@
-import type { DomainId } from '../shared/briefing.js'
+import type { DomainId, SourceReliability } from '../shared/briefing.js'
 
 export type FeedSource = {
   id: string
   name: string
   url: string
   type: 'official' | 'media'
+  reliability: SourceReliability
   weight: number
   focused: boolean
 }
@@ -48,14 +49,14 @@ const aiTech: DomainConfig = {
     { tag: '研究', pattern: /research|benchmark|paper|研究|论文|基准/i },
   ],
   sources: [
-    { id: 'openai', name: 'OpenAI News', url: 'https://openai.com/news/rss.xml', type: 'official', weight: 40, focused: true },
-    { id: 'google', name: 'Google Blog', url: 'https://blog.google/feed/', type: 'official', weight: 38, focused: false },
-    { id: 'nvidia', name: 'NVIDIA Blog', url: 'https://blogs.nvidia.com/feed/', type: 'official', weight: 40, focused: true },
-    { id: 'huggingface', name: 'Hugging Face Blog', url: 'https://huggingface.co/blog/feed.xml', type: 'official', weight: 36, focused: true },
-    { id: 'semiengineering', name: 'Semiconductor Engineering', url: 'https://semiengineering.com/feed/', type: 'media', weight: 32, focused: true },
-    { id: 'techcrunch-ai', name: 'TechCrunch AI', url: 'https://techcrunch.com/category/artificial-intelligence/feed/', type: 'media', weight: 30, focused: true },
-    { id: 'ithome', name: 'IT之家', url: 'https://www.ithome.com/rss/', type: 'media', weight: 28, focused: false },
-    { id: 'solidot', name: 'Solidot', url: 'https://www.solidot.org/index.rss', type: 'media', weight: 28, focused: false },
+    { id: 'openai', name: 'OpenAI News', url: 'https://openai.com/news/rss.xml', type: 'official', reliability: 'primary', weight: 40, focused: true },
+    { id: 'google', name: 'Google Blog', url: 'https://blog.google/feed/', type: 'official', reliability: 'primary', weight: 38, focused: false },
+    { id: 'nvidia', name: 'NVIDIA Blog', url: 'https://blogs.nvidia.com/feed/', type: 'official', reliability: 'primary', weight: 40, focused: true },
+    { id: 'huggingface', name: 'Hugging Face Blog', url: 'https://huggingface.co/blog/feed.xml', type: 'official', reliability: 'primary', weight: 36, focused: true },
+    { id: 'semiengineering', name: 'Semiconductor Engineering', url: 'https://semiengineering.com/feed/', type: 'media', reliability: 'tier-2', weight: 32, focused: true },
+    { id: 'techcrunch-ai', name: 'TechCrunch AI', url: 'https://techcrunch.com/category/artificial-intelligence/feed/', type: 'media', reliability: 'tier-2', weight: 30, focused: true },
+    { id: 'ithome', name: 'IT之家', url: 'https://www.ithome.com/rss/', type: 'media', reliability: 'other', weight: 28, focused: false },
+    { id: 'solidot', name: 'Solidot', url: 'https://www.solidot.org/index.rss', type: 'media', reliability: 'other', weight: 28, focused: false },
   ],
   fallback: {
     background: '这条信息需要放在技术能力、产品落地与产业供给三个层面分别判断，不能只看发布标题。',
@@ -81,12 +82,12 @@ const markets: DomainConfig = {
     { tag: '能源', pattern: /oil|gas|energy|原油|油价|天然气|能源/i },
   ],
   sources: [
-    { id: 'fed', name: 'Federal Reserve', url: 'https://www.federalreserve.gov/feeds/press_all.xml', type: 'official', weight: 40, focused: true },
-    { id: 'sec', name: 'U.S. SEC', url: 'https://www.sec.gov/news/pressreleases.rss', type: 'official', weight: 38, focused: true },
-    { id: 'bbc-business', name: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', type: 'media', weight: 34, focused: true },
-    { id: 'cnbc', name: 'CNBC', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html', type: 'media', weight: 32, focused: true },
-    { id: 'marketwatch', name: 'MarketWatch', url: 'https://feeds.content.dowjones.io/public/rss/mw_topstories', type: 'media', weight: 32, focused: true },
-    { id: 'npr-business', name: 'NPR Business', url: 'https://feeds.npr.org/1006/rss.xml', type: 'media', weight: 30, focused: true },
+    { id: 'fed', name: 'Federal Reserve', url: 'https://www.federalreserve.gov/feeds/press_all.xml', type: 'official', reliability: 'primary', weight: 40, focused: true },
+    { id: 'sec', name: 'U.S. SEC', url: 'https://www.sec.gov/news/pressreleases.rss', type: 'official', reliability: 'primary', weight: 38, focused: true },
+    { id: 'bbc-business', name: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', type: 'media', reliability: 'tier-1', weight: 34, focused: true },
+    { id: 'cnbc', name: 'CNBC', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html', type: 'media', reliability: 'tier-1', weight: 32, focused: true },
+    { id: 'marketwatch', name: 'MarketWatch', url: 'https://feeds.content.dowjones.io/public/rss/mw_topstories', type: 'media', reliability: 'tier-1', weight: 32, focused: true },
+    { id: 'npr-business', name: 'NPR Business', url: 'https://feeds.npr.org/1006/rss.xml', type: 'media', reliability: 'tier-1', weight: 30, focused: true },
   ],
   fallback: {
     background: '市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。',
@@ -112,13 +113,13 @@ const world: DomainConfig = {
     { tag: '政治', pattern: /election|government|president|选举|政府|总统/i },
   ],
   sources: [
-    { id: 'un-news', name: 'UN News', url: 'https://news.un.org/feed/subscribe/en/news/all/rss.xml', type: 'official', weight: 38, focused: true },
-    { id: 'bbc-world', name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'media', weight: 34, focused: true },
-    { id: 'aljazeera', name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', type: 'media', weight: 32, focused: true },
-    { id: 'dw', name: 'DW', url: 'https://rss.dw.com/rdf/rss-en-top', type: 'media', weight: 31, focused: true },
-    { id: 'npr-world', name: 'NPR World', url: 'https://feeds.npr.org/1004/rss.xml', type: 'media', weight: 30, focused: true },
-    { id: 'guardian-world', name: 'The Guardian World', url: 'https://www.theguardian.com/world/rss', type: 'media', weight: 30, focused: true },
-    { id: 'lemonde-world', name: 'Le Monde World', url: 'https://www.lemonde.fr/en/international/rss_full.xml', type: 'media', weight: 30, focused: true },
+    { id: 'un-news', name: 'UN News', url: 'https://news.un.org/feed/subscribe/en/news/all/rss.xml', type: 'official', reliability: 'primary', weight: 38, focused: true },
+    { id: 'bbc-world', name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'media', reliability: 'tier-1', weight: 34, focused: true },
+    { id: 'aljazeera', name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', type: 'media', reliability: 'tier-1', weight: 32, focused: true },
+    { id: 'dw', name: 'DW', url: 'https://rss.dw.com/rdf/rss-en-top', type: 'media', reliability: 'tier-1', weight: 31, focused: true },
+    { id: 'npr-world', name: 'NPR World', url: 'https://feeds.npr.org/1004/rss.xml', type: 'media', reliability: 'tier-1', weight: 30, focused: true },
+    { id: 'guardian-world', name: 'The Guardian World', url: 'https://www.theguardian.com/world/rss', type: 'media', reliability: 'tier-1', weight: 30, focused: true },
+    { id: 'lemonde-world', name: 'Le Monde World', url: 'https://www.lemonde.fr/en/international/rss_full.xml', type: 'media', reliability: 'tier-1', weight: 30, focused: true },
   ],
   fallback: {
     background: '地缘事件需要区分已发生行动、各方表态、谈判条件和媒体推测，并观察是否出现可验证的现实变化。',
@@ -144,16 +145,16 @@ const learning: DomainConfig = {
     { tag: '学习科学', pattern: /research|assessment|learning|研究|评估|学习/i },
   ],
   sources: [
-    { id: 'google-education', name: 'Google Education', url: 'https://blog.google/outreach-initiatives/education/rss/', type: 'official', weight: 36, focused: true },
-    { id: 'mit-education', name: 'MIT News Education', url: 'https://news.mit.edu/rss/topic/education', type: 'official', weight: 36, focused: true },
-    { id: 'coursera', name: 'Coursera Blog', url: 'https://blog.coursera.org/feed/', type: 'official', weight: 32, focused: true },
-    { id: 'edsurge', name: 'EdSurge', url: 'https://www.edsurge.com/articles_rss', type: 'media', weight: 34, focused: true },
-    { id: 'hechinger', name: 'The Hechinger Report', url: 'https://hechingerreport.org/feed/', type: 'media', weight: 34, focused: true },
-    { id: 'inside-higher-ed', name: 'Inside Higher Ed', url: 'https://www.insidehighered.com/rss.xml', type: 'media', weight: 32, focused: true },
-    { id: 'education-next', name: 'Education Next', url: 'https://www.educationnext.org/feed/', type: 'media', weight: 31, focused: true },
-    { id: 'eschool-news', name: 'eSchool News', url: 'https://www.eschoolnews.com/feed/', type: 'media', weight: 29, focused: true },
-    { id: 'edscoop', name: 'EdScoop', url: 'https://www.edscoop.com/feed/', type: 'media', weight: 30, focused: true },
-    { id: 'lemonde-education', name: 'Le Monde Education', url: 'https://www.lemonde.fr/en/education/rss_full.xml', type: 'media', weight: 29, focused: true },
+    { id: 'google-education', name: 'Google Education', url: 'https://blog.google/outreach-initiatives/education/rss/', type: 'official', reliability: 'primary', weight: 36, focused: true },
+    { id: 'mit-education', name: 'MIT News Education', url: 'https://news.mit.edu/rss/topic/education', type: 'official', reliability: 'primary', weight: 36, focused: true },
+    { id: 'coursera', name: 'Coursera Blog', url: 'https://blog.coursera.org/feed/', type: 'official', reliability: 'primary', weight: 32, focused: true },
+    { id: 'edsurge', name: 'EdSurge', url: 'https://www.edsurge.com/articles_rss', type: 'media', reliability: 'tier-1', weight: 34, focused: true },
+    { id: 'hechinger', name: 'The Hechinger Report', url: 'https://hechingerreport.org/feed/', type: 'media', reliability: 'tier-1', weight: 34, focused: true },
+    { id: 'inside-higher-ed', name: 'Inside Higher Ed', url: 'https://www.insidehighered.com/rss.xml', type: 'media', reliability: 'tier-1', weight: 32, focused: true },
+    { id: 'education-next', name: 'Education Next', url: 'https://www.educationnext.org/feed/', type: 'media', reliability: 'tier-2', weight: 31, focused: true },
+    { id: 'eschool-news', name: 'eSchool News', url: 'https://www.eschoolnews.com/feed/', type: 'media', reliability: 'other', weight: 29, focused: true },
+    { id: 'edscoop', name: 'EdScoop', url: 'https://www.edscoop.com/feed/', type: 'media', reliability: 'tier-2', weight: 30, focused: true },
+    { id: 'lemonde-education', name: 'Le Monde Education', url: 'https://www.lemonde.fr/en/education/rss_full.xml', type: 'media', reliability: 'tier-1', weight: 29, focused: true },
   ],
   fallback: {
     background: '教育变化需要区分政策倡议、课堂试点、研究证据与大规模实施，单个案例不能直接代表普遍效果。',
