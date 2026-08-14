@@ -38,6 +38,9 @@ const candidate = (
   source: source(sourceId, options.reliability),
   score,
   tags: options.tags ?? ['模型'],
+  discoveryMethod: 'rss',
+  materialLevel: 'snippet-only',
+  independenceKey: `publisher:${sourceId}`,
 })
 
 test('标题规范化会忽略空格与标点', () => {

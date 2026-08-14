@@ -6,7 +6,7 @@
 [![React](https://img.shields.io/badge/React-19-111820.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-111820.svg)](https://www.typescriptlang.org/)
 
-一个面向中文读者的个人每日新闻简报。DailyNews 从公开 RSS 发现新闻，经过时效与相关性过滤、文章去重、事件聚类、跨来源验证、来源多样性排序和可选的 AI 深度分析，将当天值得关注的信息整理成一张适合先扫读、再深读的“晨间调度单”。
+一个面向中文读者的个人每日新闻简报。DailyNews 从公开 RSS、动态新闻搜索和官方网站定向搜索发现新闻，经过事件聚类、主动补充第二来源、Qwen 预选、公开原文读取、最终编辑和程序质量门禁，将当天值得关注的信息整理成一张适合先扫读、再深读的“晨间调度单”。
 
 ![DailyNews 桌面端首页](artifacts/screenshots/home-desktop.png)
 
@@ -14,7 +14,7 @@
 
 访问 [DailyNews GitHub Pages](https://allennb666.github.io/dailynews-briefing/) 查看最新发布版本。
 
-公开网站只读取已经生成的静态 JSON，不会在浏览器中携带或调用模型密钥。Qwen、DeepSeek 或 OpenAI 调用发生在 GitHub Actions 的生成任务中；生成完成后，Pages 工作流会重新构建并发布网站。
+公开网站只读取已经生成的静态 JSON，不会在浏览器中携带或调用搜索或模型密钥。Tavily 和 Qwen 调用只发生在 GitHub Actions 的生成任务中；生成完成后，Pages 工作流会重新构建并发布网站。
 
 ## 功能亮点
 
@@ -22,7 +22,8 @@
 - **每日 20 条重点**：每个领域稳定输出 5 条，不足时停止生成，不用虚构或过期内容补位。
 - **可追溯的深度阅读**：保留来源、发布时间、原文链接、来源类型、置信度和采集提醒。
 - **结构化分析**：提供事实梳理、背景逻辑、影响链、受影响对象、不确定性、术语解释、短中期趋势和验证信号。
-- **规则与多模型模式**：无密钥时可使用免费的规则模式；也可接入 Qwen、DeepSeek 或 OpenAI。
+- **Qwen 双阶段编辑**：`qwen3.5-27b` 先预选事件，再在补充原文和第二来源后完成最终写作。
+- **硬性质量门禁**：来源、证据、中文完整性、事实链接和条件式预测不合格时修复一次；仍失败则保留上一期。
 - **自动更新**：GitHub Actions 每天定时生成简报、验证项目并提交新的 JSON 数据。
 - **响应式阅读体验**：桌面端和移动端均可完整阅读，并支持减少动态效果的系统偏好。
 
@@ -30,14 +31,15 @@
 
 ```mermaid
 flowchart LR
-  RSS["公开 RSS 来源"] --> COLLECT["采集与时间窗口过滤"]
+  RSS["固定 RSS"] --> COLLECT["合并与过滤"]
+  SEARCH["Tavily 新闻/官方搜索"] --> COLLECT
   COLLECT --> EVENT["文章去重与事件聚类"]
   EVENT --> VERIFY["跨来源证据分级"]
-  VERIFY --> RANK["评分与来源多样性"]
-  RANK --> RULES["规则模式"]
-  RANK --> AI["可选 AI 深度分析"]
-  RULES --> JSON["最新数据与每日归档 JSON"]
-  AI --> JSON
+  VERIFY --> PRE["Qwen 预选 7–10 个事件"]
+  PRE --> MATERIAL["原文读取 + 第二来源"]
+  MATERIAL --> AI["Qwen 最终编辑"]
+  AI --> GATE["质量门禁与一次修复"]
+  GATE --> JSON["全局去重、三件大事与 JSON"]
   JSON --> WEB["React 静态网页"]
   ACTIONS["GitHub Actions"] --> COLLECT
 ```
@@ -69,7 +71,7 @@ npm run briefing:generate
 npm run dev
 ```
 
-`.env.example` 默认使用 `rules`，不会产生模型费用。规则模式仍会访问公开 RSS，但不会向任何模型服务发送内容。
+将 Qwen 和 Tavily 密钥只填写在本地 `.env`。没有 Tavily Key 时会自动退回 RSS；没有 Qwen 或最终稿严重不合格时会明确降级并保留上一期，不会发布成正常深度简报。
 
 ## 模型配置
 
@@ -77,16 +79,18 @@ npm run dev
 
 | 变量 | 用途 | 默认值 |
 | --- | --- | --- |
-| `AI_PROVIDER` | `rules`、`auto`、`qwen`、`deepseek` 或 `openai` | `rules`（示例配置） |
+| `AI_PROVIDER` | `qwen`、`auto` 或 `rules` | `qwen` |
 | `DASHSCOPE_API_KEY` | Qwen / DashScope 密钥 | 空 |
 | `QWEN_MODEL` | Qwen 模型名称 | `qwen3.5-27b` |
 | `QWEN_BASE_URL` | Qwen 的 OpenAI 兼容接口地址 | DashScope 兼容接口 |
-| `DEEPSEEK_API_KEY` | DeepSeek 密钥 | 空 |
-| `DEEPSEEK_MODEL` | DeepSeek 模型名称 | `deepseek-chat` |
-| `OPENAI_API_KEY` | OpenAI API 密钥 | 空 |
-| `OPENAI_MODEL` | OpenAI 模型名称 | 见 `.env.example` |
+| `NEWS_SEARCH_PROVIDER` | 新闻搜索 Provider | `tavily` |
+| `TAVILY_API_KEY` | Tavily Basic Search 密钥 | 空 |
+| `DAILY_SEARCH_LIMIT` | 单次每日运行搜索硬上限 | `32` |
+| `DISCOVERY_QUERIES_PER_DOMAIN` | 每领域发现查询数，最大 6 | `6` |
+| `SECOND_SOURCE_EVENT_LIMIT` | 主动补第二来源的事件数，最大 8 | `8` |
+| `ARTICLE_FETCH_LIMIT` | 公开原文读取数，最大 30 | `30` |
 
-`auto` 会按 Qwen → DeepSeek → OpenAI 的顺序使用第一个已配置密钥。每个领域单独调用模型；某个领域失败时会回退到规则模式并记录提醒，不影响其他领域。
+`auto` 与 `qwen` 都只会使用现有 Qwen 配置，不会切换到其他生成模型。预选失败可以规则降级；最终稿门禁失败会调用 Qwen 修复一次，仍失败则停止本期发布。
 
 模型连接使用兼容 OpenAI Chat Completions 的 `/chat/completions` 接口。建议在运行前确认账号可用的模型名称和接口地址。
 
@@ -125,12 +129,14 @@ npm run dev
 4. 使用规范化标题和词元相似度完成文章级去重；
 5. 综合标题、摘要、实体、事件动作和 72 小时时间邻近度，把多篇报道聚合为 Event；
 6. 按 `primary`、`tier-1`、`tier-2`、`other` 区分来源可靠性，并计算 `confirmed`、`corroborated`、`single-source`、`unverified` 证据等级；
-7. 沿用既有排名规则，默认限制同一主来源最多入选 2 个事件；
-8. 选出 5 条重点，并保留无法获取的来源提醒。
+7. Qwen 从每领域最多 60 个事件中预选 7–10 个，只输出 ID 和理由；
+8. 最多读取 30 篇公开原文，并为全局最重要的 8 个事件主动搜索第二来源；
+9. Qwen 最终选择和写作，再执行来源、证据、中文、事实链接、预测信号等硬性门禁；
+10. 四领域完成后跨领域去重，重新选择真正的今日三件大事并生成当天主线。
 
 ## 自动化更新
 
-`.github/workflows/daily-briefing.yml` 支持手动触发，并计划在每天北京时间 **06:10** 运行。工作流会依次执行：
+`.github/workflows/daily-briefing.yml` 支持手动触发，并计划在每天北京时间 **07:30** 左右运行。工作流会依次执行：
 
 1. 安装锁定依赖；
 2. 运行测试；
@@ -138,7 +144,7 @@ npm run dev
 4. 运行生产构建；
 5. 仅在数据发生变化时提交最新简报和每日归档。
 
-启用模型时，在仓库 **Settings → Secrets and variables → Actions** 中配置 `DASHSCOPE_API_KEY`、`DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`。使用自定义 Qwen 兼容接口时，将地址保存为 `QWEN_BASE_URL` Secret；未配置时使用 DashScope 默认接口。同时需要在 **Actions → General → Workflow permissions** 中允许工作流写入仓库。
+在仓库 **Settings → Secrets and variables → Actions** 中配置 `DASHSCOPE_API_KEY` 和 `TAVILY_API_KEY`。使用自定义 Qwen 兼容接口时，将地址保存为 `QWEN_BASE_URL` Secret；未配置时使用 DashScope 默认接口。密钥不要粘贴到聊天、代码或 JSON。同时需要在 **Actions → General → Workflow permissions** 中允许工作流写入仓库。
 
 ## 部署
 
@@ -187,7 +193,6 @@ DailyNews/
 
 ## 路线图
 
-- 建立真正的跨领域全局重要性排序；
 - 将长期历史归档迁移到数据库或对象存储；
 - 增加历史查询、已读状态和个性化领域；
 - 增加前端组件测试和端到端测试；

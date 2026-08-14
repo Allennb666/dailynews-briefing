@@ -1,7 +1,14 @@
 import { createHash } from 'node:crypto'
 import Parser from 'rss-parser'
-import type { BriefingStory, DailyBriefing, DomainId, EventEvidence } from '../shared/briefing.js'
+import type { BriefingStory, DailyBriefing, DiscoveryMethod, DomainId, EventEvidence, MaterialLevel } from '../shared/briefing.js'
 import { DOMAIN_CONFIGS, type DomainConfig, type FeedSource } from './sources.js'
+import {
+  buildDiscoveryQueries,
+  discoveryMethodForQuery,
+  type SearchHit,
+  type SearchRuntime,
+  sourceForSearchResult,
+} from './search.js'
 
 export type Candidate = {
   id: string
@@ -13,6 +20,10 @@ export type Candidate = {
   source: FeedSource
   score: number
   tags: string[]
+  discoveryMethod: DiscoveryMethod
+  materialLevel: MaterialLevel
+  fullText?: string
+  independenceKey?: string
   duplicates?: Candidate[]
 }
 
@@ -38,7 +49,7 @@ const parser = new Parser({
   },
 })
 
-function stripHtml(value = '') {
+export function stripHtml(value = '') {
   return value
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -52,7 +63,7 @@ function stripHtml(value = '') {
     .trim()
 }
 
-function cleanUrl(rawUrl = '') {
+export function cleanUrl(rawUrl = '') {
   try {
     const url = new URL(rawUrl)
     url.hash = ''
@@ -179,7 +190,7 @@ function sharedDistinctiveTerms(a: Candidate, b: Candidate) {
   return [...left].filter((token) => right.has(token) && !entityTokens.has(token) && token.length >= 3).length
 }
 
-function eventMatch(a: Candidate, b: Candidate) {
+export function eventMatch(a: Candidate, b: Candidate) {
   if (a.domain !== b.domain) return false
   const timeDistanceHours = Math.abs(new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()) / 3_600_000
   if (!Number.isFinite(timeDistanceHours) || timeDistanceHours > 72) return false
@@ -229,6 +240,15 @@ function scoreCandidate(config: DomainConfig, source: FeedSource, publishedAt: s
   return source.weight + freshness + Math.min(impact, 18) + detail
 }
 
+export function sourceIndependenceKey(candidate: Pick<Candidate, 'source' | 'title' | 'description' | 'independenceKey'>) {
+  const material = `${candidate.title} ${candidate.description}`
+  if (/\breuters\b|路透/i.test(material) || candidate.source.id.includes('reuters')) return 'wire:reuters'
+  if (/\bassociated press\b|\bAP News\b|美联社/i.test(material) || candidate.source.id.includes('apnews')) return 'wire:ap'
+  if (/\bagence france-presse\b|\bAFP\b|法新社/i.test(material)) return 'wire:afp'
+  if (candidate.independenceKey) return candidate.independenceKey
+  return `publisher:${candidate.source.id}`
+}
+
 async function fetchSource(config: DomainConfig, source: FeedSource, now: Date): Promise<Candidate[]> {
   const feed = await parser.parseURL(source.url)
   return feed.items.flatMap((item) => {
@@ -251,8 +271,56 @@ async function fetchSource(config: DomainConfig, source: FeedSource, now: Date):
       source,
       score: scoreCandidate(config, source, publishedAt, text, now),
       tags: detectTags(config, text),
+      discoveryMethod: 'rss',
+      materialLevel: 'snippet-only',
+      independenceKey: `publisher:${source.id}`,
     }]
   })
+}
+
+export function candidateFromSearchHit(config: DomainConfig, hit: SearchHit, query: string, now: Date): Candidate | null {
+  const title = stripHtml(hit.title)
+  const description = stripHtml(hit.snippet)
+  const url = cleanUrl(hit.url)
+  if (!title || !url) return null
+  const source = sourceForSearchResult(url, hit.publisher)
+  const parsed = hit.publishedAt ? new Date(hit.publishedAt) : now
+  const publishedAt = Number.isNaN(parsed.getTime()) ? now.toISOString() : parsed.toISOString()
+  const text = `${title} ${description}`
+  return {
+    id: createHash('sha1').update(`${config.id}:search:${url}`).digest('hex').slice(0, 12),
+    domain: config.id,
+    title,
+    description,
+    url,
+    publishedAt,
+    source,
+    score: scoreCandidate(config, source, publishedAt, text, now) + Math.max(0, Math.min(6, (hit.score ?? 0) * 6)),
+    tags: detectTags(config, text),
+    discoveryMethod: discoveryMethodForQuery(query, source),
+    materialLevel: 'snippet-only',
+    independenceKey: `publisher:${source.id}`,
+  }
+}
+
+export async function collectSearchCandidates(
+  domain: DomainId,
+  runtime: SearchRuntime,
+  now = new Date(),
+  previousEntities: string[] = [],
+) {
+  if (!runtime.enabled) return []
+  const config = DOMAIN_CONFIGS[domain]
+  const queries = buildDiscoveryQueries(domain, previousEntities, runtime.discoveryQueriesPerDomain)
+  const batches = await Promise.all(queries.map(async (query) => {
+    const hits = await runtime.search(query, 8)
+    return hits.flatMap((hit) => {
+      const candidate = candidateFromSearchHit(config, hit, query, now)
+      if (!candidate || !runtime.claimUrl(cleanUrl(candidate.url))) return []
+      return [candidate]
+    })
+  }))
+  return batches.flat()
 }
 
 export function deduplicateCandidates(candidates: Candidate[]) {
@@ -290,8 +358,12 @@ export function buildEvidence(articles: Candidate[]): EventEvidence {
   const uniqueSources = new Map(articles.map((article) => [article.source.id, article.source]))
   const sources = [...uniqueSources.values()]
   const primarySourcePresent = sources.some((source) => source.reliability === 'primary')
-  const reliableIndependentSources = sources.filter((source) => source.reliability === 'tier-1' || source.reliability === 'tier-2')
-  const independentSourceCount = reliableIndependentSources.length
+  const reliableIndependentSources = new Set(
+    articles
+      .filter((article) => article.source.reliability === 'tier-1' || article.source.reliability === 'tier-2')
+      .map(sourceIndependenceKey),
+  )
+  const independentSourceCount = reliableIndependentSources.size
   const sourceCount = sources.length
   const rumorLike = articles.some((article) => RUMOR_PATTERN.test(`${article.title} ${article.description}`))
 
@@ -305,7 +377,7 @@ export function buildEvidence(articles: Candidate[]): EventEvidence {
   return { level, sourceCount, independentSourceCount, primarySourcePresent }
 }
 
-function createEvent(domain: DomainId, members: Candidate[]): NewsEvent {
+export function createEvent(domain: DomainId, members: Candidate[]): NewsEvent {
   const representatives = [...members].sort((a, b) => b.score - a.score)
   const primaryArticle = representatives[0]
   const articles = uniqueArticles(representatives)
@@ -377,9 +449,18 @@ function selectDiverseEvents(events: NewsEvent[], limit = 5) {
     .filter((event): event is NewsEvent => Boolean(event))
 }
 
-export function buildCandidatePool(collection: CollectionResult, limit = 15) {
+export function buildCandidatePool(collection: CollectionResult, limit = 60) {
   const { events } = buildEventLayer(collection)
-  return selectDiverseEvents(events, limit)
+  const previousTitles = collection.previousTitles ?? []
+  return events
+    .map((event) => ({
+      event,
+      adjustedScore: event.primaryArticle.score
+        - (previousTitles.some((title) => titleSimilarity(title, event.canonicalTitle) >= 0.62) ? 18 : 0),
+    }))
+    .sort((a, b) => b.adjustedScore - a.adjustedScore)
+    .map(({ event }) => event)
+    .slice(0, Math.max(1, Math.min(60, limit)))
 }
 
 function shorten(text: string, max = 180) {
@@ -418,6 +499,17 @@ function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): Bri
       type: article.source.type,
       reliability: article.source.reliability,
     })).filter((source, index, sources) => sources.findIndex((item) => item.name === source.name) === index),
+    evidenceSources: event.articles.map((article) => ({
+      name: article.source.name,
+      type: article.source.type,
+      reliability: article.source.reliability,
+      title: article.title,
+      publishedAt: article.publishedAt,
+      url: article.url,
+      discoveryMethod: article.discoveryMethod,
+      materialLevel: article.materialLevel,
+    })),
+    factSources: [{ factIndex: 0, urls: [candidate.url] }],
     publishedAt: event.publishedAt,
     evidence: event.evidence,
     tags: event.topicTags,
@@ -429,10 +521,18 @@ export type CollectionResult = {
   candidates: Candidate[]
   fetched: number
   sourceCount: number
+  rssCandidates?: number
+  searchCandidates?: number
+  searchCalls?: number
+  previousTitles?: string[]
   warnings: string[]
 }
 
-export async function collectCandidates(domain: DomainId, now = new Date()): Promise<CollectionResult> {
+export async function collectCandidates(
+  domain: DomainId,
+  now = new Date(),
+  options: { searchRuntime?: SearchRuntime; previousEntities?: string[]; previousTitles?: string[] } = {},
+): Promise<CollectionResult> {
   const config = DOMAIN_CONFIGS[domain]
   const results = await Promise.allSettled(config.sources.map((source) => fetchSource(config, source, now)))
   const warnings: string[] = []
@@ -446,7 +546,27 @@ export async function collectCandidates(domain: DomainId, now = new Date()): Pro
       warnings.push(`${config.sources[index].name} 暂时无法获取`)
     }
   })
-  return { domain, candidates, fetched: candidates.length, sourceCount, warnings }
+  const rssCandidates = candidates.length
+  const searchCallsBefore = options.searchRuntime?.stats.calls ?? 0
+  const searched = options.searchRuntime
+    ? await collectSearchCandidates(domain, options.searchRuntime, now, options.previousEntities)
+    : []
+  const searchCandidates = searched.length
+  candidates.push(...searched)
+  if (options.searchRuntime && !options.searchRuntime.enabled) warnings.push('未配置 Tavily，已自动使用 RSS-only 模式')
+  else if (options.searchRuntime?.stats.failures) warnings.push('部分动态搜索失败，已保留 RSS 候选')
+  const uniqueSourceIds = new Set(candidates.map((candidate) => candidate.source.id))
+  return {
+    domain,
+    candidates,
+    fetched: candidates.length,
+    sourceCount: uniqueSourceIds.size || sourceCount,
+    rssCandidates,
+    searchCandidates,
+    searchCalls: (options.searchRuntime?.stats.calls ?? 0) - searchCallsBefore,
+    previousTitles: options.previousTitles ?? [],
+    warnings,
+  }
 }
 
 export function buildRulesBriefing(collection: CollectionResult, now = new Date(), preferredIds: string[] = []): DailyBriefing {
@@ -491,6 +611,16 @@ export function buildRulesBriefing(collection: CollectionResult, now = new Date(
       afterDedup: deduped.length,
       afterClustering: events.length,
       sourceCount: collection.sourceCount,
+      rssCandidates: collection.rssCandidates ?? collection.fetched,
+      searchCandidates: collection.searchCandidates ?? 0,
+      searchCalls: collection.searchCalls ?? 0,
+      confirmedCount: stories.filter((story) => story.evidence.level === 'confirmed').length,
+      corroboratedCount: stories.filter((story) => story.evidence.level === 'corroborated').length,
+      singleSourceCount: stories.filter((story) => story.evidence.level === 'single-source').length,
+      unverifiedCount: stories.filter((story) => story.evidence.level === 'unverified').length,
+      primarySourceCount: stories.filter((story) => story.evidence.primarySourcePresent).length,
+      maxSourceConcentration: Math.max(...[...new Set(stories.map((story) => story.source.name))].map((name) => stories.filter((story) => story.source.name === name).length)),
+      qualityStatus: 'degraded',
       warnings: collection.warnings,
     },
   }

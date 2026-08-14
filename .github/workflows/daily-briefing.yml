@@ -3,8 +3,8 @@ name: Generate daily briefing
 on:
   workflow_dispatch:
   schedule:
-    # 06:10 Asia/Shanghai = 22:10 UTC (previous day)
-    - cron: '10 22 * * *'
+    # 07:30 Asia/Shanghai = 23:30 UTC (previous day)
+    - cron: '30 23 * * *'
 
 permissions:
   contents: write
@@ -12,14 +12,18 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     env:
-      AI_PROVIDER: auto
+      AI_PROVIDER: qwen
       DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
       QWEN_MODEL: ${{ vars.QWEN_MODEL || 'qwen3.5-27b' }}
       QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1' }}
-      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      NEWS_SEARCH_PROVIDER: tavily
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+      DAILY_SEARCH_LIMIT: ${{ vars.DAILY_SEARCH_LIMIT || '32' }}
+      DISCOVERY_QUERIES_PER_DOMAIN: ${{ vars.DISCOVERY_QUERIES_PER_DOMAIN || '6' }}
+      SECOND_SOURCE_EVENT_LIMIT: ${{ vars.SECOND_SOURCE_EVENT_LIMIT || '8' }}
+      ARTICLE_FETCH_LIMIT: ${{ vars.ARTICLE_FETCH_LIMIT || '30' }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

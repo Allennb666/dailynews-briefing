@@ -1,4 +1,4 @@
-export type BriefingMode = 'rules' | 'qwen' | 'deepseek' | 'openai'
+export type BriefingMode = 'rules' | 'qwen'
 
 export type DomainId = 'ai-tech' | 'markets' | 'world' | 'learning'
 
@@ -10,6 +10,23 @@ export type NewsSource = {
   name: string
   type: 'official' | 'media'
   reliability: SourceReliability
+}
+
+export type DiscoveryMethod = 'rss' | 'news-search' | 'official-search'
+
+export type MaterialLevel = 'full-text' | 'snippet-only'
+
+export type EvidenceSource = NewsSource & {
+  title: string
+  publishedAt: string
+  url: string
+  discoveryMethod: DiscoveryMethod
+  materialLevel: MaterialLevel
+}
+
+export type FactSourceLink = {
+  factIndex: number
+  urls: string[]
 }
 
 export type EventEvidence = {
@@ -46,6 +63,8 @@ export type BriefingStory = {
   url: string
   source: NewsSource
   sources: NewsSource[]
+  evidenceSources: EvidenceSource[]
+  factSources: FactSourceLink[]
   publishedAt: string
   evidence: EventEvidence
   tags: string[]
@@ -83,6 +102,18 @@ export type DailyBriefing = {
     afterDedup: number
     afterClustering: number
     sourceCount: number
+    rssCandidates?: number
+    searchCandidates?: number
+    searchCalls?: number
+    articleFetchSuccess?: number
+    confirmedCount?: number
+    corroboratedCount?: number
+    singleSourceCount?: number
+    unverifiedCount?: number
+    primarySourceCount?: number
+    maxSourceConcentration?: number
+    qwenRetries?: number
+    qualityStatus?: 'passed' | 'degraded' | 'held'
     warnings: string[]
   }
 }
@@ -93,4 +124,5 @@ export type DailyDigest = {
   generatedAt: string
   briefings: DailyBriefing[]
   topStories: Array<{ domain: DomainId; storyId: string }>
+  mainline?: string
 }

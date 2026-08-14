@@ -34,7 +34,7 @@ function formatTime(value: string) {
 }
 
 function modeLabel(mode?: DailyBriefing['mode']) {
-  const labels = { rules: '规则整理 · 未调用 AI', qwen: 'Qwen 深度分析', deepseek: 'DeepSeek 深度分析', openai: 'OpenAI 深度分析' }
+  const labels = { rules: '规则整理 · 未调用 AI', qwen: 'Qwen 深度分析' }
   return mode ? labels[mode] : '正在读取数据'
 }
 
@@ -240,7 +240,7 @@ function App() {
       <Masthead date={digest?.date} />
       <main>
         <div className="briefing-grid" id="domains">
-          <aside className="brief-overview"><div className="brief-heading"><h1>今日简报</h1><span className="title-signal" aria-hidden="true" /><div className="edition-meta"><span>晨间版</span><span>4 个领域</span><span className="sample-tag">20 条重点</span></div></div><p className="brief-intro">先用 30 秒掌握当天主线，再进入四个领域查看事实、背景逻辑、专业术语和未来趋势。</p><MajorEvents stories={topStories} state={state} /></aside>
+          <aside className="brief-overview"><div className="brief-heading"><h1>今日简报</h1><span className="title-signal" aria-hidden="true" /><div className="edition-meta"><span>晨间版</span><span>4 个领域</span><span className="sample-tag">20 条重点</span></div></div><p className="brief-intro">{digest?.mainline ?? '先用 30 秒掌握当天主线，再进入四个领域查看事实、背景逻辑、专业术语和未来趋势。'}</p><MajorEvents stories={topStories} state={state} /></aside>
           <section className="domain-list" aria-label="四个新闻领域"><div className="domain-list-head"><span>今日领域线路</span><span>{state === 'ready' ? '4 个已生成 · 20 条重点' : '正在读取四领域数据'}</span></div>{[0, 1, 2, 3].map((index) => <DomainLine key={digest?.briefings[index]?.domain ?? index} briefing={digest?.briefings[index] ?? null} index={index} state={state} />)}{state === 'error' && <div className="domain-load-error" role="alert"><strong>没有读取到今日简报</strong><p>{error}</p><button type="button" onClick={loadBriefing}>重新读取</button></div>}</section>
         </div>
         <div id="briefings">{digest?.briefings.map((briefing) => <BriefingLedger key={briefing.domain} briefing={briefing} />)}</div>
