@@ -57,7 +57,7 @@ function replaceEnrichedEvents(
   }))
 }
 
-function summaryLines(briefings: DailyBriefing[], searchCalls: number, articleReader: ArticleReader) {
+function summaryLines(briefings: DailyBriefing[], searchCalls: number, searchCacheHits: number, articleReader: ArticleReader) {
   const stories = briefings.flatMap((briefing) => briefing.stories)
   const sourceCounts = new Map<string, number>()
   for (const story of stories) sourceCounts.set(story.source.name, (sourceCounts.get(story.source.name) ?? 0) + 1)
@@ -66,6 +66,7 @@ function summaryLines(briefings: DailyBriefing[], searchCalls: number, articleRe
     `RSS 候选：${briefings.reduce((sum, item) => sum + (item.pipeline.rssCandidates ?? 0), 0)}`,
     `搜索候选：${briefings.reduce((sum, item) => sum + (item.pipeline.searchCandidates ?? 0), 0)}`,
     `搜索调用：${searchCalls}/32`,
+    `搜索缓存命中：${searchCacheHits}`,
     `全文读取：${articleReader.succeeded}/${articleReader.attempted}（上限 30）`,
     `confirmed：${stories.filter((story) => story.evidence.level === 'confirmed').length}`,
     `corroborated：${stories.filter((story) => story.evidence.level === 'corroborated').length}`,
@@ -87,11 +88,12 @@ async function writeActionsSummary(lines: string[], published: boolean) {
 async function main() {
   const startedAt = new Date()
   const previous = await loadPreviousDigest()
-  const searchRuntime = createSearchRuntimeFromEnvironment()
+  const searchRuntime = createSearchRuntimeFromEnvironment(fetch, startedAt)
+  await searchRuntime.prepare()
   const model = createEditorialModelFromEnvironment()
   const articleReader = new ArticleReader()
   console.log(`[DailyNews] 开始动态新闻与编辑管线：${startedAt.toISOString()}`)
-  console.log(`[DailyNews] 搜索：${searchRuntime.enabled ? 'Tavily Basic' : '未配置，RSS 回退'}；模型：${model ? 'qwen3.5-27b' : '规则降级'}`)
+  console.log(`[DailyNews] 搜索：${searchRuntime.cacheReplay ? '复用当日搜索缓存（不调用 Tavily）' : searchRuntime.enabled ? 'Tavily Basic' : '未配置，RSS 回退'}；模型：${model ? 'qwen3.5-27b' : '规则降级'}`)
 
   const collections = await Promise.all(DOMAIN_ORDER.map(async (domain) => {
     const collection = await collectCandidates(domain, startedAt, {
@@ -115,6 +117,7 @@ async function main() {
     .sort((a, b) => eventPriority(b) - eventPriority(a))
     .slice(0, 8)
   const enriched = await enrichImportantEvents(topForVerification, searchRuntime, startedAt)
+  await searchRuntime.markCacheComplete()
   selections = replaceEnrichedEvents(selections, enriched)
 
   const materialOrder = [
@@ -144,7 +147,7 @@ async function main() {
 
   const crossDomainErrors = validateCrossDomainUniqueness(briefings)
   const degraded = briefings.some((briefing) => briefing.pipeline.qualityStatus !== 'passed')
-  const lines = summaryLines(briefings, searchRuntime.stats.calls, articleReader)
+  const lines = summaryLines(briefings, searchRuntime.stats.calls, searchRuntime.stats.cacheHits, articleReader)
   lines.forEach((line) => console.log(`[DailyNews] ${line}`))
   if (crossDomainErrors.length) console.error(`[DailyNews] 跨领域门禁失败：${crossDomainErrors.join('；')}`)
   if (degraded || crossDomainErrors.length) {

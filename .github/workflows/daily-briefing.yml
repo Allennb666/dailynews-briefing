@@ -32,7 +32,29 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run briefing:generate
+      - name: Resolve briefing date
+        id: briefing-date
+        run: echo "date=$(TZ=Asia/Shanghai date +%F)" >> "$GITHUB_OUTPUT"
+      - name: Restore same-day search cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .cache/dailynews
+          key: dailynews-search-${{ steps.briefing-date.outputs.date }}-${{ github.run_id }}
+          restore-keys: |
+            dailynews-search-${{ steps.briefing-date.outputs.date }}-
+      - name: Generate briefing
+        id: generate-briefing
+        continue-on-error: true
+        run: npm run briefing:generate
+      - name: Save same-day search cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: .cache/dailynews
+          key: dailynews-search-${{ steps.briefing-date.outputs.date }}-${{ github.run_id }}
+      - name: Stop when generation failed
+        if: steps.generate-briefing.outcome == 'failure'
+        run: exit 1
       - run: npm run build
       - name: Save the new briefing
         run: |

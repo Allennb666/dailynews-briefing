@@ -5,6 +5,7 @@ dist/
 .DS_Store
 *.log
 coverage/
+.cache/
 *.tsbuildinfo
 
 # Local Codex and design-workbench state

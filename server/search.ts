@@ -1,4 +1,6 @@
+import { resolve } from 'node:path'
 import type { DiscoveryMethod, DomainId, SourceReliability } from '../shared/briefing.js'
+import { FileSearchResultCache } from './search-cache.js'
 import type { FeedSource } from './sources.js'
 
 export type SearchHit = {
@@ -18,6 +20,13 @@ export type SearchRequest = {
 export interface NewsSearchProvider {
   readonly id: string
   search(request: SearchRequest): Promise<SearchHit[]>
+}
+
+export interface SearchResultCache {
+  get(query: string): Promise<SearchHit[] | undefined>
+  set(query: string, hits: SearchHit[]): Promise<void>
+  isComplete(): Promise<boolean>
+  markComplete(): Promise<void>
 }
 
 type TavilyPayload = {
@@ -78,6 +87,7 @@ function boundedInteger(value: string | undefined, fallback: number, maximum: nu
 
 export type SearchStats = {
   calls: number
+  cacheHits: number
   failures: number
   skippedDuplicateQueries: number
   exhausted: boolean
@@ -88,13 +98,15 @@ export class SearchRuntime {
   readonly discoveryQueriesPerDomain: number
   readonly secondSourceEventLimit: number
   readonly seenUrls = new Set<string>()
-  readonly stats: SearchStats = { calls: 0, failures: 0, skippedDuplicateQueries: 0, exhausted: false }
+  readonly stats: SearchStats = { calls: 0, cacheHits: 0, failures: 0, skippedDuplicateQueries: 0, exhausted: false }
   private readonly seenQueries = new Set<string>()
   private secondSourceEvents = 0
+  private replayOnly = false
 
   constructor(
     readonly provider: NewsSearchProvider | null,
     limits: { dailyLimit?: number; discoveryQueriesPerDomain?: number; secondSourceEventLimit?: number } = {},
+    private readonly cache: SearchResultCache | null = null,
   ) {
     this.dailyLimit = Math.min(32, Math.max(0, limits.dailyLimit ?? 32))
     this.discoveryQueriesPerDomain = Math.min(6, Math.max(0, limits.discoveryQueriesPerDomain ?? 6))
@@ -102,7 +114,19 @@ export class SearchRuntime {
   }
 
   get enabled() {
-    return Boolean(this.provider)
+    return Boolean(this.provider) || this.replayOnly
+  }
+
+  async prepare() {
+    this.replayOnly = Boolean(await this.cache?.isComplete())
+  }
+
+  get cacheReplay() {
+    return this.replayOnly
+  }
+
+  async markCacheComplete() {
+    if (this.provider || this.replayOnly) await this.cache?.markComplete()
   }
 
   claimUrl(url: string) {
@@ -113,19 +137,28 @@ export class SearchRuntime {
 
   async search(query: string, maxResults = 8): Promise<SearchHit[]> {
     const normalized = query.toLocaleLowerCase().replace(/\s+/g, ' ').trim()
-    if (!this.provider || !normalized) return []
+    if ((!this.provider && !this.cache) || !normalized) return []
     if (this.seenQueries.has(normalized)) {
       this.stats.skippedDuplicateQueries += 1
       return []
     }
+    this.seenQueries.add(normalized)
+    const cached = await this.cache?.get(normalized)
+    if (cached) {
+      this.stats.cacheHits += 1
+      return cached
+    }
+    if (this.replayOnly) return []
+    if (!this.provider) return []
     if (this.stats.calls >= this.dailyLimit) {
       this.stats.exhausted = true
       return []
     }
-    this.seenQueries.add(normalized)
     this.stats.calls += 1
     try {
-      return await this.provider.search({ query, maxResults })
+      const hits = await this.provider.search({ query, maxResults })
+      await this.cache?.set(normalized, hits)
+      return hits
     } catch {
       this.stats.failures += 1
       return []
@@ -139,15 +172,18 @@ export class SearchRuntime {
   }
 }
 
-export function createSearchRuntimeFromEnvironment(fetchImpl: typeof fetch = fetch) {
+export function createSearchRuntimeFromEnvironment(fetchImpl: typeof fetch = fetch, now = new Date()) {
   const providerName = (process.env.NEWS_SEARCH_PROVIDER ?? 'tavily').toLocaleLowerCase()
   const apiKey = process.env.TAVILY_API_KEY?.trim() ?? ''
   const provider = providerName === 'tavily' && apiKey ? new TavilySearchProvider(apiKey, fetchImpl) : null
+  const date = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(now)
+  const cacheDir = process.env.SEARCH_CACHE_DIR?.trim() || resolve('.cache/dailynews')
+  const cache = new FileSearchResultCache(resolve(cacheDir, `tavily-${date}.json`), date)
   return new SearchRuntime(provider, {
     dailyLimit: boundedInteger(process.env.DAILY_SEARCH_LIMIT, 32, 32),
     discoveryQueriesPerDomain: boundedInteger(process.env.DISCOVERY_QUERIES_PER_DOMAIN, 6, 6),
     secondSourceEventLimit: boundedInteger(process.env.SECOND_SOURCE_EVENT_LIMIT, 8, 8),
-  })
+  }, cache)
 }
 
 const OFFICIAL_HOSTS = [

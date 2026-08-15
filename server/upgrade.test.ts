@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { resolve } from 'node:path'
 import test from 'node:test'
 import type { DailyBriefing, DomainId, SourceReliability } from '../shared/briefing.js'
 import { deduplicateAcrossDomains, validateCrossDomainUniqueness } from './editorial.js'
 import { ArticleReader } from './material.js'
 import type { EditorialModel, ModelBriefing } from './model.js'
 import { finalizeBriefing, validateBriefing } from './model.js'
+import { FileSearchResultCache } from './search-cache.js'
 import {
   buildEvidence,
   buildRulesBriefing,
@@ -14,7 +18,13 @@ import {
   type CollectionResult,
   type NewsEvent,
 } from './pipeline.js'
-import { SearchRuntime, createSearchRuntimeFromEnvironment, type NewsSearchProvider } from './search.js'
+import {
+  SearchRuntime,
+  createSearchRuntimeFromEnvironment,
+  type NewsSearchProvider,
+  type SearchHit,
+  type SearchResultCache,
+} from './search.js'
 
 const source = (id: string, reliability: SourceReliability = 'tier-1') => ({
   id,
@@ -128,6 +138,15 @@ class SequenceModel implements EditorialModel {
   }
 }
 
+class MemorySearchCache implements SearchResultCache {
+  complete = false
+  responses = new Map<string, SearchHit[]>()
+  async get(query: string) { return this.responses.get(query) }
+  async set(query: string, hits: SearchHit[]) { this.responses.set(query, hits) }
+  async isComplete() { return this.complete }
+  async markComplete() { this.complete = true }
+}
+
 test('无 Tavily Key 时搜索层无调用并自动保持 RSS 回退能力', async () => {
   const previous = process.env.TAVILY_API_KEY
   delete process.env.TAVILY_API_KEY
@@ -166,6 +185,44 @@ test('搜索、第二来源和全文读取限制由代码强制执行', async ()
   await reader.read('https://a.example/3')
   assert.equal(reader.attempted, 2)
   assert.equal(reader.succeeded, 2)
+})
+
+test('同日完整搜索缓存会阻止重复 Tavily 调用', async () => {
+  let providerCalls = 0
+  const provider: NewsSearchProvider = {
+    id: 'mock',
+    async search() {
+      providerCalls += 1
+      return [{ title: '缓存新闻', url: 'https://cache.example/story', snippet: '缓存材料' }]
+    },
+  }
+  const cache = new MemorySearchCache()
+  const first = new SearchRuntime(provider, { dailyLimit: 32 }, cache)
+  await first.prepare()
+  assert.equal((await first.search('same query')).length, 1)
+  await first.markCacheComplete()
+
+  const replay = new SearchRuntime(provider, { dailyLimit: 32 }, cache)
+  await replay.prepare()
+  assert.equal(replay.cacheReplay, true)
+  assert.equal((await replay.search('same query')).length, 1)
+  assert.deepEqual(await replay.search('new query'), [])
+  assert.equal(providerCalls, 1)
+  assert.equal(replay.stats.calls, 0)
+  assert.equal(replay.stats.cacheHits, 1)
+})
+
+test('搜索缓存可以跨进程实例保存并读取当天结果', async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), 'dailynews-search-cache-'))
+  const path = resolve(directory, 'cache.json')
+  const first = new FileSearchResultCache(path, '2026-08-15')
+  const hits = [{ title: '持久缓存新闻', url: 'https://cache.example/persisted', snippet: '已保存材料' }]
+  await first.set('persisted query', hits)
+  await first.markComplete()
+
+  const restored = new FileSearchResultCache(path, '2026-08-15')
+  assert.equal(await restored.isComplete(), true)
+  assert.deepEqual(await restored.get('persisted query'), hits)
 })
 
 test('RSS 与搜索结果按 URL 和标题合并去重', () => {
@@ -236,6 +293,71 @@ test('Qwen 非法 ID 会修复一次，JSON 失败也会重试', async () => {
   const retried = await finalizeBriefing(collection(events), events, jsonFailureModel, new Date('2026-08-15T00:00:00Z'))
   assert.equal(retried.pipeline.qualityStatus, 'passed')
   assert.equal(jsonFailureModel.calls, 2)
+})
+
+test('程序把结构化预测和来源 ID 转成可发布格式', async () => {
+  const events = fixtureEvents()
+  const value = validModelBriefing(events)
+  value.stories[0] = {
+    ...value.stories[0],
+    factSources: value.stories[0].keyFacts.map((_, factIndex) => ({
+      factIndex,
+      sourceIds: [`${events[0].id}-source-1`],
+    })),
+    trend: {
+      nearTerm: { condition: '官方继续披露执行材料', outlook: '未来几天出现更多细节' },
+      mediumTerm: { condition: '经营数据与执行结果一致', outlook: '中期形成稳定趋势' },
+      signalsToWatch: [],
+    },
+  }
+  const model = new SequenceModel([value])
+  const briefing = await finalizeBriefing(collection(events), events, model, new Date('2026-08-15T00:00:00Z'))
+  assert.equal(briefing.pipeline.qualityStatus, 'passed')
+  assert.match(briefing.stories[0].trend.nearTerm, /如果/)
+  assert.equal(briefing.stories[0].trend.signalsToWatch.length, 2)
+  assert.deepEqual(briefing.stories[0].factSources[0].urls, [events[0].primaryArticle.url])
+})
+
+test('单条事实引用失败时只定向修复该新闻', async () => {
+  const events = fixtureEvents()
+  const broken = validModelBriefing(events)
+  broken.stories[0] = {
+    ...broken.stories[0],
+    keyFacts: ['相关指标增长 99%。'],
+    factSources: [{ factIndex: 0, sourceIds: [`${events[0].id}-source-1`] }],
+  }
+  const corrected = validModelBriefing(events).stories[0]
+  const model = new SequenceModel([broken, { stories: [corrected] }])
+  const briefing = await finalizeBriefing(collection(events), events, model, new Date('2026-08-15T00:00:00Z'))
+  assert.equal(briefing.pipeline.qualityStatus, 'passed')
+  assert.equal(model.calls, 2)
+  assert.match(briefing.pipeline.warnings.join(' '), /定向修复/)
+})
+
+test('单条定向修复仍失败时使用剩余候选替换', async () => {
+  const events = fixtureEvents()
+  const broken = validModelBriefing(events)
+  broken.stories[0] = {
+    ...broken.stories[0],
+    keyFacts: ['相关指标增长 99%。'],
+    factSources: [{ factIndex: 0, sourceIds: [`${events[0].id}-source-1`] }],
+  }
+  const stillBroken = { ...broken.stories[0] }
+  const replacement = {
+    ...validModelBriefing(events).stories[0],
+    id: events[5].id,
+    factSources: [
+      { factIndex: 0, sourceIds: [`${events[5].id}-source-1`] },
+      { factIndex: 1, sourceIds: [`${events[5].id}-source-1`] },
+    ],
+  }
+  const model = new SequenceModel([broken, { stories: [stillBroken] }, { stories: [replacement] }])
+  const briefing = await finalizeBriefing(collection(events), events, model, new Date('2026-08-15T00:00:00Z'))
+  assert.equal(briefing.pipeline.qualityStatus, 'passed')
+  assert.equal(model.calls, 3)
+  assert.ok(briefing.stories.some((story) => story.id === events[5].id))
+  assert.ok(!briefing.stories.some((story) => story.id === events[0].id))
+  assert.match(briefing.pipeline.warnings.join(' '), /替换/)
 })
 
 test('Qwen 两次失败后明确降级，不伪装成正常简报', async () => {

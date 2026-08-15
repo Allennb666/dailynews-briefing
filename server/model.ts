@@ -1,7 +1,5 @@
 import type {
-  BriefingMode,
   DailyBriefing,
-  FactSourceLink,
   GlossaryTerm,
   StoryTrend,
   TrendRadarItem,
@@ -22,14 +20,22 @@ export type ModelStory = {
   title: string
   summary: string
   keyFacts: string[]
-  factSources: FactSourceLink[]
+  factSources: Array<{
+    factIndex: number
+    sourceIds?: string[]
+    urls?: string[]
+  }>
   whyItMatters: string
   background: string
   impactChain: string[]
   affectedParties: string[]
   uncertainties: string
   glossary: GlossaryTerm[]
-  trend: StoryTrend
+  trend: {
+    nearTerm: string | { condition: string; outlook: string }
+    mediumTerm: string | { condition: string; outlook: string }
+    signalsToWatch: string[]
+  }
   tags: string[]
 }
 
@@ -108,10 +114,16 @@ function validGlossary(value: unknown): value is GlossaryTerm[] {
   return Array.isArray(value) && value.every((item) => item && typeof item.term === 'string' && typeof item.definition === 'string')
 }
 
-function validTrend(value: unknown): value is StoryTrend {
+type ModelTrend = ModelStory['trend']
+
+function validTrend(value: unknown): value is ModelTrend {
   if (!value || typeof value !== 'object') return false
-  const trend = value as Partial<StoryTrend>
-  return typeof trend.nearTerm === 'string' && typeof trend.mediumTerm === 'string' && stringArray(trend.signalsToWatch, 2)
+  const trend = value as Partial<ModelTrend>
+  const validPeriod = (period: unknown) => typeof period === 'string'
+    || Boolean(period && typeof period === 'object'
+      && typeof (period as { condition?: unknown }).condition === 'string'
+      && typeof (period as { outlook?: unknown }).outlook === 'string')
+  return validPeriod(trend.nearTerm) && validPeriod(trend.mediumTerm) && Array.isArray(trend.signalsToWatch)
 }
 
 function validRadar(value: unknown): value is TrendRadarItem[] {
@@ -121,15 +133,19 @@ function validRadar(value: unknown): value is TrendRadarItem[] {
   )
 }
 
-function validFactSources(value: unknown): value is FactSourceLink[] {
+function validFactSources(value: unknown): value is ModelStory['factSources'] {
   return Array.isArray(value) && value.every((item) => item
     && Number.isInteger(item.factIndex)
     && item.factIndex >= 0
-    && stringArray(item.urls))
+    && (stringArray(item.sourceIds) || stringArray(item.urls)))
 }
 
 function preferredString(value: unknown, fallback: string) {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+
+function articleSourceId(event: NewsEvent, index: number) {
+  return `${event.id}-source-${index + 1}`
 }
 
 function modelInput(events: NewsEvent[], materialLimit = 5_000, previousTitles: string[] = []) {
@@ -147,7 +163,8 @@ function modelInput(events: NewsEvent[], materialLimit = 5_000, previousTitles: 
       const right = event.canonicalTitle.toLocaleLowerCase().replace(/[\p{P}\p{S}\s]+/gu, '')
       return left === right || (left.length > 8 && right.includes(left.slice(0, Math.min(left.length, 16))))
     }) ? 'possible-repeat-needs-new-development' : 'new-candidate',
-    articles: event.articles.map((article) => ({
+    articles: event.articles.map((article, index) => ({
+      sourceId: articleSourceId(event, index),
       title: article.title,
       material: (article.fullText || article.description).slice(0, materialLimit),
       discoveryMethod: article.discoveryMethod,
@@ -159,6 +176,74 @@ function modelInput(events: NewsEvent[], materialLimit = 5_000, previousTitles: 
       url: article.url,
     })),
   }))
+}
+
+const CONDITIONAL_PREDICTION = /如果|若|可能|取决于|需(?:要)?观察|在.+(?:情况下|前提下)/
+
+function normalizeTrendPeriod(value: ModelTrend['nearTerm'], fallback: string) {
+  const text = typeof value === 'string'
+    ? value.trim()
+    : [value.condition.trim(), value.outlook.trim()].filter(Boolean).join('，')
+  const usable = text || fallback
+  return CONDITIONAL_PREDICTION.test(usable)
+    ? usable
+    : `如果后续公开证据继续支持这一判断，${usable}`
+}
+
+function normalizeTrend(value: unknown, fallback: StoryTrend, event: NewsEvent): StoryTrend {
+  if (!validTrend(value)) return fallback
+  const defaultSignals = [
+    `${event.primaryArticle.source.name}的后续正式信息`,
+    '独立可靠来源的交叉验证',
+  ]
+  const signals = [...new Set([
+    ...value.signalsToWatch.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim()),
+    ...defaultSignals,
+  ])].slice(0, 4)
+  return {
+    nearTerm: normalizeTrendPeriod(value.nearTerm, fallback.nearTerm),
+    mediumTerm: normalizeTrendPeriod(value.mediumTerm, fallback.mediumTerm),
+    signalsToWatch: signals,
+  }
+}
+
+function normalizedNumberTokens(value: string) {
+  return (value.match(/\d[\d,.]*(?:\.\d+)?%?/g) ?? []).map((token) => token.replaceAll(',', '').toLocaleLowerCase())
+}
+
+function articleSupportsNumbers(article: NewsEvent['articles'][number], tokens: string[]) {
+  const material = `${article.title} ${article.description} ${article.fullText ?? ''}`.replaceAll(',', '').toLocaleLowerCase()
+  return tokens.length > 0 && tokens.every((token) => material.includes(token))
+}
+
+function resolveFactSources(
+  value: unknown,
+  event: NewsEvent,
+  keyFacts: string[],
+) {
+  const sourceUrls = new Map(event.articles.map((article, index) => [articleSourceId(event, index), article.url]))
+  const allowedUrls = new Set(event.articles.map((article) => article.url))
+  const resolved = new Map<number, Set<string>>()
+  if (validFactSources(value)) {
+    for (const link of value) {
+      if (link.factIndex >= keyFacts.length) continue
+      const urls = [
+        ...(link.sourceIds ?? []).flatMap((sourceId) => sourceUrls.get(sourceId) ?? []),
+        ...(link.urls ?? []).filter((url) => allowedUrls.has(url)),
+      ]
+      if (urls.length) resolved.set(link.factIndex, new Set(urls))
+    }
+  }
+  keyFacts.forEach((fact, factIndex) => {
+    if (resolved.has(factIndex)) return
+    const tokens = normalizedNumberTokens(fact)
+    if (!tokens.length) return
+    const matches = event.articles.filter((article) => articleSupportsNumbers(article, tokens))
+    if (matches.length) resolved.set(factIndex, new Set(matches.slice(0, 2).map((article) => article.url)))
+  })
+  return [...resolved.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([factIndex, urls]) => ({ factIndex, urls: [...urls] }))
 }
 
 export type PreselectionResult = {
@@ -267,15 +352,16 @@ function mergeModelBriefing(baseline: DailyBriefing, value: unknown, events: New
   const stories = baseline.stories.map((story) => {
     const incoming = incomingById.get(story.id)
     if (!incoming) return story
-    const allowedUrls = new Set(eventById.get(story.id)?.articles.map((article) => article.url) ?? [])
-    const factSources = validFactSources(incoming.factSources)
-      ? incoming.factSources.map((link) => ({ ...link, urls: link.urls.filter((url) => allowedUrls.has(url)) })).filter((link) => link.urls.length)
-      : story.factSources
+    const event = eventById.get(story.id)
+    if (!event) return story
+    const hasIncomingKeyFacts = stringArray(incoming.keyFacts)
+    const keyFacts = hasIncomingKeyFacts ? incoming.keyFacts.slice(0, 4) : story.keyFacts
+    const factSources = hasIncomingKeyFacts ? resolveFactSources(incoming.factSources, event, keyFacts) : story.factSources
     return {
       ...story,
       title: preferredString(incoming.title, story.title),
       summary: preferredString(incoming.summary, story.summary),
-      keyFacts: stringArray(incoming.keyFacts) ? incoming.keyFacts.slice(0, 4) : story.keyFacts,
+      keyFacts,
       factSources,
       whyItMatters: preferredString(incoming.whyItMatters, story.whyItMatters),
       background: preferredString(incoming.background, story.background),
@@ -283,7 +369,7 @@ function mergeModelBriefing(baseline: DailyBriefing, value: unknown, events: New
       affectedParties: stringArray(incoming.affectedParties, 2) ? incoming.affectedParties.slice(0, 4) : story.affectedParties,
       uncertainties: preferredString(incoming.uncertainties, story.uncertainties),
       glossary: validGlossary(incoming.glossary) ? incoming.glossary.slice(0, 4) : story.glossary,
-      trend: validTrend(incoming.trend) ? incoming.trend : story.trend,
+      trend: normalizeTrend(incoming.trend, story.trend, event),
       tags: stringArray(incoming.tags) ? incoming.tags.slice(0, 3) : story.tags,
     }
   })
@@ -324,9 +410,17 @@ export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
     if (hanRatio(story.title) < 0.18 || hanRatio(`${story.summary}${story.whyItMatters}${story.background}`) < 0.45) errors.push(`${story.id} 不是自然完整中文`)
     const allowedUrls = new Set(event?.articles.map((article) => article.url) ?? [])
     story.keyFacts.forEach((fact, factIndex) => {
-      if (/\d/.test(fact)) {
-        const links = story.factSources.find((link) => link.factIndex === factIndex)?.urls ?? []
-        if (!links.length || links.some((url) => !allowedUrls.has(url))) errors.push(`${story.id} 的数字事实 ${factIndex} 未关联候选来源 URL`)
+      const links = story.factSources.find((link) => link.factIndex === factIndex)?.urls ?? []
+      const numberTokens = normalizedNumberTokens(fact)
+      if (!links.length || links.some((url) => !allowedUrls.has(url))) {
+        errors.push(`${story.id} 的${numberTokens.length ? '数字事实' : '关键事实'} ${factIndex} 未关联候选来源`)
+        return
+      }
+      if (numberTokens.length) {
+        const linkedArticles = event?.articles.filter((article) => links.includes(article.url)) ?? []
+        if (!linkedArticles.some((article) => articleSupportsNumbers(article, numberTokens))) {
+          errors.push(`${story.id} 的数字事实 ${factIndex} 未被关联来源材料支持`)
+        }
       }
     })
     const prediction = `${story.trend.nearTerm} ${story.trend.mediumTerm}`
@@ -357,12 +451,76 @@ function finalPrompt(collection: CollectionResult, events: NewsEvent[], repair?:
   return `你是 DailyNews 的中文深度简报主编，当前领域是“${config.title}”。从 7–10 个预选事件中最终选择并排序恰好 5 条，生成适合晨间速览和折叠深读的结构化简报。${repairBlock}
 
 硬规则：同一主来源最多 2 条；至少 3 个主来源；other 最多 1 条；unverified 最多 1 条且不得前三；第一名不得 other+single-source；同公司/窄话题最多 2 条；ID 只能来自输入且不得重复；标题与正文使用自然克制中文。
-事实规则：数字、日期、动作、引语只能来自 articles。每条 keyFacts 都要用 factSources 以 factIndex（从 0 开始）关联 articles 中的原文 URL，含数字的事实必须至少关联一个 URL。不得把分析写成事实。
-预测规则：nearTerm 和 mediumTerm 必须使用“如果/若/可能/取决于/需观察”等条件表达，并给 2–4 个可验证 signalsToWatch。
+事实规则：数字、日期、动作、引语只能来自 articles。每条 keyFacts 都要用 factSources 以 factIndex（从 0 开始）关联 articles 中已有的 sourceId；不要复制或编造 URL。不得把分析写成事实。
+预测规则：nearTerm 和 mediumTerm 分别输出 condition 与 outlook；condition 说明成立条件，outlook 只写条件成立时可能发生的结果。另给 2–4 个可验证 signalsToWatch。
 深度：summary 80–150 字；keyFacts 2–4 条；whyItMatters 80–150 字；background 100–180 字；impactChain 3–5 节点；affectedParties 2–4 条；uncertainties 明确信息边界；glossary 1–4 个。领域 overview/logic/newKnowledge/outlook 各 100–200 字，keyTakeaway 50–100 字。
 只输出 JSON：
-{"overview":"","keyTakeaway":"","logic":"","newKnowledge":"","outlook":"","trendRadar":[{"theme":"","direction":"↑↑|↑|→|↓|高波动","reason":""}],"watchNext":[""],"stories":[{"id":"","title":"","summary":"","keyFacts":["",""],"factSources":[{"factIndex":0,"urls":[""]}],"whyItMatters":"","background":"","impactChain":["","", ""],"affectedParties":["",""],"uncertainties":"","glossary":[{"term":"","definition":""}],"trend":{"nearTerm":"如果……可能……","mediumTerm":"若……则可能……","signalsToWatch":["",""]},"tags":[""]}]}
+{"overview":"","keyTakeaway":"","logic":"","newKnowledge":"","outlook":"","trendRadar":[{"theme":"","direction":"↑↑|↑|→|↓|高波动","reason":""}],"watchNext":[""],"stories":[{"id":"","title":"","summary":"","keyFacts":["",""],"factSources":[{"factIndex":0,"sourceIds":[""]}],"whyItMatters":"","background":"","impactChain":["","", ""],"affectedParties":["",""],"uncertainties":"","glossary":[{"term":"","definition":""}],"trend":{"nearTerm":{"condition":"如果……","outlook":"可能……"},"mediumTerm":{"condition":"若……","outlook":"可能……"},"signalsToWatch":["",""]},"tags":[""]}]}
 输入事件：${JSON.stringify(modelInput(events, 5_000, collection.previousTitles ?? []))}`
+}
+
+function storyIdsFromErrors(errors: string[], events: NewsEvent[]) {
+  return events
+    .map((event) => event.id)
+    .filter((id) => errors.some((error) => error.startsWith(`${id} `)))
+}
+
+function storyRepairPrompt(
+  collection: CollectionResult,
+  briefing: DailyBriefing,
+  events: NewsEvent[],
+  storyIds: string[],
+  errors: string[],
+) {
+  const affected = events.filter((event) => storyIds.includes(event.id))
+  const current = briefing.stories.filter((story) => storyIds.includes(story.id))
+  return `你是 DailyNews 的定向校对编辑。只修复指定新闻，不要重写其他新闻，也不要改变事件 ID。
+
+错误：${JSON.stringify(errors)}
+当前新闻：${JSON.stringify(current)}
+来源材料：${JSON.stringify(modelInput(affected, 5_000, collection.previousTitles ?? []))}
+
+事实只能来自来源材料。factSources 必须使用材料内已有的 sourceId，不要输出 URL。预测必须分别给 condition、outlook，并提供至少两个可验证信号。
+只输出：{"stories":[{"id":"原事件ID","title":"","summary":"","keyFacts":[""],"factSources":[{"factIndex":0,"sourceIds":["已有sourceId"]}],"whyItMatters":"","background":"","impactChain":["","",""],"affectedParties":["",""],"uncertainties":"","glossary":[{"term":"","definition":""}],"trend":{"nearTerm":{"condition":"如果……","outlook":"可能……"},"mediumTerm":{"condition":"若……","outlook":"可能……"},"signalsToWatch":["",""]},"tags":[""]}]}`
+}
+
+function contentError(error: string, events: NewsEvent[]) {
+  return events.some((event) => error.startsWith(`${event.id} `))
+}
+
+function replacementBaseline(
+  collection: CollectionResult,
+  current: DailyBriefing,
+  events: NewsEvent[],
+  brokenId: string,
+  replacement: NewsEvent,
+  now: Date,
+) {
+  const ids = current.stories.map((story) => story.id === brokenId ? replacement.id : story.id)
+  const baseline = buildRulesBriefing(selectedCollection(collection, events), now, ids)
+  const currentById = new Map(current.stories.map((story) => [story.id, story]))
+  return {
+    ...baseline,
+    mode: 'qwen' as const,
+    overview: current.overview,
+    keyTakeaway: current.keyTakeaway,
+    logic: current.logic,
+    newKnowledge: current.newKnowledge,
+    outlook: current.outlook,
+    trendRadar: current.trendRadar,
+    watchNext: current.watchNext,
+    stories: baseline.stories.map((story) => currentById.get(story.id) ?? story),
+  }
+}
+
+function replacementPrompt(collection: CollectionResult, brokenId: string, replacement: NewsEvent, errors: string[]) {
+  return `你是 DailyNews 的替补新闻编辑。事件 ${brokenId} 未通过门禁，请只为给定替补事件写一条完整中文新闻。
+
+原错误：${JSON.stringify(errors)}
+替补材料：${JSON.stringify(modelInput([replacement], 5_000, collection.previousTitles ?? []))}
+
+不得使用原事件 ID。事实只能来自替补材料；factSources 只使用已有 sourceId；预测分别输出 condition、outlook 和至少两个验证信号。
+只输出：{"stories":[{"id":"${replacement.id}","title":"","summary":"","keyFacts":[""],"factSources":[{"factIndex":0,"sourceIds":["已有sourceId"]}],"whyItMatters":"","background":"","impactChain":["","",""],"affectedParties":["",""],"uncertainties":"","glossary":[{"term":"","definition":""}],"trend":{"nearTerm":{"condition":"如果……","outlook":"可能……"},"mediumTerm":{"condition":"若……","outlook":"可能……"},"signalsToWatch":["",""]},"tags":[""]}]}`
 }
 
 function pipelineMetrics(briefing: DailyBriefing, retries: number) {
@@ -411,8 +569,11 @@ export async function finalizeBriefing(
 
   let previous: unknown
   let lastErrors = ['初次生成失败']
+  let current: DailyBriefing | null = null
+  let modelCalls = 0
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
+      modelCalls += 1
       const value = await model.complete(finalPrompt(collection, events, attempt ? { errors: lastErrors, previous } : undefined), 14_000)
       previous = value
       const rawStories = (value as Partial<ModelBriefing>)?.stories
@@ -426,11 +587,19 @@ export async function finalizeBriefing(
       const baseline = buildRulesBriefing(selectedCollection(collection, events), now, ids)
       const merged = normalizeRanking(mergeModelBriefing(baseline, value, events))
       lastErrors = validateBriefing(merged, events)
-      if (lastErrors.length) continue
+      if (lastErrors.length) {
+        const globalErrors = lastErrors.filter((error) => !contentError(error, events))
+        if (globalErrors.length && attempt === 0) {
+          previous = value
+          continue
+        }
+        current = merged
+        break
+      }
       return {
         ...merged,
         pipeline: {
-          ...pipelineMetrics(merged, attempt),
+          ...pipelineMetrics(merged, Math.max(0, modelCalls - 1)),
           qualityStatus: 'passed' as const,
           warnings: [...merged.pipeline.warnings, ...(attempt ? ['Qwen 初稿未通过门禁，已修复一次并通过'] : [])],
         },
@@ -439,10 +608,65 @@ export async function finalizeBriefing(
       lastErrors = [error instanceof Error ? error.message : String(error)]
     }
   }
+
+  if (current) {
+    const affectedIds = storyIdsFromErrors(lastErrors, events)
+    if (affectedIds.length) {
+      try {
+        modelCalls += 1
+        const patch = await model.complete(storyRepairPrompt(collection, current, events, affectedIds, lastErrors), 8_000)
+        const repaired = normalizeRanking(mergeModelBriefing(current, patch, events))
+        lastErrors = validateBriefing(repaired, events)
+        current = repaired
+        if (!lastErrors.length) {
+          return {
+            ...repaired,
+            pipeline: {
+              ...pipelineMetrics(repaired, Math.max(0, modelCalls - 1)),
+              qualityStatus: 'passed' as const,
+              warnings: [...repaired.pipeline.warnings, 'Qwen 初稿存在单条问题，已定向修复并通过门禁'],
+            },
+          }
+        }
+      } catch (error) {
+        lastErrors = [...lastErrors, `定向修复调用失败：${error instanceof Error ? error.message : String(error)}`]
+      }
+    }
+
+    const brokenId = storyIdsFromErrors(lastErrors, events)[0]
+    if (brokenId) {
+      const replacementErrors = [...lastErrors]
+      const selectedIds = new Set(current.stories.map((story) => story.id))
+      const alternatives = events.filter((event) => !selectedIds.has(event.id))
+      for (const alternative of alternatives.slice(0, 2)) {
+        const trial = replacementBaseline(collection, current, events, brokenId, alternative, now)
+        const selectionErrors = validateBriefing(trial, events).filter((error) => !contentError(error, events))
+        if (selectionErrors.length) continue
+        try {
+          modelCalls += 1
+          const patch = await model.complete(replacementPrompt(collection, brokenId, alternative, replacementErrors), 6_000)
+          const repaired = normalizeRanking(mergeModelBriefing(trial, patch, events))
+          lastErrors = validateBriefing(repaired, events)
+          if (!lastErrors.length) {
+            return {
+              ...repaired,
+              pipeline: {
+                ...pipelineMetrics(repaired, Math.max(0, modelCalls - 1)),
+                qualityStatus: 'passed' as const,
+                warnings: [...repaired.pipeline.warnings, `事件 ${brokenId} 修复失败，已由合格候选 ${alternative.id} 替换`],
+              },
+            }
+          }
+        } catch (error) {
+          lastErrors = [...lastErrors, `替补编辑调用失败：${error instanceof Error ? error.message : String(error)}`]
+        }
+      }
+    }
+  }
   return {
     ...fallback,
     pipeline: {
-      ...pipelineMetrics(fallback, 1),
+      ...pipelineMetrics(fallback, Math.max(0, modelCalls - 1)),
       qualityStatus: 'degraded' as const,
       warnings: [...fallback.pipeline.warnings, `Qwen 最终稿修复后仍未通过：${lastErrors.join('；')}；已生成明确标记的规则降级稿`],
     },
