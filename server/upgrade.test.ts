@@ -173,7 +173,8 @@ test('搜索、第二来源和全文读取限制由代码强制执行', async ()
   assert.equal(runtime.stats.exhausted, true)
 
   const secondRuntime = new SearchRuntime(provider, { dailyLimit: 32, secondSourceEventLimit: 8 })
-  assert.equal(Array.from({ length: 10 }, () => secondRuntime.reserveSecondSourceEvent()).filter(Boolean).length, 8)
+  assert.equal(Array.from({ length: 4 }, () => secondRuntime.reserveSecondSourceEvent('ai-tech')).filter(Boolean).length, 2)
+  assert.equal(Array.from({ length: 4 }, () => secondRuntime.reserveSecondSourceEvent('markets')).filter(Boolean).length, 2)
 
   const reader = new ArticleReader(2, async () => new Response('<article><p>'.concat('有效正文内容'.repeat(80), '</p></article>'), {
     status: 200,
@@ -268,13 +269,25 @@ test('最终门禁限制主来源数量和 unverified 排名', () => {
 test('跨领域重复事件只保留主归属且全局门禁可识别重复', () => {
   const ai = fixtureEvents(6, 'ai-tech')
   const markets = fixtureEvents(6, 'markets')
+  markets.slice(1).forEach((event, index) => {
+    event.canonicalTitle = `市场独立事件 ${index + 1} 公布不同数据`
+    event.primaryArticle.title = event.canonicalTitle
+    event.primaryArticle.description = `该市场事件 ${index + 1} 具有独立主体、动作和数据。`
+    event.primaryArticle.url = `https://markets.example/unique-${index + 1}`
+    event.articles[0].title = event.primaryArticle.title
+    event.articles[0].description = event.primaryArticle.description
+    event.articles[0].url = event.primaryArticle.url
+  })
   markets[0].canonicalTitle = ai[0].canonicalTitle
   markets[0].primaryArticle.title = ai[0].primaryArticle.title
+  markets[0].articles[0].title = ai[0].articles[0].title
   const deduped = deduplicateAcrossDomains([{ domain: 'ai-tech', events: ai }, { domain: 'markets', events: markets }])
   assert.equal(deduped[0].events.length + deduped[1].events.length, 11)
 
-  const left = buildRulesBriefing(collection(ai), new Date('2026-08-15T00:00:00Z'), ai.slice(0, 5).map((event) => event.id))
-  const right = buildRulesBriefing(collection(markets, 'markets'), new Date('2026-08-15T00:00:00Z'), markets.slice(0, 5).map((event) => event.id))
+  const gateAi = fixtureEvents(6, 'ai-tech')
+  const gateMarkets = fixtureEvents(6, 'markets')
+  const left = buildRulesBriefing(collection(gateAi), new Date('2026-08-15T00:00:00Z'), gateAi.slice(0, 5).map((event) => event.id))
+  const right = buildRulesBriefing(collection(gateMarkets, 'markets'), new Date('2026-08-15T00:00:00Z'), gateMarkets.slice(0, 5).map((event) => event.id))
   right.stories[0].title = left.stories[0].title
   assert.ok(validateCrossDomainUniqueness([left, right]).length >= 1)
 })

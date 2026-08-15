@@ -1,12 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { DomainId } from '../shared/briefing.js'
 import {
-  assignSearchCandidateOwnership,
   candidateFromSearchHit,
   collectSearchCandidates,
-  type Candidate,
-  type CollectionResult,
 } from './pipeline.js'
 import {
   SearchRuntime,
@@ -21,36 +17,6 @@ import {
 import { DOMAIN_CONFIGS } from './sources.js'
 
 const now = new Date('2026-08-15T00:00:00.000Z')
-
-function searchCandidate(domain: DomainId, title: string, description: string, url: string): Candidate {
-  return {
-    id: `${domain}-${url.split('/').at(-1)}`,
-    domain,
-    title,
-    description,
-    url,
-    publishedAt: '2026-08-14T12:00:00.000Z',
-    dateConfidence: 'reliable',
-    source: sourceForSearchResult(url),
-    score: 80,
-    tags: ['测试'],
-    discoveryMethod: 'news-search',
-    materialLevel: 'snippet-only',
-  }
-}
-
-function result(domain: DomainId, candidates: Candidate[]): CollectionResult {
-  return {
-    domain,
-    candidates,
-    fetched: candidates.length,
-    sourceCount: new Set(candidates.map((candidate) => candidate.source.id)).size,
-    rssCandidates: 0,
-    searchCandidates: candidates.length,
-    searchCalls: 1,
-    warnings: [],
-  }
-}
 
 test('Tavily 请求保持 Basic，并传入领域时间范围和官方域名过滤', async () => {
   let body: Record<string, unknown> = {}
@@ -158,43 +124,16 @@ test('并行收集允许同一 URL 进入多个相关领域，不再发生跨领
       }]
     },
   }
-  const runtime = new SearchRuntime(provider, { dailyLimit: 32, discoveryQueriesPerDomain: 1 })
+  const runtime = new SearchRuntime(provider, { dailyLimit: 32 })
   const [ai, markets] = await Promise.all([
     collectSearchCandidates('ai-tech', runtime, now),
     collectSearchCandidates('markets', runtime, now),
   ])
 
-  assert.deepEqual(ai.map((candidate) => candidate.url), [sharedUrl])
-  assert.deepEqual(markets.map((candidate) => candidate.url), [sharedUrl])
-  assert.equal(requests.length, 2)
+  assert.equal(ai.length, 6)
+  assert.equal(markets.length, 6)
+  assert.ok(ai.every((candidate) => candidate.url === sharedUrl))
+  assert.ok(markets.every((candidate) => candidate.url === sharedUrl))
+  assert.equal(requests.length, 12)
   assert.ok(requests.every((request) => request.startDate && request.endDate))
-})
-
-test('跨领域 URL 按相关性确定唯一归属，输入顺序变化仍得到确定性输出', () => {
-  const sharedUrl = 'https://news.example.com/shared-nvidia-earnings'
-  const sharedTitle = 'NVIDIA earnings push stock market higher after revenue and profit guidance'
-  const sharedDescription = 'The AI chip company reported earnings, revenue, profit and new stock guidance as bond yields moved.'
-  const aiShared = searchCandidate('ai-tech', sharedTitle, sharedDescription, sharedUrl)
-  const marketShared = searchCandidate('markets', sharedTitle, sharedDescription, sharedUrl)
-  const aiOnly = searchCandidate('ai-tech', 'Anthropic releases new AI agent model', 'The artificial intelligence model improves agent coding.', 'https://ai.example.com/agent')
-  const marketOnly = searchCandidate('markets', 'Oil price rises after inventory report', 'The oil market reacted to new energy inventory data.', 'https://markets.example.com/oil')
-
-  const forward = assignSearchCandidateOwnership([
-    result('ai-tech', [aiShared, aiOnly]),
-    result('markets', [marketShared, marketOnly]),
-  ])
-  const reversed = assignSearchCandidateOwnership([
-    result('markets', [marketOnly, marketShared]),
-    result('ai-tech', [aiOnly, aiShared]),
-  ])
-  const snapshot = (collections: CollectionResult[]) => collections.map((collection) => ({
-    domain: collection.domain,
-    urls: collection.candidates.map((candidate) => candidate.url),
-    searchCandidates: collection.searchCandidates,
-  }))
-
-  assert.deepEqual(snapshot(forward), snapshot(reversed))
-  assert.equal(forward.find((collection) => collection.domain === 'ai-tech')?.candidates.some((candidate) => candidate.url === sharedUrl), false)
-  assert.equal(forward.find((collection) => collection.domain === 'markets')?.candidates.some((candidate) => candidate.url === sharedUrl), true)
-  assert.equal(forward.flatMap((collection) => collection.candidates).filter((candidate) => candidate.url === sharedUrl).length, 1)
 })

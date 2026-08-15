@@ -22,6 +22,13 @@ export type SearchRequest = {
 
 export type SearchOptions = Omit<SearchRequest, 'query' | 'maxResults'>
 
+export type SearchPhase = 'base' | 'dynamic' | 'verification'
+
+export type SearchAllocation = {
+  domain: DomainId
+  phase: SearchPhase
+}
+
 export interface NewsSearchProvider {
   readonly id: string
   search(request: SearchRequest): Promise<SearchHit[]>
@@ -103,20 +110,21 @@ export type SearchStats = {
 
 export class SearchRuntime {
   readonly dailyLimit: number
-  readonly discoveryQueriesPerDomain: number
+  readonly baseDiscoveryQueriesPerDomain = 4
+  readonly dynamicQueriesPerDomain = 2
   readonly secondSourceEventLimit: number
   readonly stats: SearchStats = { calls: 0, cacheHits: 0, failures: 0, skippedDuplicateQueries: 0, exhausted: false }
   private readonly seenQueries = new Set<string>()
-  private secondSourceEvents = 0
+  private readonly phaseCalls = new Map<string, number>()
+  private readonly verificationEvents = new Map<DomainId, number>()
   private replayOnly = false
 
   constructor(
     readonly provider: NewsSearchProvider | null,
-    limits: { dailyLimit?: number; discoveryQueriesPerDomain?: number; secondSourceEventLimit?: number } = {},
+    limits: { dailyLimit?: number; secondSourceEventLimit?: number } = {},
     private readonly cache: SearchResultCache | null = null,
   ) {
     this.dailyLimit = Math.min(32, Math.max(0, limits.dailyLimit ?? 32))
-    this.discoveryQueriesPerDomain = Math.min(6, Math.max(0, limits.discoveryQueriesPerDomain ?? 6))
     this.secondSourceEventLimit = Math.min(8, Math.max(0, limits.secondSourceEventLimit ?? 8))
   }
 
@@ -136,7 +144,16 @@ export class SearchRuntime {
     if (this.provider || this.replayOnly) await this.cache?.markComplete()
   }
 
-  async search(query: string, maxResults = 8, options: SearchOptions = {}): Promise<SearchHit[]> {
+  callsFor(domain: DomainId, phase: SearchPhase) {
+    return this.phaseCalls.get(`${domain}:${phase}`) ?? 0
+  }
+
+  async search(
+    query: string,
+    maxResults = 8,
+    options: SearchOptions = {},
+    allocation?: SearchAllocation,
+  ): Promise<SearchHit[]> {
     const normalized = query.toLocaleLowerCase().replace(/\s+/g, ' ').trim()
     if ((!this.provider && !this.cache) || !normalized) return []
     const includeDomains = [...new Set(options.includeDomains ?? [])].sort()
@@ -159,11 +176,19 @@ export class SearchRuntime {
     }
     if (this.replayOnly) return []
     if (!this.provider) return []
+    if (allocation) {
+      const phaseLimit = allocation.phase === 'base' ? 4 : 2
+      if (this.callsFor(allocation.domain, allocation.phase) >= phaseLimit) return []
+    }
     if (this.stats.calls >= this.dailyLimit) {
       this.stats.exhausted = true
       return []
     }
     this.stats.calls += 1
+    if (allocation) {
+      const key = `${allocation.domain}:${allocation.phase}`
+      this.phaseCalls.set(key, this.callsFor(allocation.domain, allocation.phase) + 1)
+    }
     try {
       const hits = await this.provider.search({ query, maxResults, ...options, includeDomains })
       await this.cache?.set(signature, hits)
@@ -174,9 +199,12 @@ export class SearchRuntime {
     }
   }
 
-  reserveSecondSourceEvent() {
-    if (this.secondSourceEvents >= this.secondSourceEventLimit || this.stats.calls >= this.dailyLimit) return false
-    this.secondSourceEvents += 1
+  reserveSecondSourceEvent(domain?: DomainId) {
+    if (!domain) return false
+    const total = [...this.verificationEvents.values()].reduce((sum, count) => sum + count, 0)
+    const domainCount = this.verificationEvents.get(domain) ?? 0
+    if (total >= this.secondSourceEventLimit || domainCount >= 2 || this.stats.calls >= this.dailyLimit) return false
+    this.verificationEvents.set(domain, domainCount + 1)
     return true
   }
 }
@@ -190,7 +218,6 @@ export function createSearchRuntimeFromEnvironment(fetchImpl: typeof fetch = fet
   const cache = new FileSearchResultCache(resolve(cacheDir, `tavily-${date}.json`), date)
   return new SearchRuntime(provider, {
     dailyLimit: boundedInteger(process.env.DAILY_SEARCH_LIMIT, 32, 32),
-    discoveryQueriesPerDomain: boundedInteger(process.env.DISCOVERY_QUERIES_PER_DOMAIN, 6, 6),
     secondSourceEventLimit: boundedInteger(process.env.SECOND_SOURCE_EVENT_LIMIT, 8, 8),
   }, cache)
 }
@@ -252,44 +279,34 @@ export function discoveryMethodForQuery(query: string, source: FeedSource): Disc
 
 export const DISCOVERY_QUERY_TEMPLATES: Record<DomainId, string[]> = {
   'ai-tech': [
-    'AI infrastructure chips HBM advanced packaging agent AI coding major news today 人工智能 芯片',
-    'NVIDIA AMD TSMC semiconductor datacenter earnings supply chain latest',
-    'AI agents coding models enterprise adoption regulation latest news',
-    'site:nvidia.com OR site:amd.com OR site:tsmc.com AI chip announcement',
-    'site:openai.com OR site:anthropic.com OR site:google.com AI model research product',
-    '中国 AI 芯片 算力 智能体 AI Coding 产业 最新进展',
+    'AI infrastructure semiconductor HBM advanced packaging agent AI coding latest major news',
+    '中国 人工智能 芯片 算力 HBM 先进封装 智能体 AI Coding 最新进展',
+    'site:nvidia.com OR site:amd.com OR site:tsmc.com OR site:openai.com AI chip model announcement',
+    'NVIDIA AMD TSMC datacenter supply chain enterprise AI agent adoption regulation',
   ],
   markets: [
-    'global markets index bond yields oil price major earnings today 市场 指数 油价',
-    'Federal Reserve interest rates inflation CPI PCE Treasury yields latest',
-    'major company earnings guidance investor relations SEC filing today',
-    'site:federalreserve.gov OR site:bls.gov OR site:bea.gov rates inflation employment GDP',
-    'site:sec.gov earnings filing investor relations material event',
-    'site:eia.gov crude oil price inventory energy outlook market',
+    'global markets stock index bond yields inflation interest rates oil earnings latest major news',
+    '中国 全球市场 指数 通胀 利率 债券收益率 油价 重要财报 最新动态',
+    'site:federalreserve.gov OR site:bls.gov OR site:bea.gov OR site:sec.gov rates inflation earnings filing',
+    'Federal Reserve CPI PCE Treasury yields EIA oil company earnings guidance investor relations',
   ],
   world: [
-    'geopolitics conflict ceasefire sanctions diplomacy energy shipping food security latest',
-    'China US EU technology security export controls trade latest news',
-    'Middle East Europe Asia conflict energy shipping verified latest',
-    'site:un.org conflict humanitarian food energy official statement',
-    'site:nato.int OR site:consilium.europa.eu security sanctions official statement',
-    '国际 地缘冲突 能源 航运 粮食 科技安全 最新进展',
+    'geopolitics conflict ceasefire sanctions diplomacy energy shipping food security latest major news',
+    '国际 地缘冲突 外交 制裁 能源 航运 粮食 科技安全 最新进展',
+    'site:un.org OR site:nato.int OR site:consilium.europa.eu conflict sanctions official statement',
+    'China US EU Middle East technology security export controls trade verified latest',
   ],
   learning: [
-    'IB education curriculum assessment reform AI literacy learning science latest',
-    'AI literacy schools teachers assessment curriculum learning science research',
-    'education policy curriculum assessment reform international latest 教育 学习科学',
-    'site:ibo.org IB curriculum assessment AI education',
-    'site:oecd.org education skills AI literacy assessment',
-    'site:unesco.org education AI literacy curriculum teachers',
+    'IB education curriculum assessment reform AI literacy learning science latest major news',
+    '教育 IB 课程 评估改革 AI 素养 学习科学 教师 最新趋势',
+    'site:ibo.org OR site:oecd.org OR site:unesco.org education AI literacy assessment curriculum',
+    'schools teachers university learning science assessment policy AI classroom adoption',
   ],
 }
 
-export function buildDiscoveryQueries(domain: DomainId, previousEntities: string[] = [], limit = 6) {
-  const suffix = previousEntities.filter(Boolean).slice(0, 3).join(' ')
+export function buildDiscoveryQueries(domain: DomainId, limit = 4) {
   return DISCOVERY_QUERY_TEMPLATES[domain]
-    .slice(0, Math.min(6, Math.max(0, limit)))
-    .map((query, index) => index < 2 && suffix ? `${query} follow-up ${suffix}` : query)
+    .slice(0, Math.min(4, Math.max(0, limit)))
 }
 
 function dateInShanghai(value: Date) {

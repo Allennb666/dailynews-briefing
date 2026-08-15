@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url'
 import type { DailyBriefing, DailyDigest, DomainId } from '../shared/briefing.js'
 import { buildDailyDigest, deduplicateAcrossDomains, validateCrossDomainUniqueness } from './editorial.js'
 import { enrichImportantEvents } from './enrichment.js'
-import { ArticleReader, materializeEvents } from './material.js'
+import { ArticleReader, materializeEvents, recoverMissingCandidateDates } from './material.js'
 import { createEditorialModelFromEnvironment, finalizeBriefing, preselectEvents } from './model.js'
-import { assignSearchCandidateOwnership, collectCandidates, type NewsEvent } from './pipeline.js'
-import { createSearchRuntimeFromEnvironment } from './search.js'
+import { collectCandidates, type NewsEvent } from './pipeline.js'
+import { createSearchRuntimeFromEnvironment, type SearchRuntime } from './search.js'
 import { DOMAIN_CONFIGS, DOMAIN_ORDER } from './sources.js'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -26,24 +26,22 @@ async function loadPreviousDigest() {
   }
 }
 
-function previousEntities(digest: DailyDigest | null, domain: DomainId) {
+function previousSignals(digest: DailyDigest | null, domain: DomainId) {
   const briefing = digest?.briefings.find((item) => item.domain === domain)
-  return briefing?.stories.flatMap((story) => [story.tags[0], ...story.title.split(/[：:，,、\s]/).filter((token) => token.length >= 3).slice(0, 1)])
-    .filter((value): value is string => Boolean(value))
-    .slice(0, 4) ?? []
+  if (!briefing) return []
+  return [
+    ...briefing.stories.flatMap((story) => [
+      story.title,
+      story.summary,
+      ...story.keyFacts,
+      ...story.trend.signalsToWatch,
+    ]),
+    ...briefing.watchNext,
+  ].filter(Boolean)
 }
 
 function previousTitles(digest: DailyDigest | null, domain: DomainId) {
   return digest?.briefings.find((item) => item.domain === domain)?.stories.map((story) => story.title) ?? []
-}
-
-function eventPriority(event: NewsEvent) {
-  const evidence = event.evidence.level === 'confirmed' ? 22
-    : event.evidence.level === 'corroborated' ? 17
-      : event.evidence.level === 'single-source' ? 3
-        : -18
-  const official = event.evidence.primarySourcePresent ? 8 : 0
-  return event.primaryArticle.score + evidence + official
 }
 
 function replaceEnrichedEvents(
@@ -57,7 +55,7 @@ function replaceEnrichedEvents(
   }))
 }
 
-function summaryLines(briefings: DailyBriefing[], searchCalls: number, searchCacheHits: number, articleReader: ArticleReader) {
+function summaryLines(briefings: DailyBriefing[], searchRuntime: SearchRuntime, articleReader: ArticleReader) {
   const stories = briefings.flatMap((briefing) => briefing.stories)
   const sourceCounts = new Map<string, number>()
   for (const story of stories) sourceCounts.set(story.source.name, (sourceCounts.get(story.source.name) ?? 0) + 1)
@@ -65,9 +63,11 @@ function summaryLines(briefings: DailyBriefing[], searchCalls: number, searchCac
   return [
     `RSS 候选：${briefings.reduce((sum, item) => sum + (item.pipeline.rssCandidates ?? 0), 0)}`,
     `搜索候选：${briefings.reduce((sum, item) => sum + (item.pipeline.searchCandidates ?? 0), 0)}`,
-    `搜索调用：${searchCalls}/32`,
-    `搜索缓存命中：${searchCacheHits}`,
+    `搜索调用：${searchRuntime.stats.calls}/32`,
+    `搜索分配：${DOMAIN_ORDER.map((domain) => `${domain}=${searchRuntime.callsFor(domain, 'base')}+${searchRuntime.callsFor(domain, 'dynamic')}+${searchRuntime.callsFor(domain, 'verification')}`).join(', ')}`,
+    `搜索缓存命中：${searchRuntime.stats.cacheHits}`,
     `全文读取：${articleReader.succeeded}/${articleReader.attempted}（上限 30）`,
+    `缺失日期恢复：${articleReader.metadataRecovered}（最多尝试 8 条高价值候选）`,
     `confirmed：${stories.filter((story) => story.evidence.level === 'confirmed').length}`,
     `corroborated：${stories.filter((story) => story.evidence.level === 'corroborated').length}`,
     `single-source：${stories.filter((story) => story.evidence.level === 'single-source').length}`,
@@ -95,14 +95,25 @@ async function main() {
   console.log(`[DailyNews] 开始动态新闻与编辑管线：${startedAt.toISOString()}`)
   console.log(`[DailyNews] 搜索：${searchRuntime.cacheReplay ? '复用当日搜索缓存（不调用 Tavily）' : searchRuntime.enabled ? 'Tavily Basic' : '未配置，RSS 回退'}；模型：${model ? 'qwen3.5-27b' : '规则降级'}`)
 
-  const rawCollections = await Promise.all(DOMAIN_ORDER.map(async (domain) => {
+  const collections = await Promise.all(DOMAIN_ORDER.map(async (domain) => {
     return collectCandidates(domain, startedAt, {
       searchRuntime,
-      previousEntities: previousEntities(previous, domain),
+      previousSignals: previousSignals(previous, domain),
       previousTitles: previousTitles(previous, domain),
     })
   }))
-  const collections = assignSearchCandidateOwnership(rawCollections)
+  const retainedAfterDateRecovery = await recoverMissingCandidateDates(
+    collections.flatMap((collection) => collection.candidates),
+    articleReader,
+    startedAt,
+  )
+  const retainedCandidateIds = new Set(retainedAfterDateRecovery.map((candidate) => `${candidate.domain}:${candidate.id}`))
+  for (const collection of collections) {
+    collection.candidates = collection.candidates.filter((candidate) => retainedCandidateIds.has(`${candidate.domain}:${candidate.id}`))
+    collection.fetched = collection.candidates.length
+    collection.searchCandidates = collection.candidates.filter((candidate) => candidate.discoveryMethod !== 'rss').length
+    collection.sourceCount = new Set(collection.candidates.map((candidate) => candidate.source.id)).size
+  }
   for (const collection of collections) {
     const domain = collection.domain
     console.log(`[DailyNews] ${DOMAIN_CONFIGS[domain].title}：RSS ${collection.rssCandidates ?? 0} + 搜索 ${collection.searchCandidates ?? 0}，共 ${collection.fetched} 条`)
@@ -116,10 +127,7 @@ async function main() {
   }
 
   let selections = deduplicateAcrossDomains(preselected.map(({ domain, events }) => ({ domain, events })))
-  const topForVerification = selections.flatMap((selection) => selection.events)
-    .sort((a, b) => eventPriority(b) - eventPriority(a))
-    .slice(0, 8)
-  const enriched = await enrichImportantEvents(topForVerification, searchRuntime, startedAt)
+  const enriched = await enrichImportantEvents(selections.flatMap((selection) => selection.events), searchRuntime, startedAt)
   await searchRuntime.markCacheComplete()
   selections = replaceEnrichedEvents(selections, enriched)
 
@@ -150,7 +158,7 @@ async function main() {
 
   const crossDomainErrors = validateCrossDomainUniqueness(briefings)
   const degraded = briefings.some((briefing) => briefing.pipeline.qualityStatus !== 'passed')
-  const lines = summaryLines(briefings, searchRuntime.stats.calls, searchRuntime.stats.cacheHits, articleReader)
+  const lines = summaryLines(briefings, searchRuntime, articleReader)
   lines.forEach((line) => console.log(`[DailyNews] ${line}`))
   if (crossDomainErrors.length) console.error(`[DailyNews] 跨领域门禁失败：${crossDomainErrors.join('；')}`)
   if (degraded || crossDomainErrors.length) {

@@ -87,9 +87,10 @@ npm run dev
 | `NEWS_SEARCH_PROVIDER` | 新闻搜索 Provider | `tavily` |
 | `TAVILY_API_KEY` | Tavily Basic Search 密钥 | 空 |
 | `DAILY_SEARCH_LIMIT` | 单次每日运行搜索硬上限 | `32` |
-| `DISCOVERY_QUERIES_PER_DOMAIN` | 每领域发现查询数，最大 6 | `6` |
 | `SECOND_SOURCE_EVENT_LIMIT` | 主动补第二来源的事件数，最大 8 | `8` |
 | `ARTICLE_FETCH_LIMIT` | 公开原文读取数，最大 30 | `30` |
+
+每日搜索预算固定按四个领域平均分配：每领域 4 次基础发现、2 次本地动态扩展、2 次重点事件验证，总上限仍为 32。缺失发布日期只会对最高价值的 8 个候选尝试读取公开页面元数据，并与后续全文读取共用缓存。
 
 `auto` 与 `qwen` 都只会使用现有 Qwen 配置，不会切换到其他生成模型。预选失败可以规则降级。最终编辑使用稳定的来源 ID 和结构化条件预测，程序负责映射真实 URL；单条门禁失败时只修复该条，仍失败则从剩余候选替换，无法得到合格结果才停止本期发布。
 

@@ -1,52 +1,174 @@
-import type { NewsEvent } from './pipeline.js'
-import { stripHtml } from './pipeline.js'
+import { DOMAIN_CONFIGS } from './sources.js'
+import { cleanUrl, compareCandidates, stripHtml, type Candidate, type NewsEvent } from './pipeline.js'
 
 function boundedInteger(value: string | undefined, fallback: number, maximum: number) {
   const parsed = Number.parseInt(value ?? '', 10)
   return Number.isFinite(parsed) ? Math.max(0, Math.min(maximum, parsed)) : fallback
 }
 
+type PageMaterial = {
+  text: string | null
+  publishedAt: string | null
+}
+
+function validIsoDate(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const time = new Date(value).getTime()
+  return Number.isFinite(time) ? new Date(time).toISOString() : null
+}
+
+function findJsonLdPublishedAt(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findJsonLdPublishedAt(item)
+      if (found) return found
+    }
+    return null
+  }
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  const direct = validIsoDate(record.datePublished)
+  if (direct) return direct
+  for (const nested of Object.values(record)) {
+    const found = findJsonLdPublishedAt(nested)
+    if (found) return found
+  }
+  return null
+}
+
+function attributes(tag: string) {
+  const values = new Map<string, string>()
+  for (const match of tag.matchAll(/([:\w-]+)\s*=\s*(["'])([\s\S]*?)\2/g)) {
+    values.set(match[1].toLocaleLowerCase(), match[3].trim())
+  }
+  return values
+}
+
+export function extractPublishedAtFromHtml(html: string) {
+  for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*(["'])application\/ld\+json\1[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const found = findJsonLdPublishedAt(JSON.parse(match[2]))
+      if (found) return found
+    } catch {
+      // Ignore malformed JSON-LD and continue to explicit metadata.
+    }
+  }
+  for (const match of html.matchAll(/<meta\b[^>]*>/gi)) {
+    const attrs = attributes(match[0])
+    const key = (attrs.get('property') ?? attrs.get('name') ?? '').toLocaleLowerCase()
+    if (key === 'article:published_time' || key === 'datepublished') {
+      const found = validIsoDate(attrs.get('content'))
+      if (found) return found
+    }
+  }
+  for (const match of html.matchAll(/<time\b[^>]*>/gi)) {
+    const found = validIsoDate(attributes(match[0]).get('datetime'))
+    if (found) return found
+  }
+  return null
+}
+
 export class ArticleReader {
   readonly limit: number
   attempted = 0
   succeeded = 0
-  private readonly seen = new Set<string>()
+  metadataAttempted = 0
+  metadataRecovered = 0
+  private readonly cache = new Map<string, Promise<PageMaterial>>()
 
   constructor(
     limit = boundedInteger(process.env.ARTICLE_FETCH_LIMIT, 30, 30),
     private readonly fetchImpl: typeof fetch = fetch,
+    private readonly timeoutMs = 10_000,
   ) {
     this.limit = Math.min(30, Math.max(0, limit))
   }
 
-  async read(url: string) {
-    if (this.seen.has(url) || this.attempted >= this.limit) return null
-    this.seen.add(url)
+  private load(url: string) {
+    const cached = this.cache.get(url)
+    if (cached) return cached
+    if (this.attempted >= this.limit) return Promise.resolve({ text: null, publishedAt: null })
     this.attempted += 1
+    const pending = this.fetchPage(url)
+    this.cache.set(url, pending)
+    return pending
+  }
+
+  private async fetchPage(url: string): Promise<PageMaterial> {
     try {
       const response = await this.fetchImpl(url, {
         headers: {
-          'User-Agent': 'DailyNews/0.3 (+personal news research; respects access controls)',
+          'User-Agent': 'DailyNews/0.4 (+personal news research; respects access controls)',
           Accept: 'text/html,application/xhtml+xml',
         },
         redirect: 'follow',
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(Math.min(10_000, Math.max(1_000, this.timeoutMs))),
       })
-      if (!response.ok || !(response.headers.get('content-type') ?? '').includes('text/html')) return null
+      if (!response.ok || !(response.headers.get('content-type') ?? '').includes('text/html')) return { text: null, publishedAt: null }
       const html = (await response.text()).slice(0, 1_500_000)
-      if (/subscribe to continue|sign in to continue|enable javascript to continue|metered paywall/i.test(html)) return null
+      const publishedAt = extractPublishedAtFromHtml(html)
+      if (/subscribe to continue|sign in to continue|enable javascript to continue|metered paywall/i.test(html)) {
+        return { text: null, publishedAt }
+      }
       const article = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] ?? html
       const paragraphs = [...article.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
         .map((match) => stripHtml(match[1]))
         .filter((text) => text.length >= 40)
       const text = paragraphs.join('\n').replace(/\n{3,}/g, '\n\n').slice(0, 12_000)
-      if (text.length < 280) return null
+      if (text.length < 280) return { text: null, publishedAt }
       this.succeeded += 1
-      return text
+      return { text, publishedAt }
     } catch {
-      return null
+      return { text: null, publishedAt: null }
     }
   }
+
+  async read(url: string) {
+    return (await this.load(url)).text
+  }
+
+  async readPublishedAt(url: string) {
+    return (await this.load(url)).publishedAt
+  }
+}
+
+export async function recoverMissingCandidateDates(
+  candidates: Candidate[],
+  reader: ArticleReader,
+  now = new Date(),
+  limit = 8,
+) {
+  const reliability = { primary: 4, 'tier-1': 3, 'tier-2': 2, other: 1 }
+  const remaining = Math.max(0, 8 - reader.metadataAttempted)
+  const seenUrls = new Set<string>()
+  const unknown = candidates
+    .filter((candidate) => candidate.dateConfidence === 'unknown')
+    .sort((a, b) => reliability[b.source.reliability] - reliability[a.source.reliability] || compareCandidates(a, b))
+    .filter((candidate) => {
+      const url = cleanUrl(candidate.url)
+      if (seenUrls.has(url)) return false
+      seenUrls.add(url)
+      return true
+    })
+    .slice(0, Math.max(0, Math.min(remaining, limit)))
+  const rejected = new Set<string>()
+  for (const candidate of unknown) {
+    reader.metadataAttempted += 1
+    const recovered = await reader.readPublishedAt(candidate.url)
+    if (!recovered) continue
+    const recoveredTime = new Date(recovered).getTime()
+    const ageDays = (now.getTime() - recoveredTime) / 86_400_000
+    if (!Number.isFinite(recoveredTime) || ageDays > DOMAIN_CONFIGS[candidate.domain].sourceWindowDays || ageDays < -1) {
+      rejected.add(candidate.id)
+      continue
+    }
+    const ageHours = Math.max(0, (now.getTime() - recoveredTime) / 3_600_000)
+    candidate.publishedAt = new Date(recoveredTime).toISOString()
+    candidate.dateConfidence = 'reliable'
+    candidate.score += 20 + Math.max(0, 36 - ageHours / 4)
+    reader.metadataRecovered += 1
+  }
+  return candidates.filter((candidate) => !rejected.has(candidate.id))
 }
 
 export async function materializeEvents(events: NewsEvent[], reader: ArticleReader) {

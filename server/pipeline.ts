@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import Parser from 'rss-parser'
 import type { BriefingStory, DailyBriefing, DiscoveryMethod, DomainId, EventEvidence, MaterialLevel } from '../shared/briefing.js'
-import { DOMAIN_CONFIGS, DOMAIN_ORDER, type DomainConfig, type FeedSource } from './sources.js'
+import { DOMAIN_CONFIGS, type DomainConfig, type FeedSource } from './sources.js'
 import {
   buildDiscoveryQueries,
   discoveryMethodForQuery,
@@ -26,6 +26,8 @@ export type Candidate = {
   materialLevel: MaterialLevel
   fullText?: string
   independenceKey?: string
+  query?: string
+  relevanceScore?: number
   duplicates?: Candidate[]
 }
 
@@ -118,6 +120,11 @@ const ENTITY_ALIASES: Array<[string, RegExp]> = [
   ['china', /\bchina\b|中国/i],
   ['united-states', /\bunited states\b|\bu\.?s\.?\b|美国/i],
   ['european-union', /\beuropean union\b|\beu\b|欧盟/i],
+  ['oecd', /\boecd\b|经济合作与发展组织/i],
+  ['unesco', /\bunesco\b|联合国教科文组织/i],
+  ['international-baccalaureate', /\binternational baccalaureate\b|\bIB\b|国际文凭/i],
+  ['world-bank', /\bworld bank\b|世界银行/i],
+  ['imf', /\bIMF\b|international monetary fund|国际货币基金组织/i],
 ]
 
 const GENERIC_ENTITY_WORDS = new Set([
@@ -128,7 +135,7 @@ const GENERIC_ENTITY_WORDS = new Set([
 const TOKEN_STOP_WORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'in', 'is', 'it', 'new', 'of', 'on',
   'or', 'says', 'that', 'the', 'to', 'with', 'after', 'amid', 'about', 'into', 'its', 'their', 'this', 'will',
-  'ai', 'news', 'report', 'reports', 'update', 'latest', 'company', 'market', 'industry',
+  'ai', 'news', 'report', 'reports', 'update', 'latest', 'major', 'today', 'company', 'market', 'industry',
 ])
 
 const ACTION_GROUPS: Array<[string, RegExp]> = [
@@ -171,7 +178,7 @@ function overlapCoefficient(left: Set<string>, right: Set<string>) {
   return intersection / Math.min(left.size, right.size)
 }
 
-function extractEntities(text: string) {
+export function extractEntities(text: string) {
   const entities = new Set(ENTITY_ALIASES.filter(([, pattern]) => pattern.test(text)).map(([entity]) => entity))
   const named = text.match(/\b(?:[A-Z][A-Za-z0-9.-]{2,}|[A-Z]{2,})(?:\s+(?:[A-Z][A-Za-z0-9.-]{2,}|[A-Z]{2,})){0,2}\b/g) ?? []
   for (const value of named) {
@@ -181,8 +188,37 @@ function extractEntities(text: string) {
   return [...entities]
 }
 
-function extractActions(text: string) {
+export function extractActions(text: string) {
   return new Set(ACTION_GROUPS.filter(([, pattern]) => pattern.test(text)).map(([action]) => action))
+}
+
+export function extractKeyNumbers(text: string) {
+  const matches = text.match(/(?:[$€£¥￥]\s?\d[\d,.]*(?:\s?(?:trillion|billion|million|tn|bn|mn))?|\d+(?:\.\d+)?\s?(?:%|percent|percentage points?|basis points?|bps|trillion|billion|million|亿元|亿美元|万亿元|万亿|万吨|gw|mw))/gi) ?? []
+  return [...new Set(matches.map((value) => {
+    const normalized = value.toLocaleLowerCase().replace(/\s+/g, ' ').replace(/,/g, '').trim()
+    const usdHundredMillion = normalized.match(/^(\d+(?:\.\d+)?)亿美元$/)
+    if (usdHundredMillion) return `usd:${Number(usdHundredMillion[1]) / 10}b`
+    const usd = normalized.match(/^\$\s?(\d+(?:\.\d+)?)\s?(trillion|billion|million|tn|bn|mn)?$/)
+    if (usd) {
+      const unit = usd[2]?.startsWith('t') ? 't' : usd[2]?.startsWith('m') ? 'm' : usd[2] ? 'b' : ''
+      return `usd:${Number(usd[1])}${unit}`
+    }
+    return normalized.replace(/percent/, '%').replace(/basis points?/, 'bps')
+  }))]
+}
+
+export function keyNumberQueryLabel(value: string) {
+  const usd = value.match(/^usd:(\d+(?:\.\d+)?)([btm]?)$/)
+  if (!usd) return value
+  const unit = usd[2] === 't' ? 'trillion' : usd[2] === 'b' ? 'billion' : usd[2] === 'm' ? 'million' : ''
+  return `$${usd[1]}${unit ? ` ${unit}` : ''}`
+}
+
+export function extractDates(text: string) {
+  const iso = text.match(/\b20\d{2}[-/]\d{1,2}[-/]\d{1,2}\b/g) ?? []
+  const english = text.match(/\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:,?\s+20\d{2})?/gi) ?? []
+  const chinese = text.match(/(?:20\d{2}年)?\d{1,2}月\d{1,2}日/g) ?? []
+  return [...new Set([...iso, ...english, ...chinese].map((value) => value.toLocaleLowerCase().trim()))]
 }
 
 function sharedDistinctiveTerms(a: Candidate, b: Candidate) {
@@ -210,19 +246,25 @@ export function eventMatch(a: Candidate, b: Candidate) {
   const rightActions = extractActions(`${b.title} ${b.description}`)
   const actionScore = overlapCoefficient(leftActions, rightActions)
   if (leftActions.size && rightActions.size && actionScore === 0) return false
+  const leftNumbers = new Set(extractKeyNumbers(`${a.title} ${a.description}`))
+  const rightNumbers = new Set(extractKeyNumbers(`${b.title} ${b.description}`))
+  const numberScore = overlapCoefficient(leftNumbers, rightNumbers)
+  if (leftNumbers.size && rightNumbers.size && numberScore === 0 && entityScore > 0 && actionScore > 0) return false
 
   const tagScore = overlapCoefficient(new Set(a.tags), new Set(b.tags))
   const distinctiveTerms = sharedDistinctiveTerms(a, b)
   if (entityScore === 0 && titleScore < 0.58) return false
-  if (!distinctiveTerms && titleScore < 0.5 && descriptionScore < 0.45) return false
+  if (!distinctiveTerms && titleScore < 0.5 && descriptionScore < 0.45 && numberScore === 0) return false
 
   const timeBoost = hasReliableTime && timeDistanceHours <= 24 ? 0.06 : hasReliableTime && timeDistanceHours <= 48 ? 0.03 : 0
   const score = titleScore * 0.3
-    + descriptionScore * 0.28
+    + descriptionScore * 0.23
     + entityScore * 0.22
     + actionScore * 0.15
     + tagScore * 0.05
+    + numberScore * 0.1
     + timeBoost
+  if (entityScore > 0 && actionScore > 0 && numberScore > 0) return true
   return score >= (hasReliableTime ? 0.46 : 0.54)
 }
 
@@ -231,17 +273,40 @@ function detectTags(config: DomainConfig, text: string) {
   return tags.length ? tags.slice(0, 3) : [config.title.split(' · ')[0]]
 }
 
-export function domainRelevanceScore(config: DomainConfig, text: string) {
+const OFFICIAL_DOMAIN_AFFINITY: Record<DomainId, string[]> = {
+  'ai-tech': ['openai.com', 'anthropic.com', 'nvidia.com', 'amd.com', 'intel.com', 'tsmc.com', 'microsoft.com', 'google.com'],
+  markets: ['federalreserve.gov', 'bls.gov', 'bea.gov', 'sec.gov', 'eia.gov', 'treasury.gov', 'imf.org', 'worldbank.org'],
+  world: ['un.org', 'nato.int', 'consilium.europa.eu', 'ec.europa.eu', 'whitehouse.gov'],
+  learning: ['ibo.org', 'oecd.org', 'unesco.org', 'worldbank.org'],
+}
+
+export function domainMatchSignals(config: DomainConfig, text: string, query = '', source?: FeedSource) {
   const lower = text.toLocaleLowerCase()
   const topics = config.topicTerms.filter((term) => lower.includes(term)).length
   const impacts = config.impactTerms.filter((term) => lower.includes(term)).length
   const tags = config.tagRules.filter((rule) => rule.pattern.test(text)).length
-  return topics * 4 + impacts * 1.5 + tags * 2
+  const queryTokens = textTokens(query)
+  const candidateTokens = textTokens(text)
+  const queryMatches = [...queryTokens].filter((token) => candidateTokens.has(token)).length
+  const entities = extractEntities(text).length
+  const actions = extractActions(text).size
+  const officialAffinity = Boolean(source?.type === 'official'
+    && OFFICIAL_DOMAIN_AFFINITY[config.id].some((host) => source.id === host || source.id.endsWith(`.${host}`)))
+  const score = topics * 4 + impacts * 1.5 + tags * 2.5 + Math.min(queryMatches, 5) * 1.25
+    + Math.min(entities, 3) + Math.min(actions, 2) * 1.5 + (officialAffinity ? 8 : 0)
+  const relevant = topics > 0
+    || officialAffinity
+    || (tags > 0 && (entities > 0 || actions > 0 || queryMatches > 0))
+    || (queryMatches >= 2 && (entities > 0 || actions > 0))
+  return { score, relevant, topics, impacts, tags, queryMatches, entities, actions, officialAffinity }
 }
 
-function isRelevant(config: DomainConfig, text: string) {
-  const lower = text.toLocaleLowerCase()
-  return config.topicTerms.some((term) => lower.includes(term))
+export function domainRelevanceScore(config: DomainConfig, text: string, query = '', source?: FeedSource) {
+  return domainMatchSignals(config, text, query, source).score
+}
+
+function isRelevant(config: DomainConfig, text: string, query = '', source?: FeedSource) {
+  return domainMatchSignals(config, text, query, source).relevant
 }
 
 function scoreCandidate(
@@ -266,9 +331,12 @@ function scoreCandidate(
 
 export function sourceIndependenceKey(candidate: Pick<Candidate, 'source' | 'title' | 'description' | 'independenceKey'>) {
   const material = `${candidate.title} ${candidate.description}`
-  if (/\breuters\b|路透/i.test(material) || candidate.source.id.includes('reuters')) return 'wire:reuters'
+  if (/\breuters\b|路透(?:社)?/i.test(material) || candidate.source.id.includes('reuters')) return 'wire:reuters'
   if (/\bassociated press\b|\bAP News\b|美联社/i.test(material) || candidate.source.id.includes('apnews')) return 'wire:ap'
   if (/\bagence france-presse\b|\bAFP\b|法新社/i.test(material)) return 'wire:afp'
+  if (/\bxinhua\b|新华社|新华网/i.test(material)) return 'wire:xinhua'
+  if (/\bpr newswire\b|美通社/i.test(material)) return 'wire:pr-newswire'
+  if (/\bbusiness wire\b/i.test(material)) return 'wire:business-wire'
   if (candidate.independenceKey) return candidate.independenceKey
   return `publisher:${candidate.source.id}`
 }
@@ -308,8 +376,10 @@ export function candidateFromSearchHit(config: DomainConfig, hit: SearchHit, que
   const description = stripHtml(hit.snippet)
   const url = cleanUrl(hit.url)
   const text = `${title} ${description}`
-  if (!title || !url || !isRelevant(config, text)) return null
+  if (!title || !url) return null
   const source = sourceForSearchResult(url, hit.publisher)
+  const match = domainMatchSignals(config, text, query, source)
+  if (!match.relevant) return null
   const parsedTime = hit.publishedAt?.trim() ? new Date(hit.publishedAt).getTime() : Number.NaN
   const dateConfidence: Candidate['dateConfidence'] = Number.isFinite(parsedTime) ? 'reliable' : 'unknown'
   const publishedAt = dateConfidence === 'reliable' ? new Date(parsedTime).toISOString() : ''
@@ -326,31 +396,89 @@ export function candidateFromSearchHit(config: DomainConfig, hit: SearchHit, que
     publishedAt,
     dateConfidence,
     source,
-    score: scoreCandidate(config, source, publishedAt, text, now, dateConfidence) + Math.max(0, Math.min(6, (hit.score ?? 0) * 6)),
+    score: scoreCandidate(config, source, publishedAt, text, now, dateConfidence)
+      + Math.min(12, match.score / 2)
+      + Math.max(0, Math.min(6, (hit.score ?? 0) * 6)),
     tags: detectTags(config, text),
     discoveryMethod: discoveryMethodForQuery(query, source),
     materialLevel: 'snippet-only',
     independenceKey: `publisher:${source.id}`,
+    query,
+    relevanceScore: match.score,
   }
+}
+
+const ENTITY_QUERY_LABELS: Record<string, string> = {
+  'federal-reserve': 'Federal Reserve 美联储',
+  'united-nations': 'United Nations 联合国',
+  'united-states': 'United States 美国',
+  'european-union': 'European Union 欧盟',
+  'international-baccalaureate': 'International Baccalaureate IB 国际文凭',
+  'world-bank': 'World Bank 世界银行',
+}
+
+function rankedSignals(texts: string[], extract: (text: string) => Iterable<string>) {
+  const counts = new Map<string, number>()
+  for (const text of texts) {
+    for (const value of extract(text)) counts.set(value, (counts.get(value) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .map(([value]) => value)
+}
+
+export function buildDynamicQueries(
+  domain: DomainId,
+  baseCandidates: Candidate[],
+  previousSignals: string[] = [],
+  now = new Date(),
+) {
+  const candidateTexts = [...baseCandidates]
+    .sort(compareCandidates)
+    .slice(0, 16)
+    .map((candidate) => `${candidate.title} ${candidate.description}`)
+  const texts = [...candidateTexts, ...previousSignals.filter(Boolean).slice(0, 20)]
+  const entities = rankedSignals(texts, extractEntities).map((entity) => ENTITY_QUERY_LABELS[entity] ?? entity)
+  const actions = rankedSignals(texts, extractActions)
+  const numbers = rankedSignals(texts, extractKeyNumbers).map(keyNumberQueryLabel)
+  const dates = rankedSignals(texts, extractDates)
+  const currentDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(now)
+  const fallback = DOMAIN_CONFIGS[domain].topicTerms.slice(0, 4).join(' ')
+  const firstAnchor = entities.slice(0, 3).join(' ') || fallback
+  const secondAnchor = entities.slice(3, 6).join(' ') || entities.slice(0, 2).join(' ') || fallback
+  const first = [firstAnchor, actions.slice(0, 2).join(' '), numbers.slice(0, 2).join(' '), dates[0] ?? currentDate, 'latest development official data']
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+  const second = [secondAnchor, actions.slice(2, 4).join(' ') || actions[0] || 'follow-up', numbers.slice(2, 4).join(' '), dates[1] ?? currentDate, '最新进展 独立报道 验证']
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+  return [...new Set([first, second])].slice(0, 2)
 }
 
 export async function collectSearchCandidates(
   domain: DomainId,
   runtime: SearchRuntime,
   now = new Date(),
-  previousEntities: string[] = [],
+  previousSignals: string[] = [],
 ) {
   if (!runtime.enabled) return []
   const config = DOMAIN_CONFIGS[domain]
-  const queries = buildDiscoveryQueries(domain, previousEntities, runtime.discoveryQueriesPerDomain)
-  const batches = await Promise.all(queries.map(async (query) => {
-    const hits = await runtime.search(query, 8, searchOptionsForDomain(domain, now, query))
+  const baseQueries = buildDiscoveryQueries(domain, runtime.baseDiscoveryQueriesPerDomain)
+  const baseBatches = await Promise.all(baseQueries.map(async (query) => {
+    const hits = await runtime.search(query, 8, searchOptionsForDomain(domain, now, query), { domain, phase: 'base' })
     return hits.flatMap((hit) => {
       const candidate = candidateFromSearchHit(config, hit, query, now)
       return candidate ? [candidate] : []
     })
   }))
-  return batches.flat().sort(compareCandidates)
+  const baseCandidates = baseBatches.flat().sort(compareCandidates)
+  const dynamicQueries = buildDynamicQueries(domain, baseCandidates, previousSignals, now)
+  const dynamicBatches = await Promise.all(dynamicQueries.map(async (query) => {
+    const hits = await runtime.search(query, 8, searchOptionsForDomain(domain, now, query), { domain, phase: 'dynamic' })
+    return hits.flatMap((hit) => {
+      const candidate = candidateFromSearchHit(config, hit, query, now)
+      return candidate ? [candidate] : []
+    })
+  }))
+  return [...baseCandidates, ...dynamicBatches.flat()].sort(compareCandidates)
 }
 
 export function compareCandidates(a: Candidate, b: Candidate) {
@@ -460,6 +588,50 @@ export function clusterCandidates(candidates: Candidate[]) {
     .filter((members) => members.some((candidate) => Number.isFinite(new Date(candidate.publishedAt).getTime())))
     .map((members) => createEvent(members[0].domain, members))
     .sort((a, b) => compareCandidates(a.primaryArticle, b.primaryArticle))
+}
+
+export function crossDomainEventMatch(left: NewsEvent, right: NewsEvent) {
+  const leftTime = new Date(left.latestUpdateAt).getTime()
+  const rightTime = new Date(right.latestUpdateAt).getTime()
+  const timeDistance = Math.abs(leftTime - rightTime) / 3_600_000
+  if (!Number.isFinite(timeDistance) || timeDistance > 72) return false
+  if (left.articles.some((article) => right.articles.some((other) => cleanUrl(article.url) === cleanUrl(other.url)))) return true
+  if (normalizeTitle(left.canonicalTitle) === normalizeTitle(right.canonicalTitle)) return true
+
+  const leftText = left.articles.map((article) => `${article.title} ${article.description}`).join(' ')
+  const rightText = right.articles.map((article) => `${article.title} ${article.description}`).join(' ')
+  const entityScore = overlapCoefficient(new Set(extractEntities(leftText)), new Set(extractEntities(rightText)))
+  const leftActions = extractActions(leftText)
+  const rightActions = extractActions(rightText)
+  const actionScore = overlapCoefficient(leftActions, rightActions)
+  if (leftActions.size && rightActions.size && actionScore === 0) return false
+  const leftNumbers = new Set(extractKeyNumbers(leftText))
+  const rightNumbers = new Set(extractKeyNumbers(rightText))
+  const numberScore = overlapCoefficient(leftNumbers, rightNumbers)
+  if (leftNumbers.size && rightNumbers.size && numberScore === 0 && entityScore > 0 && actionScore > 0) return false
+  const titleScore = titleSimilarity(left.canonicalTitle, right.canonicalTitle)
+  return titleScore >= 0.62 || (entityScore > 0 && actionScore > 0 && (numberScore > 0 || titleScore >= 0.3))
+}
+
+export function eventDomainFit(event: NewsEvent, domain: DomainId) {
+  const config = DOMAIN_CONFIGS[domain]
+  const matches = event.articles.map((article) => domainMatchSignals(
+    config,
+    `${article.title} ${article.description} ${article.fullText ?? ''}`,
+    article.query ?? '',
+    article.source,
+  ))
+  const best = Math.max(0, ...matches.map((match) => match.score))
+  const evidence = event.evidence.level === 'confirmed' ? 8
+    : event.evidence.level === 'corroborated' ? 6
+      : event.evidence.level === 'single-source' ? 1
+        : -3
+  const text = event.articles.map((article) => `${article.title} ${article.description}`).join(' ')
+  const featureDepth = Math.min(3, extractEntities(text).length)
+    + Math.min(2, extractActions(text).size)
+    + Math.min(2, extractKeyNumbers(text).length) * 0.5
+    + (Number.isFinite(new Date(event.publishedAt).getTime()) ? 1 : 0)
+  return best + evidence + featureDepth
 }
 
 function buildEventLayer(collection: CollectionResult) {
@@ -574,61 +746,10 @@ export type CollectionResult = {
   warnings: string[]
 }
 
-function ownershipRelevance(candidate: Candidate) {
-  const config = DOMAIN_CONFIGS[candidate.domain]
-  return domainRelevanceScore(config, candidate.title) * 2
-    + domainRelevanceScore(config, candidate.description)
-}
-
-function compareOwnership(a: Candidate, b: Candidate) {
-  const relevanceDifference = ownershipRelevance(b) - ownershipRelevance(a)
-  if (relevanceDifference) return relevanceDifference
-  const scoreDifference = b.score - a.score
-  if (scoreDifference) return scoreDifference
-  const confidenceDifference = Number(b.dateConfidence !== 'unknown') - Number(a.dateConfidence !== 'unknown')
-  if (confidenceDifference) return confidenceDifference
-  const domainDifference = DOMAIN_ORDER.indexOf(a.domain) - DOMAIN_ORDER.indexOf(b.domain)
-  if (domainDifference) return domainDifference
-  return compareCandidates(a, b)
-}
-
-export function assignSearchCandidateOwnership(collections: CollectionResult[]) {
-  const byDomain = new Map(collections.map((collection) => [collection.domain, collection]))
-  const searchByUrl = new Map<string, Candidate[]>()
-  for (const collection of collections) {
-    for (const candidate of collection.candidates) {
-      if (candidate.discoveryMethod === 'rss') continue
-      const url = cleanUrl(candidate.url)
-      searchByUrl.set(url, [...(searchByUrl.get(url) ?? []), candidate])
-    }
-  }
-
-  const owned = new Map<DomainId, Candidate[]>(DOMAIN_ORDER.map((domain) => [domain, []]))
-  for (const url of [...searchByUrl.keys()].sort()) {
-    const winner = [...searchByUrl.get(url)!].sort(compareOwnership)[0]
-    owned.get(winner.domain)?.push(winner)
-  }
-
-  return DOMAIN_ORDER.flatMap((domain) => {
-    const collection = byDomain.get(domain)
-    if (!collection) return []
-    const rss = collection.candidates.filter((candidate) => candidate.discoveryMethod === 'rss')
-    const candidates = [...rss, ...(owned.get(domain) ?? [])].sort(compareCandidates)
-    return [{
-      ...collection,
-      candidates,
-      fetched: candidates.length,
-      sourceCount: new Set(candidates.map((candidate) => candidate.source.id)).size,
-      rssCandidates: rss.length,
-      searchCandidates: candidates.length - rss.length,
-    }]
-  })
-}
-
 export async function collectCandidates(
   domain: DomainId,
   now = new Date(),
-  options: { searchRuntime?: SearchRuntime; previousEntities?: string[]; previousTitles?: string[] } = {},
+  options: { searchRuntime?: SearchRuntime; previousSignals?: string[]; previousTitles?: string[] } = {},
 ): Promise<CollectionResult> {
   const config = DOMAIN_CONFIGS[domain]
   const results = await Promise.allSettled(config.sources.map((source) => fetchSource(config, source, now)))
@@ -644,9 +765,11 @@ export async function collectCandidates(
     }
   })
   const rssCandidates = candidates.length
-  const searchCallsBefore = options.searchRuntime?.stats.calls ?? 0
+  const searchCallsBefore = options.searchRuntime
+    ? options.searchRuntime.callsFor(domain, 'base') + options.searchRuntime.callsFor(domain, 'dynamic')
+    : 0
   const searched = options.searchRuntime
-    ? await collectSearchCandidates(domain, options.searchRuntime, now, options.previousEntities)
+    ? await collectSearchCandidates(domain, options.searchRuntime, now, options.previousSignals)
     : []
   const searchCandidates = searched.length
   candidates.push(...searched)
@@ -660,7 +783,9 @@ export async function collectCandidates(
     sourceCount: uniqueSourceIds.size || sourceCount,
     rssCandidates,
     searchCandidates,
-    searchCalls: (options.searchRuntime?.stats.calls ?? 0) - searchCallsBefore,
+    searchCalls: options.searchRuntime
+      ? options.searchRuntime.callsFor(domain, 'base') + options.searchRuntime.callsFor(domain, 'dynamic') - searchCallsBefore
+      : 0,
     previousTitles: options.previousTitles ?? [],
     warnings,
   }

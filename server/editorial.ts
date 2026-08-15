@@ -1,5 +1,13 @@
 import type { DailyBriefing, DailyDigest, DomainId } from '../shared/briefing.js'
-import { normalizeTitle, titleSimilarity, type NewsEvent } from './pipeline.js'
+import {
+  cleanUrl,
+  createEvent,
+  crossDomainEventMatch,
+  eventDomainFit,
+  titleSimilarity,
+  type NewsEvent,
+} from './pipeline.js'
+import { DOMAIN_ORDER } from './sources.js'
 
 function evidenceBoost(event: NewsEvent) {
   return event.evidence.level === 'confirmed' ? 18
@@ -8,32 +16,48 @@ function evidenceBoost(event: NewsEvent) {
         : -16
 }
 
-function crossDomainMatch(left: NewsEvent, right: NewsEvent) {
-  const timeDistance = Math.abs(new Date(left.latestUpdateAt).getTime() - new Date(right.latestUpdateAt).getTime()) / 3_600_000
-  if (!Number.isFinite(timeDistance) || timeDistance > 72) return false
-  if (normalizeTitle(left.canonicalTitle) === normalizeTitle(right.canonicalTitle)) return true
-  const sharedEntities = left.entities.filter((entity) => right.entities.includes(entity))
-  const titleScore = titleSimilarity(left.canonicalTitle, right.canonicalTitle)
-  return titleScore >= 0.62 || (sharedEntities.length >= 1 && titleScore >= 0.38)
-}
-
 export function deduplicateAcrossDomains(
   selections: Array<{ domain: DomainId; events: NewsEvent[] }>,
 ) {
-  const result = selections.map((selection) => ({ ...selection, events: [...selection.events] }))
-  for (let leftIndex = 0; leftIndex < result.length; leftIndex += 1) {
-    for (let rightIndex = leftIndex + 1; rightIndex < result.length; rightIndex += 1) {
-      const left = result[leftIndex]
-      const right = result[rightIndex]
-      for (const leftEvent of [...left.events]) {
-        const rightEvent = right.events.find((event) => crossDomainMatch(leftEvent, event))
-        if (!rightEvent) continue
-        const leftScore = leftEvent.primaryArticle.score + evidenceBoost(leftEvent)
-        const rightScore = rightEvent.primaryArticle.score + evidenceBoost(rightEvent)
-        const removeFrom = leftScore >= rightScore ? right : left
-        const removeEvent = leftScore >= rightScore ? rightEvent : leftEvent
-        if (removeFrom.events.length > 5) removeFrom.events = removeFrom.events.filter((event) => event.id !== removeEvent.id)
+  const result = DOMAIN_ORDER.flatMap((domain) => {
+    const selection = selections.find((item) => item.domain === domain)
+    return selection ? [{ ...selection, events: [...selection.events] }] : []
+  })
+  const references = result.flatMap((selection) => selection.events.map((event) => ({ domain: selection.domain, event })))
+  const groups: Array<typeof references> = []
+  for (const reference of references) {
+    const group = groups.find((members) => members.some((member) =>
+      member.domain !== reference.domain && crossDomainEventMatch(member.event, reference.event)))
+    if (group) group.push(reference)
+    else groups.push([reference])
+  }
+
+  for (const group of groups.filter((members) => new Set(members.map((member) => member.domain)).size > 1)) {
+    const ranked = [...group].sort((left, right) => {
+      const fit = eventDomainFit(right.event, right.domain) - eventDomainFit(left.event, left.domain)
+      if (fit) return fit
+      const priority = right.event.primaryArticle.score + evidenceBoost(right.event)
+        - left.event.primaryArticle.score - evidenceBoost(left.event)
+      if (priority) return priority
+      return DOMAIN_ORDER.indexOf(left.domain) - DOMAIN_ORDER.indexOf(right.domain)
+        || left.event.id.localeCompare(right.event.id)
+    })
+    const winner = ranked[0]
+    const articlesByUrl = new Map<string, NewsEvent['articles'][number]>()
+    for (const item of ranked) {
+      for (const article of item.event.articles) {
+        const url = cleanUrl(article.url)
+        if (!articlesByUrl.has(url)) articlesByUrl.set(url, { ...article, domain: winner.domain })
       }
+    }
+    const uniqueArticles = [...articlesByUrl.values()]
+    const merged = createEvent(winner.domain, uniqueArticles)
+    merged.id = winner.event.id
+    const winnerSelection = result.find((selection) => selection.domain === winner.domain)!
+    winnerSelection.events = winnerSelection.events.map((event) => event.id === winner.event.id ? merged : event)
+    for (const loser of ranked.slice(1)) {
+      const selection = result.find((item) => item.domain === loser.domain)!
+      selection.events = selection.events.filter((event) => event.id !== loser.event.id)
     }
   }
   return result

@@ -1,0 +1,32 @@
+{
+  "bilingualSameEvent": [
+    {
+      "title": "NVIDIA announces $10 billion investment to build new AI chip factory",
+      "description": "NVIDIA announced the funding and construction plan on 2026-08-14.",
+      "url": "https://nvidia.com/en-us/news/ai-factory",
+      "sourceId": "nvidia.com",
+      "reliability": "primary"
+    },
+    {
+      "title": "英伟达宣布投资100亿美元建设新的 AI 芯片工厂",
+      "description": "英伟达于2026年8月14日公布投资与建设计划。",
+      "url": "https://reuters.com/technology/nvidia-ai-factory",
+      "sourceId": "reuters.com",
+      "reliability": "tier-1"
+    }
+  ],
+  "sameCompanyDifferentEvents": [
+    {
+      "title": "NVIDIA reports $10 billion quarterly revenue",
+      "description": "The company reported earnings and profit guidance on 2026-08-14."
+    },
+    {
+      "title": "NVIDIA launches B100 GPU platform",
+      "description": "The company released a new AI chip product on 2026-08-14."
+    }
+  ],
+  "crossDomain": {
+    "title": "OpenAI raises $5 billion as investors price new AI infrastructure expansion",
+    "description": "The artificial intelligence company announced funding that changes its valuation and market outlook."
+  }
+}
