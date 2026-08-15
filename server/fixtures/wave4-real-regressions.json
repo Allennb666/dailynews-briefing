@@ -1,0 +1,72 @@
+{
+  "archiveHit": {
+    "title": "News Archive",
+    "snippet": "NVIDIA news, announcements, products and company updates from throughout August.",
+    "url": "https://nvidianews.nvidia.com/news",
+    "publishedAt": "2026-08-14T21:00:00Z"
+  },
+  "marketIndicators": [
+    {
+      "title": "BLS releases July CPI showing consumer prices rose 2.5%",
+      "description": "The Consumer Price Index report measured July consumer inflation at 2.5%.",
+      "url": "https://bls.gov/news/cpi-july",
+      "sourceId": "bls.gov",
+      "reliability": "primary"
+    },
+    {
+      "title": "BLS releases July PPI showing producer prices rose 0.4%",
+      "description": "The Producer Price Index report measured July producer inflation at 0.4%.",
+      "url": "https://bls.gov/news/ppi-july",
+      "sourceId": "bls.gov",
+      "reliability": "primary"
+    }
+  ],
+  "dynamicSeeds": [
+    {
+      "title": "NVIDIA announces $10 billion investment to build AI chip factory",
+      "description": "NVIDIA announced the factory construction plan on 2026-08-14.",
+      "url": "https://nvidia.com/news/ai-factory",
+      "sourceId": "nvidia.com",
+      "reliability": "primary"
+    },
+    {
+      "title": "OpenAI acquires CodeCraft to expand AI coding agents",
+      "description": "OpenAI announced the acquisition of CodeCraft on 2026-08-13.",
+      "url": "https://openai.com/news/codecraft-acquisition",
+      "sourceId": "openai.com",
+      "reliability": "primary"
+    }
+  ],
+  "previousSignals": [
+    "am the fri after arday scandal policy launch 29% 35% august 04 2026 latest report archive",
+    "NVIDIA factory investment execution remains a signal to watch"
+  ],
+  "modelRegression": {
+    "illegalEventId": "not-in-candidate-pool",
+    "unsupportedNumericFact": "相关指标增长 99%。"
+  },
+  "education": {
+    "priority": {
+      "title": "OECD updates PISA assessment framework for AI literacy",
+      "snippet": "The national assessment framework connects curriculum reform, learning science and AI literacy.",
+      "url": "https://oecd.org/education/pisa-ai-literacy",
+      "publishedAt": "2026-08-14T08:00:00Z"
+    },
+    "weakLocal": {
+      "title": "Local school board appoints district superintendent",
+      "snippet": "A local school district announced a routine campus administration appointment.",
+      "url": "https://localpaper.example/schools/superintendent",
+      "publishedAt": "2026-08-14T08:00:00Z"
+    }
+  },
+  "verificationEvents": [
+    { "domain": "ai-tech", "sourceId": "nvidia.com", "entity": "NVIDIA", "title": "NVIDIA announces $10 billion investment to build AI chip factory", "description": "NVIDIA announced funding and construction of the AI chip factory.", "hitTitle": "NVIDIA $10 billion AI chip factory investment confirmed", "hitSnippet": "NVIDIA announced funding and will build the AI chip factory." },
+    { "domain": "ai-tech", "sourceId": "amd.com", "entity": "AMD", "title": "AMD acquires Taalas for AI inference products", "description": "AMD announced the acquisition of Taalas for AI inference products.", "hitTitle": "AMD acquisition of Taalas targets AI inference products", "hitSnippet": "AMD announced it will acquire Taalas for AI inference products." },
+    { "domain": "markets", "sourceId": "federalreserve.gov", "entity": "Federal Reserve", "title": "Federal Reserve cuts interest rate by 0.25%", "description": "The Federal Reserve announced a 0.25% interest-rate cut.", "hitTitle": "Federal Reserve cuts policy interest rate by 0.25%", "hitSnippet": "The Fed announced the same 0.25% interest-rate cut." },
+    { "domain": "markets", "sourceId": "bls.gov", "entity": "BLS", "title": "BLS releases CPI showing inflation at 2.5%", "description": "The Consumer Price Index release put CPI inflation at 2.5%.", "hitTitle": "BLS CPI release shows consumer inflation at 2.5%", "hitSnippet": "The CPI report measured consumer inflation at 2.5%." },
+    { "domain": "world", "sourceId": "un.org", "entity": "United Nations", "title": "United Nations announces ceasefire talks", "description": "The United Nations announced ceasefire negotiations.", "hitTitle": "United Nations opens ceasefire talks", "hitSnippet": "The UN announced ceasefire negotiations between the parties." },
+    { "domain": "world", "sourceId": "un.org", "entity": "United Nations", "title": "United Nations imposes new export sanctions", "description": "The United Nations announced sanctions and export restrictions.", "hitTitle": "United Nations announces export sanctions", "hitSnippet": "The UN imposed the same sanctions and export restrictions." },
+    { "domain": "learning", "sourceId": "oecd.org", "entity": "OECD", "title": "OECD releases PISA assessment framework", "description": "OECD announced the PISA assessment framework for curriculum reform.", "hitTitle": "OECD PISA assessment framework released", "hitSnippet": "OECD announced the PISA assessment and curriculum framework." },
+    { "domain": "learning", "sourceId": "unesco.org", "entity": "UNESCO", "title": "UNESCO launches AI literacy curriculum", "description": "UNESCO announced an AI literacy course and curriculum framework.", "hitTitle": "UNESCO launches artificial intelligence literacy curriculum", "hitSnippet": "UNESCO announced the AI literacy course and curriculum framework." }
+  ]
+}

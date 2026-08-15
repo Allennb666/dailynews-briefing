@@ -51,11 +51,11 @@ test('中英文相近标题能够被识别', () => {
   assert.ok(titleSimilarity('NVIDIA launches new AI chip platform', 'NVIDIA launches a new AI chip platform') > 0.64)
 })
 
-test('去重保留评分更高的一条', () => {
-  const result = deduplicateCandidates([
-    candidate('low', 'OpenAI releases a new model', 'a', 60),
-    candidate('high', 'OpenAI releases new model', 'b', 90),
-  ])
+test('相同规范 URL 去重时保留评分更高的一条', () => {
+  const low = candidate('low', 'OpenAI releases a new model', 'a', 60)
+  const high = candidate('high', 'OpenAI releases new model', 'b', 90)
+  low.url = high.url
+  const result = deduplicateCandidates([low, high])
   assert.equal(result.length, 1)
   assert.equal(result[0].id, 'high')
 })

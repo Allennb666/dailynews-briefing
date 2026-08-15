@@ -37,7 +37,9 @@ export type CandidateDecision = {
   domain: DomainId
   stage: 'rss' | SearchPhase
   accepted: boolean
-  reason: 'accepted' | 'missing-title-or-url' | 'irrelevant' | 'expired' | 'future-dated' | 'duplicate-url' | 'event-mismatch'
+  reason: 'accepted' | 'missing-title-or-url' | 'non-article-page' | 'irrelevant' | 'expired' | 'future-dated'
+    | 'duplicate-url' | 'event-mismatch' | 'entity-mismatch' | 'action-mismatch' | 'object-mismatch'
+    | 'indicator-mismatch' | 'number-mismatch' | 'source-target-mismatch'
   candidateId?: string
   title: string
   url: string
@@ -171,6 +173,7 @@ const TOKEN_STOP_WORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'in', 'is', 'it', 'new', 'of', 'on',
   'or', 'says', 'that', 'the', 'to', 'with', 'after', 'amid', 'about', 'into', 'its', 'their', 'this', 'will',
   'ai', 'news', 'report', 'reports', 'update', 'latest', 'major', 'today', 'company', 'market', 'industry',
+  'archive', 'archives', 'index', 'category', 'categories', 'tag', 'tags', 'page', 'homepage',
 ])
 
 const ACTION_GROUPS: Array<[string, RegExp]> = [
@@ -188,6 +191,33 @@ const ACTION_GROUPS: Array<[string, RegExp]> = [
   ['policy', /\bregulat(?:e|es|ed|ing|ion)\b|\bpolicy\b|\brule\b|监管|政策|新规/i],
   ['build', /\bbuild(?:s|ing)?\b|\bopen(?:s|ed|ing)?\b|\bexpand(?:s|ed|ing)?\b|建设|开设|扩建|扩张/i],
 ]
+
+const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
+  ['cpi', /\bcpi\b|consumer price index|消费者价格指数|居民消费价格/i],
+  ['ppi', /\bppi\b|producer price index|生产者价格指数|工业生产者价格/i],
+  ['pce', /\bpce\b|personal consumption expenditures|个人消费支出/i],
+  ['interest-rate', /interest rates?|rate cut|rate hike|policy rate|利率|降息|加息/i],
+  ['bond-yield', /treasury yields?|bond yields?|国债收益率|债券收益率/i],
+  ['earnings-results', /earnings|quarterly results|financial results|revenue|profit|guidance|财报|季报|营收|利润|业绩|指引/i],
+  ['product-release', /product|platform|model|chip|gpu|processor|software|app|产品|平台|模型|芯片|处理器|软件|应用/i],
+  ['acquisition-target', /acquisition|acquire|merger|收购|并购|合并/i],
+  ['funding-round', /funding round|financing|investment|raise[ds]?|融资|募资|投资/i],
+  ['factory-capacity', /factory|fab|capacity|production line|产能|工厂|晶圆厂|生产线/i],
+  ['data-center', /data cent(?:er|re)|ai factory|算力中心|数据中心/i],
+  ['ai-center', /ai (?:technology )?cent(?:er|re)|人工智能中心/i],
+  ['course-curriculum', /course|curriculum|syllabus|课程|课程改革|教学大纲/i],
+  ['assessment', /assessment|test standards?|exam|pisa|评估|测评|考试/i],
+  ['ai-literacy', /ai literacy|artificial intelligence literacy|人工智能素养|ai 素养/i],
+  ['education-policy', /education policy|school policy|education reform|教育政策|教育改革/i],
+  ['sanctions-controls', /sanctions?|export controls?|制裁|出口管制/i],
+  ['military-strike', /airstrikes?|missile|drone attack|袭击|空袭|导弹|无人机/i],
+  ['ceasefire-talks', /ceasefire|peace talks?|negotiations?|停火|和谈|谈判/i],
+  ['shipping-route', /shipping|vessels?|strait|canal|航运|船只|海峡|运河/i],
+  ['oil-price', /oil prices?|brent|wti|原油|油价|布兰特/i],
+  ['earthquake', /earthquake|magnitude|地震|震级/i],
+]
+
+const INDICATOR_OBJECTS = new Set(['cpi', 'ppi', 'pce', 'interest-rate', 'bond-yield', 'earnings-results', 'oil-price'])
 
 const RUMOR_PATTERN = /\brumou?r(?:s|ed)?\b|\breportedly\b|\bsources? (?:say|said)\b|\bpeople familiar with\b|消息人士|知情人士|传闻|据悉|或将|据称/i
 
@@ -227,6 +257,31 @@ export function extractActions(text: string) {
   return new Set(ACTION_GROUPS.filter(([, pattern]) => pattern.test(text)).map(([action]) => action))
 }
 
+export function extractEventObjects(text: string) {
+  return new Set(EVENT_OBJECT_GROUPS.filter(([, pattern]) => pattern.test(text)).map(([object]) => object))
+}
+
+function hasSpecificEventInformation(title: string, description = '') {
+  const text = `${title} ${description}`
+  return extractEntities(text).length > 0
+    && (extractActions(text).size > 0 || extractEventObjects(text).size > 0)
+}
+
+export function isNonArticlePage(title: string, rawUrl: string, description = '') {
+  let pathname = ''
+  try {
+    pathname = new URL(rawUrl).pathname.toLocaleLowerCase().replace(/\/+$/, '') || '/'
+  } catch {
+    pathname = rawUrl.toLocaleLowerCase()
+  }
+  const normalizedTitle = title.toLocaleLowerCase().normalize('NFKC').replace(/[\p{P}\p{S}]+/gu, ' ').replace(/\s+/g, ' ').trim()
+  const newsArchiveTitle = /^(?:news\s+)?archives?$|新闻归档/i.test(normalizedTitle)
+  const genericTitle = /^(?:news|latest news|press releases?|index|category|tag|blog)$|新闻中心|资讯中心|文章列表/i.test(normalizedTitle)
+  const listingPath = /(?:^|\/)(?:archive|archives|index|category|categories|tag|tags)(?:\/|$)/i.test(pathname)
+    || /\/(?:news|press-releases?|blog)$/i.test(pathname)
+  return newsArchiveTitle || ((genericTitle || listingPath) && !hasSpecificEventInformation(title, description))
+}
+
 export function extractKeyNumbers(text: string) {
   const matches = text.match(/(?:[$€£¥￥]\s?\d[\d,.]*(?:\s?(?:trillion|billion|million|tn|bn|mn))?|\d+(?:\.\d+)?\s?(?:%|percent|percentage points?|basis points?|bps|trillion|billion|million|亿元|亿美元|万亿元|万亿|万吨|gw|mw))/gi) ?? []
   return [...new Set(matches.map((value) => {
@@ -249,6 +304,52 @@ export function keyNumberQueryLabel(value: string) {
   return `$${usd[1]}${unit ? ` ${unit}` : ''}`
 }
 
+type ComparableNumber = { kind: 'currency' | 'percent' | 'ratio' | 'quantity'; value: number }
+
+function comparableNumber(value: string): ComparableNumber | null {
+  const normalized = value.toLocaleLowerCase().replace(/,/g, '').trim()
+  const usd = normalized.match(/^usd:(\d+(?:\.\d+)?)([btm]?)$/)
+  if (usd) {
+    const multiplier = usd[2] === 't' ? 1_000_000_000_000 : usd[2] === 'b' ? 1_000_000_000 : usd[2] === 'm' ? 1_000_000 : 1
+    return { kind: 'currency', value: Number(usd[1]) * multiplier }
+  }
+  const percent = normalized.match(/^(\d+(?:\.\d+)?)\s?%$/)
+  if (percent) return { kind: 'percent', value: Number(percent[1]) }
+  const bps = normalized.match(/^(\d+(?:\.\d+)?)\s?bps$/)
+  if (bps) return { kind: 'percent', value: Number(bps[1]) / 100 }
+  const quantity = normalized.match(/^(\d+(?:\.\d+)?)\s?(trillion|billion|million|万亿元|万亿|亿元|gw|mw)$/)
+  if (quantity) {
+    const unit = quantity[2]
+    const multiplier = unit === 'trillion' || unit === '万亿' || unit === '万亿元' ? 1_000_000_000_000
+      : unit === 'billion' ? 1_000_000_000
+        : unit === '亿元' ? 100_000_000
+          : unit === 'million' ? 1_000_000
+            : unit === 'gw' ? 1_000
+              : 1
+    return { kind: 'quantity', value: Number(quantity[1]) * multiplier }
+  }
+  return null
+}
+
+function closeEnough(left: ComparableNumber, right: ComparableNumber) {
+  if (left.kind !== right.kind) return false
+  const scale = Math.max(Math.abs(left.value), Math.abs(right.value), 1)
+  const tolerance = left.kind === 'percent' ? Math.max(0.05, scale * 0.015) : scale * 0.015
+  return Math.abs(left.value - right.value) <= tolerance
+}
+
+export function keyNumbersCompatible(leftValues: string[], rightValues: string[]) {
+  if (!leftValues.length || !rightValues.length) return true
+  return leftValues.some((left) => {
+    const comparableLeft = comparableNumber(left)
+    return rightValues.some((right) => {
+      const comparableRight = comparableNumber(right)
+      if (comparableLeft && comparableRight) return closeEnough(comparableLeft, comparableRight)
+      return left === right
+    })
+  })
+}
+
 export function extractDates(text: string) {
   const iso = text.match(/\b20\d{2}[-/]\d{1,2}[-/]\d{1,2}\b/g) ?? []
   const english = text.match(/\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:,?\s+20\d{2})?/gi) ?? []
@@ -263,44 +364,77 @@ function sharedDistinctiveTerms(a: Candidate, b: Candidate) {
   return [...left].filter((token) => right.has(token) && !entityTokens.has(token) && token.length >= 3).length
 }
 
-export function eventMatch(a: Candidate, b: Candidate) {
-  if (a.domain !== b.domain) return false
+function fingerprintActions(text: string, objects: Set<string>) {
+  const actions = extractActions(text)
+  if (actions.size) return actions
+  if ([...objects].some((object) => ['cpi', 'ppi', 'pce', 'earnings-results'].includes(object))) actions.add('data-release')
+  if (objects.has('earthquake')) actions.add('occur')
+  if (objects.has('education-policy')) actions.add('policy')
+  return actions
+}
+
+export function assessEventMatch(a: Candidate, b: Candidate, strictVerification = false): { matched: boolean; reason: CandidateDecision['reason'] } {
+  if (a.domain !== b.domain) return { matched: false, reason: 'event-mismatch' }
+  if (cleanUrl(a.url) === cleanUrl(b.url)) return { matched: true, reason: 'accepted' }
   const leftTime = new Date(a.publishedAt).getTime()
   const rightTime = new Date(b.publishedAt).getTime()
   const hasReliableTime = Number.isFinite(leftTime) && Number.isFinite(rightTime)
   const timeDistanceHours = hasReliableTime ? Math.abs(leftTime - rightTime) / 3_600_000 : Number.POSITIVE_INFINITY
-  if (hasReliableTime && timeDistanceHours > 72) return false
+  if (hasReliableTime && timeDistanceHours > 72) return { matched: false, reason: 'event-mismatch' }
 
   const titleScore = titleSimilarity(a.title, b.title)
   const descriptionScore = setSimilarity(textTokens(a.description), textTokens(b.description))
-  const entityScore = overlapCoefficient(
-    new Set(extractEntities(`${a.title} ${a.description}`)),
-    new Set(extractEntities(`${b.title} ${b.description}`)),
-  )
-  const leftActions = extractActions(`${a.title} ${a.description}`)
-  const rightActions = extractActions(`${b.title} ${b.description}`)
+  const leftText = `${a.title} ${a.description}`
+  const rightText = `${b.title} ${b.description}`
+  const leftEntities = new Set(extractEntities(leftText))
+  const rightEntities = new Set(extractEntities(rightText))
+  const entityScore = overlapCoefficient(leftEntities, rightEntities)
+  const leftObjects = extractEventObjects(leftText)
+  const rightObjects = extractEventObjects(rightText)
+  const leftIndicators = new Set([...leftObjects].filter((object) => INDICATOR_OBJECTS.has(object)))
+  const rightIndicators = new Set([...rightObjects].filter((object) => INDICATOR_OBJECTS.has(object)))
+  const objectScore = overlapCoefficient(leftObjects, rightObjects)
+  if (leftIndicators.size && rightIndicators.size && overlapCoefficient(leftIndicators, rightIndicators) === 0) {
+    return { matched: false, reason: 'indicator-mismatch' }
+  }
+  if (leftObjects.size && rightObjects.size && objectScore === 0) return { matched: false, reason: 'object-mismatch' }
+  const leftActions = fingerprintActions(leftText, leftObjects)
+  const rightActions = fingerprintActions(rightText, rightObjects)
   const actionScore = overlapCoefficient(leftActions, rightActions)
-  if (leftActions.size && rightActions.size && actionScore === 0) return false
-  const leftNumbers = new Set(extractKeyNumbers(`${a.title} ${a.description}`))
-  const rightNumbers = new Set(extractKeyNumbers(`${b.title} ${b.description}`))
-  const numberScore = overlapCoefficient(leftNumbers, rightNumbers)
-  if (leftNumbers.size && rightNumbers.size && numberScore === 0 && entityScore > 0 && actionScore > 0) return false
+  if (leftActions.size && rightActions.size && actionScore === 0) return { matched: false, reason: 'action-mismatch' }
+  const leftNumbers = extractKeyNumbers(leftText)
+  const rightNumbers = extractKeyNumbers(rightText)
+  if (!keyNumbersCompatible(leftNumbers, rightNumbers)) return { matched: false, reason: 'number-mismatch' }
 
   const tagScore = overlapCoefficient(new Set(a.tags), new Set(b.tags))
   const distinctiveTerms = sharedDistinctiveTerms(a, b)
-  if (entityScore === 0 && titleScore < 0.58) return false
-  if (!distinctiveTerms && titleScore < 0.5 && descriptionScore < 0.45 && numberScore === 0) return false
+  if (entityScore === 0 && titleScore < 0.86) return { matched: false, reason: 'entity-mismatch' }
+  if (strictVerification && (!leftEntities.size || !rightEntities.size || entityScore === 0)) return { matched: false, reason: 'entity-mismatch' }
+  if (strictVerification && (!leftActions.size || !rightActions.size || actionScore === 0)) return { matched: false, reason: 'action-mismatch' }
+  if (strictVerification && (!leftObjects.size || !rightObjects.size || objectScore === 0)) return { matched: false, reason: 'object-mismatch' }
+  const completeFingerprint = entityScore > 0 && actionScore > 0 && objectScore > 0 && hasReliableTime
+  if (completeFingerprint && !strictVerification) return { matched: true, reason: 'accepted' }
+  if (!leftObjects.size && !rightObjects.size && distinctiveTerms < 2 && titleScore < 0.88) {
+    return { matched: false, reason: 'object-mismatch' }
+  }
+  if (!distinctiveTerms && titleScore < 0.58 && descriptionScore < 0.55) return { matched: false, reason: 'event-mismatch' }
 
-  const timeBoost = hasReliableTime && timeDistanceHours <= 24 ? 0.06 : hasReliableTime && timeDistanceHours <= 48 ? 0.03 : 0
-  const score = titleScore * 0.3
-    + descriptionScore * 0.23
+  const timeBoost = hasReliableTime && timeDistanceHours <= 24 ? 0.08 : hasReliableTime && timeDistanceHours <= 48 ? 0.04 : 0
+  const score = titleScore * 0.28
+    + descriptionScore * 0.16
     + entityScore * 0.22
     + actionScore * 0.15
-    + tagScore * 0.05
-    + numberScore * 0.1
+    + objectScore * 0.16
+    + tagScore * 0.03
     + timeBoost
-  if (entityScore > 0 && actionScore > 0 && numberScore > 0) return true
-  return score >= (hasReliableTime ? 0.46 : 0.54)
+  if (strictVerification) return { matched: completeFingerprint, reason: completeFingerprint ? 'accepted' : 'event-mismatch' }
+  const matched = (completeFingerprint && score >= 0.43)
+    || (titleScore >= 0.9 && entityScore > 0 && (objectScore > 0 || actionScore > 0))
+  return { matched, reason: matched ? 'accepted' : 'event-mismatch' }
+}
+
+export function eventMatch(a: Candidate, b: Candidate) {
+  return assessEventMatch(a, b).matched
 }
 
 function detectTags(config: DomainConfig, text: string) {
@@ -315,6 +449,16 @@ const OFFICIAL_DOMAIN_AFFINITY: Record<DomainId, string[]> = {
   learning: ['ibo.org', 'oecd.org', 'unesco.org', 'worldbank.org'],
 }
 
+const LEARNING_PRIORITY_PATTERN = /\bIB\b|international baccalaureate|\bOECD\b|\bPISA\b|\bUNESCO\b|AI literacy|artificial intelligence literacy|assessment|learning science|curriculum reform|education reform|national education policy|国际文凭|经合组织|联合国教科文组织|人工智能素养|AI 素养|评估|学习科学|课程改革|教育改革|国家教育政策/i
+const LEARNING_LOCAL_PATTERN = /local school|school board|school district|campus event|campus police|principal appointed|superintendent|地方学校|学区|校园活动|校长任命|校园治安/i
+const LEARNING_NATIONAL_IMPACT_PATTERN = /national|nationwide|federal|ministry|department of education|supreme court|constitutional|全国|国家级|联邦|教育部|最高法院|违宪/i
+
+export function learningPersonalRelevance(text: string) {
+  const priorityMatches = text.match(new RegExp(LEARNING_PRIORITY_PATTERN.source, 'gi'))?.length ?? 0
+  const localOnly = LEARNING_LOCAL_PATTERN.test(text) && !LEARNING_NATIONAL_IMPACT_PATTERN.test(text)
+  return { score: Math.min(24, priorityMatches * 8) - (localOnly ? 24 : 0), priorityMatches, localOnly }
+}
+
 export function domainMatchSignals(config: DomainConfig, text: string, query = '', source?: FeedSource) {
   const lower = text.toLocaleLowerCase()
   const topics = config.topicTerms.filter((term) => lower.includes(term)).length
@@ -327,13 +471,14 @@ export function domainMatchSignals(config: DomainConfig, text: string, query = '
   const actions = extractActions(text).size
   const officialAffinity = Boolean(source?.type === 'official'
     && OFFICIAL_DOMAIN_AFFINITY[config.id].some((host) => source.id === host || source.id.endsWith(`.${host}`)))
+  const learningFit = config.id === 'learning' ? learningPersonalRelevance(text) : null
   const score = topics * 4 + impacts * 1.5 + tags * 2.5 + Math.min(queryMatches, 5) * 1.25
-    + Math.min(entities, 3) + Math.min(actions, 2) * 1.5 + (officialAffinity ? 8 : 0)
+    + Math.min(entities, 3) + Math.min(actions, 2) * 1.5 + (officialAffinity ? 8 : 0) + (learningFit?.score ?? 0)
   const relevant = topics > 0
     || officialAffinity
     || (tags > 0 && (entities > 0 || actions > 0 || queryMatches > 0))
     || (queryMatches >= 2 && (entities > 0 || actions > 0))
-  return { score, relevant, topics, impacts, tags, queryMatches, entities, actions, officialAffinity }
+  return { score, relevant, topics, impacts, tags, queryMatches, entities, actions, officialAffinity, learningFit }
 }
 
 export function domainRelevanceScore(config: DomainConfig, text: string, query = '', source?: FeedSource) {
@@ -361,7 +506,8 @@ function scoreCandidate(
   const impact = config.impactTerms.reduce((score, term) => score + (lower.includes(term) ? 2.5 : 0), 0)
   const detail = Math.min(8, text.length / 220)
   const uncertainDatePenalty = dateConfidence === 'unknown' ? 20 : 0
-  return source.weight + freshness + Math.min(impact, 18) + detail - uncertainDatePenalty
+  const learningAdjustment = config.id === 'learning' ? learningPersonalRelevance(text).score : 0
+  return source.weight + freshness + Math.min(impact, 18) + detail + learningAdjustment - uncertainDatePenalty
 }
 
 function explicitWireKey(candidate: Pick<Candidate, 'source' | 'title' | 'description'>) {
@@ -457,7 +603,8 @@ async function fetchSource(
     const ageDays = (now.getTime() - new Date(publishedAt).getTime()) / 86_400_000
     const text = `${title} ${description}`
     const rejectedReason = !title || !url ? 'missing-title-or-url'
-      : ageDays > config.sourceWindowDays ? 'expired'
+      : isNonArticlePage(title, url, description) ? 'non-article-page'
+        : ageDays > config.sourceWindowDays ? 'expired'
         : ageDays < -1 ? 'future-dated'
           : !source.focused && !isRelevant(config, text) ? 'irrelevant'
             : null
@@ -517,6 +664,7 @@ export function assessSearchHit(
     query,
   }
   if (!title || !url) return { candidate: null, decision: { ...baseDecision, accepted: false, reason: 'missing-title-or-url' } }
+  if (isNonArticlePage(title, url, description)) return { candidate: null, decision: { ...baseDecision, accepted: false, reason: 'non-article-page' } }
   const match = domainMatchSignals(config, text, query, source)
   if (!match.relevant) return { candidate: null, decision: { ...baseDecision, accepted: false, reason: 'irrelevant' } }
   const parsedTime = hit.publishedAt?.trim() ? new Date(hit.publishedAt).getTime() : Number.NaN
@@ -586,14 +734,74 @@ const ENTITY_QUERY_LABELS: Record<string, string> = {
   'world-bank': 'World Bank 世界银行',
 }
 
-function rankedSignals(texts: string[], extract: (text: string) => Iterable<string>) {
-  const counts = new Map<string, number>()
-  for (const text of texts) {
-    for (const value of extract(text)) counts.set(value, (counts.get(value) ?? 0) + 1)
+const EVENT_OBJECT_QUERY_LABELS: Record<string, string> = {
+  cpi: 'CPI consumer prices',
+  ppi: 'PPI producer prices',
+  pce: 'PCE inflation',
+  'interest-rate': 'interest rate',
+  'bond-yield': 'bond yield',
+  'earnings-results': 'earnings results',
+  'product-release': 'product launch',
+  'acquisition-target': 'acquisition',
+  'funding-round': 'funding',
+  'factory-capacity': 'factory capacity',
+  'data-center': 'data center',
+  'ai-center': 'AI center',
+  'course-curriculum': 'course curriculum',
+  assessment: 'assessment',
+  'ai-literacy': 'AI literacy',
+  'education-policy': 'education policy',
+  'sanctions-controls': 'sanctions export controls',
+  'military-strike': 'military strike',
+  'ceasefire-talks': 'ceasefire talks',
+  'shipping-route': 'shipping route',
+  'oil-price': 'oil price',
+  earthquake: 'earthquake',
+}
+
+function usefulQueryEntity(entity: string) {
+  const normalized = entity.toLocaleLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ').trim()
+  if (!normalized || GENERIC_ENTITY_WORDS.has(normalized) || TOKEN_STOP_WORDS.has(normalized)) return false
+  const words = normalized.split(' ')
+  if (words.length > 4 || words.every((word) => TOKEN_STOP_WORDS.has(word))) return false
+  return !/^(?:archive|news|latest|report|homepage|read|more|sign|log)(?:\s|$)/i.test(normalized)
+}
+
+function matchedPreviousAnchors(event: NewsEvent, previousSignals: string[]) {
+  const eventText = event.articles.map((article) => `${article.title} ${article.description}`).join(' ')
+  const eventEntities = new Set(extractEntities(eventText))
+  const eventActions = fingerprintActions(eventText, extractEventObjects(eventText))
+  const eventObjects = extractEventObjects(eventText)
+  const eventNumbers = extractKeyNumbers(eventText)
+  for (const signal of previousSignals.filter(Boolean).slice(0, 20)) {
+    const entities = extractEntities(signal).filter((entity) => eventEntities.has(entity) && usefulQueryEntity(entity))
+    const actions = [...extractActions(signal)].filter((action) => eventActions.has(action))
+    const objects = [...extractEventObjects(signal)].filter((object) => eventObjects.has(object))
+    const numbers = extractKeyNumbers(signal).filter((number) => keyNumbersCompatible([number], eventNumbers))
+    if (entities.length && (actions.length || objects.length || numbers.length)) {
+      return [...entities.slice(0, 1), ...actions.slice(0, 1), ...objects.slice(0, 1).map((object) => EVENT_OBJECT_QUERY_LABELS[object] ?? object), ...numbers.slice(0, 1).map(keyNumberQueryLabel)]
+    }
   }
-  return [...counts.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
-    .map(([value]) => value)
+  return []
+}
+
+export function buildDynamicQueryForEvent(event: NewsEvent, previousSignals: string[] = []) {
+  const text = event.articles.map((article) => `${article.title} ${article.description}`).join(' ')
+  const objects = extractEventObjects(text)
+  const entities = extractEntities(text)
+    .filter(usefulQueryEntity)
+    .sort((left, right) => Number(ENTITY_QUERY_LABELS[right] !== undefined) - Number(ENTITY_QUERY_LABELS[left] !== undefined)
+      || left.length - right.length || left.localeCompare(right))
+    .slice(0, 3)
+    .map((entity) => ENTITY_QUERY_LABELS[entity] ?? entity)
+  const actions = [...fingerprintActions(text, objects)].slice(0, 2)
+  const objectLabels = [...objects].slice(0, 2).map((object) => EVENT_OBJECT_QUERY_LABELS[object] ?? object)
+  const numbers = extractKeyNumbers(text).slice(0, 2).map(keyNumberQueryLabel)
+  const date = Number.isFinite(new Date(event.publishedAt).getTime()) ? event.publishedAt.slice(0, 10) : ''
+  const previousAnchors = matchedPreviousAnchors(event, previousSignals)
+  return [...new Set([...entities, ...actions, ...objectLabels, ...numbers, date, ...previousAnchors])]
+    .filter((value) => value && !/^(?:archive|news|latest|report)$/i.test(value))
+    .join(' ').replace(/\s+/g, ' ').trim()
 }
 
 export function buildDynamicQueries(
@@ -602,24 +810,14 @@ export function buildDynamicQueries(
   previousSignals: string[] = [],
   now = new Date(),
 ) {
-  const candidateTexts = [...baseCandidates]
-    .sort(compareCandidates)
-    .slice(0, 16)
-    .map((candidate) => `${candidate.title} ${candidate.description}`)
-  const texts = [...candidateTexts, ...previousSignals.filter(Boolean).slice(0, 20)]
-  const entities = rankedSignals(texts, extractEntities).map((entity) => ENTITY_QUERY_LABELS[entity] ?? entity)
-  const actions = rankedSignals(texts, extractActions)
-  const numbers = rankedSignals(texts, extractKeyNumbers).map(keyNumberQueryLabel)
-  const dates = rankedSignals(texts, extractDates)
-  const currentDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(now)
-  const fallback = DOMAIN_CONFIGS[domain].topicTerms.slice(0, 4).join(' ')
-  const firstAnchor = entities.slice(0, 3).join(' ') || fallback
-  const secondAnchor = entities.slice(3, 6).join(' ') || entities.slice(0, 2).join(' ') || fallback
-  const first = [firstAnchor, actions.slice(0, 2).join(' '), numbers.slice(0, 2).join(' '), dates[0] ?? currentDate, 'latest development official data']
-    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
-  const second = [secondAnchor, actions.slice(2, 4).join(' ') || actions[0] || 'follow-up', numbers.slice(2, 4).join(' '), dates[1] ?? currentDate, '最新进展 独立报道 验证']
-    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
-  return [...new Set([first, second])].slice(0, 2)
+  const seeds = clusterCandidates(deduplicateCandidates(baseCandidates))
+    .sort((left, right) => compareCandidates(left.primaryArticle, right.primaryArticle))
+  const queries = seeds.map((event) => buildDynamicQueryForEvent(event, previousSignals)).filter(Boolean)
+  if (queries.length >= 2) return [...new Set(queries)].slice(0, 2)
+  const date = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(now)
+  const fallback = `${DOMAIN_CONFIGS[domain].topicTerms.slice(0, 4).join(' ')} ${date}`.trim()
+  const fallbackIndependent = `${DOMAIN_CONFIGS[domain].topicTerms.slice(4, 8).join(' ') || DOMAIN_CONFIGS[domain].topicTerms.slice(0, 4).join(' ')} ${date} independent`.trim()
+  return [...new Set([...queries, fallback, fallbackIndependent])].slice(0, 2)
 }
 
 export async function collectSearchCandidates(
@@ -675,7 +873,7 @@ export function deduplicateCandidates(candidates: Candidate[]) {
     const duplicateIndex = accepted.findIndex((item) =>
       cleanUrl(item.url) === cleanUrl(candidate.url)
       || normalizeTitle(item.title) === normalizeTitle(candidate.title)
-      || titleSimilarity(item.title, candidate.title) >= 0.64,
+      || titleSimilarity(item.title, candidate.title) >= 0.94,
     )
     if (duplicateIndex === -1) {
       accepted.push({ ...candidate, duplicates: candidate.duplicates ? [...candidate.duplicates] : undefined })
@@ -769,7 +967,7 @@ export function clusterCandidates(candidates: Candidate[]) {
   const sorted = [...candidates].sort(compareCandidates)
   const clusters: Candidate[][] = []
   for (const candidate of sorted) {
-    const cluster = clusters.find((members) => eventMatch(members[0], candidate))
+    const cluster = clusters.find((members) => members.every((member) => eventMatch(member, candidate)))
     if (cluster) cluster.push(candidate)
     else clusters.push([candidate])
   }
@@ -790,16 +988,22 @@ export function crossDomainEventMatch(left: NewsEvent, right: NewsEvent) {
   const leftText = left.articles.map((article) => `${article.title} ${article.description}`).join(' ')
   const rightText = right.articles.map((article) => `${article.title} ${article.description}`).join(' ')
   const entityScore = overlapCoefficient(new Set(extractEntities(leftText)), new Set(extractEntities(rightText)))
-  const leftActions = extractActions(leftText)
-  const rightActions = extractActions(rightText)
+  const leftObjects = extractEventObjects(leftText)
+  const rightObjects = extractEventObjects(rightText)
+  const objectScore = overlapCoefficient(leftObjects, rightObjects)
+  const leftIndicators = new Set([...leftObjects].filter((object) => INDICATOR_OBJECTS.has(object)))
+  const rightIndicators = new Set([...rightObjects].filter((object) => INDICATOR_OBJECTS.has(object)))
+  if (leftIndicators.size && rightIndicators.size && overlapCoefficient(leftIndicators, rightIndicators) === 0) return false
+  if (leftObjects.size && rightObjects.size && objectScore === 0) return false
+  const leftActions = fingerprintActions(leftText, leftObjects)
+  const rightActions = fingerprintActions(rightText, rightObjects)
   const actionScore = overlapCoefficient(leftActions, rightActions)
   if (leftActions.size && rightActions.size && actionScore === 0) return false
-  const leftNumbers = new Set(extractKeyNumbers(leftText))
-  const rightNumbers = new Set(extractKeyNumbers(rightText))
-  const numberScore = overlapCoefficient(leftNumbers, rightNumbers)
-  if (leftNumbers.size && rightNumbers.size && numberScore === 0 && entityScore > 0 && actionScore > 0) return false
+  const leftNumbers = extractKeyNumbers(leftText)
+  const rightNumbers = extractKeyNumbers(rightText)
+  if (!keyNumbersCompatible(leftNumbers, rightNumbers)) return false
   const titleScore = titleSimilarity(left.canonicalTitle, right.canonicalTitle)
-  return titleScore >= 0.62 || (entityScore > 0 && actionScore > 0 && (numberScore > 0 || titleScore >= 0.3))
+  return titleScore >= 0.9 || (entityScore > 0 && actionScore > 0 && objectScore > 0)
 }
 
 export function eventDomainFit(event: NewsEvent, domain: DomainId) {
@@ -818,9 +1022,10 @@ export function eventDomainFit(event: NewsEvent, domain: DomainId) {
   const text = event.articles.map((article) => `${article.title} ${article.description}`).join(' ')
   const featureDepth = Math.min(3, extractEntities(text).length)
     + Math.min(2, extractActions(text).size)
+    + Math.min(2, extractEventObjects(text).size)
     + Math.min(2, extractKeyNumbers(text).length) * 0.5
     + (Number.isFinite(new Date(event.publishedAt).getTime()) ? 1 : 0)
-  return best + evidence + featureDepth
+  return best + evidence + featureDepth + (domain === 'learning' ? learningPersonalRelevance(text).score : 0)
 }
 
 function buildEventLayer(collection: CollectionResult) {
@@ -875,9 +1080,20 @@ function shorten(text: string, max = 180) {
   return text.length > max ? `${text.slice(0, max - 1).trim()}…` : text
 }
 
+function containsEnoughChinese(text: string) {
+  const letters = text.replace(/\s|[\p{P}\p{S}\d]/gu, '')
+  return letters.length > 0 && (letters.match(/[\p{Script=Han}]/gu) ?? []).length / letters.length >= 0.35
+}
+
 function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): BriefingStory {
   const candidate = event.primaryArticle
-  const fact = shorten(candidate.description) || `来自 ${candidate.source.name} 的最新更新，完整事实需查看原文。`
+  const title = containsEnoughChinese(event.canonicalTitle)
+    ? event.canonicalTitle
+    : `${candidate.source.name}发布${event.topicTags[0] ?? config.title.split(' · ')[0]}相关更新`
+  const rawFact = shorten(candidate.description)
+  const fact = rawFact && containsEnoughChinese(rawFact) && !/\d/.test(rawFact)
+    ? rawFact
+    : '来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。'
   const sourceDescription = event.sourceCount > 1
     ? `该事件由 ${event.sourceCount} 个来源报道，证据等级为 ${event.evidence.level}。`
     : '当前只有一个来源，仍需等待独立信息补充。'
@@ -885,7 +1101,7 @@ function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): Bri
     id: event.id,
     eventId: event.id,
     rank,
-    title: event.canonicalTitle,
+    title,
     summary: fact,
     keyFacts: [fact],
     whyItMatters: `这条信息可能影响${config.fallback.affectedParties.slice(0, 2).join('与')}，但仍需结合后续数据判断真实影响。`,
@@ -895,8 +1111,8 @@ function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): Bri
     uncertainties: `当前只依据 RSS 标题与摘要整理；${sourceDescription} 未获来源明确确认的细节不作推断。`,
     glossary: [],
     trend: {
-      nearTerm: '未来 24–72 小时关注官方补充信息和其他可靠来源的交叉验证。',
-      mediumTerm: config.fallback.outlook,
+      nearTerm: '如果后续出现官方补充信息或其他可靠来源的交叉验证，短期判断可能随证据变化。',
+      mediumTerm: `若执行结果和后续数据持续印证，${config.fallback.outlook}`,
       signalsToWatch: ['官方文件或数据', '相关参与方行动', '行业与市场的持续反应'],
     },
     url: candidate.url,

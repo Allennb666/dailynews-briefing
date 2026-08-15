@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 import type { DailyBriefing, DomainId, SourceReliability } from '../shared/briefing.js'
 import { deduplicateAcrossDomains, validateCrossDomainUniqueness } from './editorial.js'
 import { ArticleReader } from './material.js'
@@ -25,6 +26,15 @@ import {
   type SearchHit,
   type SearchResultCache,
 } from './search.js'
+
+const wave4FixturePath = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/wave4-real-regressions.json')
+
+async function wave4ModelRegression() {
+  const fixture = JSON.parse(await readFile(wave4FixturePath, 'utf8')) as {
+    modelRegression: { illegalEventId: string; unsupportedNumericFact: string }
+  }
+  return fixture.modelRegression
+}
 
 const source = (id: string, reliability: SourceReliability = 'tier-1') => ({
   id,
@@ -292,15 +302,17 @@ test('跨领域重复事件只保留主归属且全局门禁可识别重复', ()
   assert.ok(validateCrossDomainUniqueness([left, right]).length >= 1)
 })
 
-test('Qwen 非法 ID 会修复一次，JSON 失败也会重试', async () => {
+test('固定槽位忽略 Qwen 非法 ID，只有 JSON 失败才重试', async () => {
   const events = fixtureEvents()
+  const regression = await wave4ModelRegression()
   const valid = validModelBriefing(events)
-  const invalid = { ...valid, stories: valid.stories.map((story, index) => index === 0 ? { ...story, id: 'not-in-pool' } : story) }
+  const invalid = { ...valid, stories: valid.stories.map((story, index) => index === 0 ? { ...story, id: regression.illegalEventId } : story) }
   const invalidIdModel = new SequenceModel([invalid, valid])
   const repaired = await finalizeBriefing(collection(events), events, invalidIdModel, new Date('2026-08-15T00:00:00Z'))
   assert.equal(repaired.pipeline.qualityStatus, 'passed')
-  assert.equal(repaired.pipeline.qwenRetries, 1)
-  assert.equal(invalidIdModel.calls, 2)
+  assert.equal(repaired.pipeline.qwenRetries, 0)
+  assert.equal(invalidIdModel.calls, 1)
+  assert.equal(repaired.stories[0].id, events[0].id)
 
   const jsonFailureModel = new SequenceModel([new SyntaxError('invalid JSON'), valid])
   const retried = await finalizeBriefing(collection(events), events, jsonFailureModel, new Date('2026-08-15T00:00:00Z'))
@@ -331,46 +343,38 @@ test('程序把结构化预测和来源 ID 转成可发布格式', async () => {
   assert.deepEqual(briefing.stories[0].factSources[0].urls, [events[0].primaryArticle.url])
 })
 
-test('单条事实引用失败时只定向修复该新闻', async () => {
+test('无来源数字由程序改为定性事实且不增加 Qwen 调用', async () => {
   const events = fixtureEvents()
+  const regression = await wave4ModelRegression()
   const broken = validModelBriefing(events)
   broken.stories[0] = {
     ...broken.stories[0],
-    keyFacts: ['相关指标增长 99%。'],
+    keyFacts: [regression.unsupportedNumericFact],
     factSources: [{ factIndex: 0, sourceIds: [`${events[0].id}-source-1`] }],
   }
-  const corrected = validModelBriefing(events).stories[0]
-  const model = new SequenceModel([broken, { stories: [corrected] }])
+  const model = new SequenceModel([broken])
   const briefing = await finalizeBriefing(collection(events), events, model, new Date('2026-08-15T00:00:00Z'))
   assert.equal(briefing.pipeline.qualityStatus, 'passed')
-  assert.equal(model.calls, 2)
-  assert.match(briefing.pipeline.warnings.join(' '), /定向修复/)
+  assert.equal(model.calls, 1)
+  assert.doesNotMatch(briefing.stories[0].keyFacts.join(' '), /99/)
+  assert.match(briefing.stories[0].keyFacts.join(' '), /定性结论/)
 })
 
-test('单条定向修复仍失败时使用剩余候选替换', async () => {
+test('固定槽位不会因单条数字错误替换事件', async () => {
   const events = fixtureEvents()
+  const regression = await wave4ModelRegression()
   const broken = validModelBriefing(events)
   broken.stories[0] = {
     ...broken.stories[0],
-    keyFacts: ['相关指标增长 99%。'],
+    keyFacts: [regression.unsupportedNumericFact],
     factSources: [{ factIndex: 0, sourceIds: [`${events[0].id}-source-1`] }],
   }
-  const stillBroken = { ...broken.stories[0] }
-  const replacement = {
-    ...validModelBriefing(events).stories[0],
-    id: events[5].id,
-    factSources: [
-      { factIndex: 0, sourceIds: [`${events[5].id}-source-1`] },
-      { factIndex: 1, sourceIds: [`${events[5].id}-source-1`] },
-    ],
-  }
-  const model = new SequenceModel([broken, { stories: [stillBroken] }, { stories: [replacement] }])
+  const model = new SequenceModel([broken])
   const briefing = await finalizeBriefing(collection(events), events, model, new Date('2026-08-15T00:00:00Z'))
   assert.equal(briefing.pipeline.qualityStatus, 'passed')
-  assert.equal(model.calls, 3)
-  assert.ok(briefing.stories.some((story) => story.id === events[5].id))
-  assert.ok(!briefing.stories.some((story) => story.id === events[0].id))
-  assert.match(briefing.pipeline.warnings.join(' '), /替换/)
+  assert.equal(model.calls, 1)
+  assert.equal(briefing.stories[0].id, events[0].id)
+  assert.ok(!briefing.stories.some((story) => story.id === events[5].id))
 })
 
 test('Qwen 两次失败后明确降级，不伪装成正常简报', async () => {

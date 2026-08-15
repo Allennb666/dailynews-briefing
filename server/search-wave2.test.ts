@@ -210,19 +210,19 @@ test('第二来源查询使用实体、动作、数字和日期，验证后形�
     sourceId: 'reuters.com',
     reliability: 'tier-1',
   })])
-  const corroboratedProvider: NewsSearchProvider = {
+  const officialProvider: NewsSearchProvider = {
     id: 'mock',
     async search() {
       return [{
         title: 'NVIDIA confirms $10 billion investment in AI chip factory',
-        snippet: 'Associated Press reports the company announced funding and construction.',
-        url: 'https://apnews.com/article/nvidia-factory',
+        snippet: 'NVIDIA confirms the funding and construction plan for the AI chip factory.',
+        url: 'https://nvidia.com/news/nvidia-factory-confirmation',
         publishedAt: '2026-08-14T02:30:00Z',
       }]
     },
   }
-  const corroborated = await searchSecondSource(mediaEvent, new SearchRuntime(corroboratedProvider), now)
-  assert.equal(corroborated.evidence.level, 'corroborated')
+  const confirmedFromOfficial = await searchSecondSource(mediaEvent, new SearchRuntime(officialProvider), now)
+  assert.equal(confirmedFromOfficial.evidence.level, 'confirmed')
 
   const reprints = buildEvidence([
     candidate('wire-a', 'world', { title: 'Outlet A update', description: 'Reuters reported the action.', sourceId: 'a.com', reliability: 'tier-1' }),
