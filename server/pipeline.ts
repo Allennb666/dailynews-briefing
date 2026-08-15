@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto'
 import Parser from 'rss-parser'
 import type { BriefingStory, DailyBriefing, DiscoveryMethod, DomainId, EventEvidence, MaterialLevel } from '../shared/briefing.js'
-import { DOMAIN_CONFIGS, type DomainConfig, type FeedSource } from './sources.js'
+import { DOMAIN_CONFIGS, DOMAIN_ORDER, type DomainConfig, type FeedSource } from './sources.js'
 import {
   buildDiscoveryQueries,
   discoveryMethodForQuery,
+  searchOptionsForDomain,
   type SearchHit,
   type SearchRuntime,
   sourceForSearchResult,
@@ -17,6 +18,7 @@ export type Candidate = {
   description: string
   url: string
   publishedAt: string
+  dateConfidence?: 'reliable' | 'unknown'
   source: FeedSource
   score: number
   tags: string[]
@@ -192,8 +194,11 @@ function sharedDistinctiveTerms(a: Candidate, b: Candidate) {
 
 export function eventMatch(a: Candidate, b: Candidate) {
   if (a.domain !== b.domain) return false
-  const timeDistanceHours = Math.abs(new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()) / 3_600_000
-  if (!Number.isFinite(timeDistanceHours) || timeDistanceHours > 72) return false
+  const leftTime = new Date(a.publishedAt).getTime()
+  const rightTime = new Date(b.publishedAt).getTime()
+  const hasReliableTime = Number.isFinite(leftTime) && Number.isFinite(rightTime)
+  const timeDistanceHours = hasReliableTime ? Math.abs(leftTime - rightTime) / 3_600_000 : Number.POSITIVE_INFINITY
+  if (hasReliableTime && timeDistanceHours > 72) return false
 
   const titleScore = titleSimilarity(a.title, b.title)
   const descriptionScore = setSimilarity(textTokens(a.description), textTokens(b.description))
@@ -211,14 +216,14 @@ export function eventMatch(a: Candidate, b: Candidate) {
   if (entityScore === 0 && titleScore < 0.58) return false
   if (!distinctiveTerms && titleScore < 0.5 && descriptionScore < 0.45) return false
 
-  const timeBoost = timeDistanceHours <= 24 ? 0.06 : timeDistanceHours <= 48 ? 0.03 : 0
+  const timeBoost = hasReliableTime && timeDistanceHours <= 24 ? 0.06 : hasReliableTime && timeDistanceHours <= 48 ? 0.03 : 0
   const score = titleScore * 0.3
     + descriptionScore * 0.28
     + entityScore * 0.22
     + actionScore * 0.15
     + tagScore * 0.05
     + timeBoost
-  return score >= 0.46
+  return score >= (hasReliableTime ? 0.46 : 0.54)
 }
 
 function detectTags(config: DomainConfig, text: string) {
@@ -226,18 +231,37 @@ function detectTags(config: DomainConfig, text: string) {
   return tags.length ? tags.slice(0, 3) : [config.title.split(' · ')[0]]
 }
 
+export function domainRelevanceScore(config: DomainConfig, text: string) {
+  const lower = text.toLocaleLowerCase()
+  const topics = config.topicTerms.filter((term) => lower.includes(term)).length
+  const impacts = config.impactTerms.filter((term) => lower.includes(term)).length
+  const tags = config.tagRules.filter((rule) => rule.pattern.test(text)).length
+  return topics * 4 + impacts * 1.5 + tags * 2
+}
+
 function isRelevant(config: DomainConfig, text: string) {
   const lower = text.toLocaleLowerCase()
   return config.topicTerms.some((term) => lower.includes(term))
 }
 
-function scoreCandidate(config: DomainConfig, source: FeedSource, publishedAt: string, text: string, now: Date) {
-  const ageHours = Math.max(0, (now.getTime() - new Date(publishedAt).getTime()) / 3_600_000)
-  const freshness = Math.max(0, 36 - ageHours / 4)
+function scoreCandidate(
+  config: DomainConfig,
+  source: FeedSource,
+  publishedAt: string,
+  text: string,
+  now: Date,
+  dateConfidence: Candidate['dateConfidence'] = 'reliable',
+) {
+  const publishedTime = new Date(publishedAt).getTime()
+  const ageHours = Number.isFinite(publishedTime)
+    ? Math.max(0, (now.getTime() - publishedTime) / 3_600_000)
+    : Number.POSITIVE_INFINITY
+  const freshness = Number.isFinite(ageHours) ? Math.max(0, 36 - ageHours / 4) : 0
   const lower = text.toLocaleLowerCase()
   const impact = config.impactTerms.reduce((score, term) => score + (lower.includes(term) ? 2.5 : 0), 0)
   const detail = Math.min(8, text.length / 220)
-  return source.weight + freshness + Math.min(impact, 18) + detail
+  const uncertainDatePenalty = dateConfidence === 'unknown' ? 20 : 0
+  return source.weight + freshness + Math.min(impact, 18) + detail - uncertainDatePenalty
 }
 
 export function sourceIndependenceKey(candidate: Pick<Candidate, 'source' | 'title' | 'description' | 'independenceKey'>) {
@@ -268,6 +292,7 @@ async function fetchSource(config: DomainConfig, source: FeedSource, now: Date):
       description,
       url,
       publishedAt,
+      dateConfidence: 'reliable',
       source,
       score: scoreCandidate(config, source, publishedAt, text, now),
       tags: detectTags(config, text),
@@ -282,11 +307,16 @@ export function candidateFromSearchHit(config: DomainConfig, hit: SearchHit, que
   const title = stripHtml(hit.title)
   const description = stripHtml(hit.snippet)
   const url = cleanUrl(hit.url)
-  if (!title || !url) return null
-  const source = sourceForSearchResult(url, hit.publisher)
-  const parsed = hit.publishedAt ? new Date(hit.publishedAt) : now
-  const publishedAt = Number.isNaN(parsed.getTime()) ? now.toISOString() : parsed.toISOString()
   const text = `${title} ${description}`
+  if (!title || !url || !isRelevant(config, text)) return null
+  const source = sourceForSearchResult(url, hit.publisher)
+  const parsedTime = hit.publishedAt?.trim() ? new Date(hit.publishedAt).getTime() : Number.NaN
+  const dateConfidence: Candidate['dateConfidence'] = Number.isFinite(parsedTime) ? 'reliable' : 'unknown'
+  const publishedAt = dateConfidence === 'reliable' ? new Date(parsedTime).toISOString() : ''
+  if (dateConfidence === 'reliable') {
+    const ageDays = (now.getTime() - parsedTime) / 86_400_000
+    if (ageDays > config.sourceWindowDays || ageDays < -1) return null
+  }
   return {
     id: createHash('sha1').update(`${config.id}:search:${url}`).digest('hex').slice(0, 12),
     domain: config.id,
@@ -294,8 +324,9 @@ export function candidateFromSearchHit(config: DomainConfig, hit: SearchHit, que
     description,
     url,
     publishedAt,
+    dateConfidence,
     source,
-    score: scoreCandidate(config, source, publishedAt, text, now) + Math.max(0, Math.min(6, (hit.score ?? 0) * 6)),
+    score: scoreCandidate(config, source, publishedAt, text, now, dateConfidence) + Math.max(0, Math.min(6, (hit.score ?? 0) * 6)),
     tags: detectTags(config, text),
     discoveryMethod: discoveryMethodForQuery(query, source),
     materialLevel: 'snippet-only',
@@ -313,18 +344,32 @@ export async function collectSearchCandidates(
   const config = DOMAIN_CONFIGS[domain]
   const queries = buildDiscoveryQueries(domain, previousEntities, runtime.discoveryQueriesPerDomain)
   const batches = await Promise.all(queries.map(async (query) => {
-    const hits = await runtime.search(query, 8)
+    const hits = await runtime.search(query, 8, searchOptionsForDomain(domain, now, query))
     return hits.flatMap((hit) => {
       const candidate = candidateFromSearchHit(config, hit, query, now)
-      if (!candidate || !runtime.claimUrl(cleanUrl(candidate.url))) return []
-      return [candidate]
+      return candidate ? [candidate] : []
     })
   }))
-  return batches.flat()
+  return batches.flat().sort(compareCandidates)
+}
+
+export function compareCandidates(a: Candidate, b: Candidate) {
+  const scoreDifference = b.score - a.score
+  if (scoreDifference) return scoreDifference
+  const confidenceDifference = Number(b.dateConfidence !== 'unknown') - Number(a.dateConfidence !== 'unknown')
+  if (confidenceDifference) return confidenceDifference
+  const leftTime = new Date(a.publishedAt).getTime()
+  const rightTime = new Date(b.publishedAt).getTime()
+  const timeDifference = (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0)
+  if (timeDifference) return timeDifference
+  return cleanUrl(a.url).localeCompare(cleanUrl(b.url))
+    || a.domain.localeCompare(b.domain)
+    || a.title.localeCompare(b.title)
+    || a.id.localeCompare(b.id)
 }
 
 export function deduplicateCandidates(candidates: Candidate[]) {
-  const sorted = [...candidates].sort((a, b) => b.score - a.score)
+  const sorted = [...candidates].sort(compareCandidates)
   const accepted: Candidate[] = []
   for (const candidate of sorted) {
     const duplicateIndex = accepted.findIndex((item) =>
@@ -378,7 +423,7 @@ export function buildEvidence(articles: Candidate[]): EventEvidence {
 }
 
 export function createEvent(domain: DomainId, members: Candidate[]): NewsEvent {
-  const representatives = [...members].sort((a, b) => b.score - a.score)
+  const representatives = [...members].sort(compareCandidates)
   const primaryArticle = representatives[0]
   const articles = uniqueArticles(representatives)
   const publishedTimes = articles.map((article) => new Date(article.publishedAt).getTime()).filter(Number.isFinite)
@@ -404,7 +449,7 @@ export function createEvent(domain: DomainId, members: Candidate[]): NewsEvent {
 }
 
 export function clusterCandidates(candidates: Candidate[]) {
-  const sorted = [...candidates].sort((a, b) => b.score - a.score)
+  const sorted = [...candidates].sort(compareCandidates)
   const clusters: Candidate[][] = []
   for (const candidate of sorted) {
     const cluster = clusters.find((members) => eventMatch(members[0], candidate))
@@ -412,8 +457,9 @@ export function clusterCandidates(candidates: Candidate[]) {
     else clusters.push([candidate])
   }
   return clusters
+    .filter((members) => members.some((candidate) => Number.isFinite(new Date(candidate.publishedAt).getTime())))
     .map((members) => createEvent(members[0].domain, members))
-    .sort((a, b) => b.primaryArticle.score - a.primaryArticle.score)
+    .sort((a, b) => compareCandidates(a.primaryArticle, b.primaryArticle))
 }
 
 function buildEventLayer(collection: CollectionResult) {
@@ -526,6 +572,57 @@ export type CollectionResult = {
   searchCalls?: number
   previousTitles?: string[]
   warnings: string[]
+}
+
+function ownershipRelevance(candidate: Candidate) {
+  const config = DOMAIN_CONFIGS[candidate.domain]
+  return domainRelevanceScore(config, candidate.title) * 2
+    + domainRelevanceScore(config, candidate.description)
+}
+
+function compareOwnership(a: Candidate, b: Candidate) {
+  const relevanceDifference = ownershipRelevance(b) - ownershipRelevance(a)
+  if (relevanceDifference) return relevanceDifference
+  const scoreDifference = b.score - a.score
+  if (scoreDifference) return scoreDifference
+  const confidenceDifference = Number(b.dateConfidence !== 'unknown') - Number(a.dateConfidence !== 'unknown')
+  if (confidenceDifference) return confidenceDifference
+  const domainDifference = DOMAIN_ORDER.indexOf(a.domain) - DOMAIN_ORDER.indexOf(b.domain)
+  if (domainDifference) return domainDifference
+  return compareCandidates(a, b)
+}
+
+export function assignSearchCandidateOwnership(collections: CollectionResult[]) {
+  const byDomain = new Map(collections.map((collection) => [collection.domain, collection]))
+  const searchByUrl = new Map<string, Candidate[]>()
+  for (const collection of collections) {
+    for (const candidate of collection.candidates) {
+      if (candidate.discoveryMethod === 'rss') continue
+      const url = cleanUrl(candidate.url)
+      searchByUrl.set(url, [...(searchByUrl.get(url) ?? []), candidate])
+    }
+  }
+
+  const owned = new Map<DomainId, Candidate[]>(DOMAIN_ORDER.map((domain) => [domain, []]))
+  for (const url of [...searchByUrl.keys()].sort()) {
+    const winner = [...searchByUrl.get(url)!].sort(compareOwnership)[0]
+    owned.get(winner.domain)?.push(winner)
+  }
+
+  return DOMAIN_ORDER.flatMap((domain) => {
+    const collection = byDomain.get(domain)
+    if (!collection) return []
+    const rss = collection.candidates.filter((candidate) => candidate.discoveryMethod === 'rss')
+    const candidates = [...rss, ...(owned.get(domain) ?? [])].sort(compareCandidates)
+    return [{
+      ...collection,
+      candidates,
+      fetched: candidates.length,
+      sourceCount: new Set(candidates.map((candidate) => candidate.source.id)).size,
+      rssCandidates: rss.length,
+      searchCandidates: candidates.length - rss.length,
+    }]
+  })
 }
 
 export async function collectCandidates(

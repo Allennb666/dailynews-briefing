@@ -7,7 +7,7 @@ import { buildDailyDigest, deduplicateAcrossDomains, validateCrossDomainUniquene
 import { enrichImportantEvents } from './enrichment.js'
 import { ArticleReader, materializeEvents } from './material.js'
 import { createEditorialModelFromEnvironment, finalizeBriefing, preselectEvents } from './model.js'
-import { collectCandidates, type NewsEvent } from './pipeline.js'
+import { assignSearchCandidateOwnership, collectCandidates, type NewsEvent } from './pipeline.js'
 import { createSearchRuntimeFromEnvironment } from './search.js'
 import { DOMAIN_CONFIGS, DOMAIN_ORDER } from './sources.js'
 
@@ -95,15 +95,18 @@ async function main() {
   console.log(`[DailyNews] 开始动态新闻与编辑管线：${startedAt.toISOString()}`)
   console.log(`[DailyNews] 搜索：${searchRuntime.cacheReplay ? '复用当日搜索缓存（不调用 Tavily）' : searchRuntime.enabled ? 'Tavily Basic' : '未配置，RSS 回退'}；模型：${model ? 'qwen3.5-27b' : '规则降级'}`)
 
-  const collections = await Promise.all(DOMAIN_ORDER.map(async (domain) => {
-    const collection = await collectCandidates(domain, startedAt, {
+  const rawCollections = await Promise.all(DOMAIN_ORDER.map(async (domain) => {
+    return collectCandidates(domain, startedAt, {
       searchRuntime,
       previousEntities: previousEntities(previous, domain),
       previousTitles: previousTitles(previous, domain),
     })
-    console.log(`[DailyNews] ${DOMAIN_CONFIGS[domain].title}：RSS ${collection.rssCandidates ?? 0} + 搜索 ${collection.searchCandidates ?? 0}，共 ${collection.fetched} 条`)
-    return collection
   }))
+  const collections = assignSearchCandidateOwnership(rawCollections)
+  for (const collection of collections) {
+    const domain = collection.domain
+    console.log(`[DailyNews] ${DOMAIN_CONFIGS[domain].title}：RSS ${collection.rssCandidates ?? 0} + 搜索 ${collection.searchCandidates ?? 0}，共 ${collection.fetched} 条`)
+  }
 
   const preselected = []
   for (const collection of collections) {

@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 import type { DiscoveryMethod, DomainId, SourceReliability } from '../shared/briefing.js'
 import { FileSearchResultCache } from './search-cache.js'
-import type { FeedSource } from './sources.js'
+import { DOMAIN_CONFIGS, type FeedSource } from './sources.js'
 
 export type SearchHit = {
   title: string
@@ -15,7 +15,12 @@ export type SearchHit = {
 export type SearchRequest = {
   query: string
   maxResults: number
+  startDate?: string
+  endDate?: string
+  includeDomains?: string[]
 }
+
+export type SearchOptions = Omit<SearchRequest, 'query' | 'maxResults'>
 
 export interface NewsSearchProvider {
   readonly id: string
@@ -47,7 +52,7 @@ export class TavilySearchProvider implements NewsSearchProvider {
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
-  async search({ query, maxResults }: SearchRequest): Promise<SearchHit[]> {
+  async search({ query, maxResults, startDate, endDate, includeDomains }: SearchRequest): Promise<SearchHit[]> {
     const response = await this.fetchImpl('https://api.tavily.com/search', {
       method: 'POST',
       headers: {
@@ -59,6 +64,9 @@ export class TavilySearchProvider implements NewsSearchProvider {
         topic: 'news',
         search_depth: 'basic',
         max_results: Math.max(1, Math.min(10, maxResults)),
+        ...(startDate ? { start_date: startDate } : {}),
+        ...(endDate ? { end_date: endDate } : {}),
+        ...(includeDomains?.length ? { include_domains: includeDomains } : {}),
         include_answer: false,
         include_images: false,
         include_raw_content: false,
@@ -97,7 +105,6 @@ export class SearchRuntime {
   readonly dailyLimit: number
   readonly discoveryQueriesPerDomain: number
   readonly secondSourceEventLimit: number
-  readonly seenUrls = new Set<string>()
   readonly stats: SearchStats = { calls: 0, cacheHits: 0, failures: 0, skippedDuplicateQueries: 0, exhausted: false }
   private readonly seenQueries = new Set<string>()
   private secondSourceEvents = 0
@@ -129,21 +136,23 @@ export class SearchRuntime {
     if (this.provider || this.replayOnly) await this.cache?.markComplete()
   }
 
-  claimUrl(url: string) {
-    if (this.seenUrls.has(url)) return false
-    this.seenUrls.add(url)
-    return true
-  }
-
-  async search(query: string, maxResults = 8): Promise<SearchHit[]> {
+  async search(query: string, maxResults = 8, options: SearchOptions = {}): Promise<SearchHit[]> {
     const normalized = query.toLocaleLowerCase().replace(/\s+/g, ' ').trim()
     if ((!this.provider && !this.cache) || !normalized) return []
-    if (this.seenQueries.has(normalized)) {
+    const includeDomains = [...new Set(options.includeDomains ?? [])].sort()
+    const signature = JSON.stringify({
+      query: normalized,
+      maxResults,
+      startDate: options.startDate ?? '',
+      endDate: options.endDate ?? '',
+      includeDomains,
+    })
+    if (this.seenQueries.has(signature)) {
       this.stats.skippedDuplicateQueries += 1
       return []
     }
-    this.seenQueries.add(normalized)
-    const cached = await this.cache?.get(normalized)
+    this.seenQueries.add(signature)
+    const cached = await this.cache?.get(signature) ?? await this.cache?.get(normalized)
     if (cached) {
       this.stats.cacheHits += 1
       return cached
@@ -156,8 +165,8 @@ export class SearchRuntime {
     }
     this.stats.calls += 1
     try {
-      const hits = await this.provider.search({ query, maxResults })
-      await this.cache?.set(normalized, hits)
+      const hits = await this.provider.search({ query, maxResults, ...options, includeDomains })
+      await this.cache?.set(signature, hits)
       return hits
     } catch {
       this.stats.failures += 1
@@ -205,13 +214,19 @@ function matchesHost(hostname: string, known: string) {
   return hostname === known || hostname.endsWith(`.${known}`)
 }
 
-export function sourceForSearchResult(url: string, publisher?: string): FeedSource {
-  let hostname = 'unknown-source'
+export function normalizedHostname(url: string) {
   try {
-    hostname = new URL(url).hostname.replace(/^www\./, '').toLocaleLowerCase()
+    return new URL(url).hostname
+      .toLocaleLowerCase()
+      .replace(/^www\d*\./, '')
+      .replace(/\.$/, '')
   } catch {
-    // Keep the result usable as an explicitly low-reliability source.
+    return 'unknown-source'
   }
+}
+
+export function sourceForSearchResult(url: string, publisher?: string): FeedSource {
+  const hostname = normalizedHostname(url)
   const official = OFFICIAL_HOSTS.some((host) => matchesHost(hostname, host))
   const reliability: SourceReliability = official
     ? 'primary'
@@ -275,4 +290,23 @@ export function buildDiscoveryQueries(domain: DomainId, previousEntities: string
   return DISCOVERY_QUERY_TEMPLATES[domain]
     .slice(0, Math.min(6, Math.max(0, limit)))
     .map((query, index) => index < 2 && suffix ? `${query} follow-up ${suffix}` : query)
+}
+
+function dateInShanghai(value: Date) {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(value)
+}
+
+export function officialDomainsForQuery(query: string) {
+  const requested = [...query.matchAll(/\bsite:([a-z0-9.-]+)/gi)]
+    .map((match) => match[1].toLocaleLowerCase().replace(/^www\d*\./, '').replace(/\.$/, ''))
+  return [...new Set(requested.filter((domain) => OFFICIAL_HOSTS.some((host) => matchesHost(domain, host))))].sort()
+}
+
+export function searchOptionsForDomain(domain: DomainId, now: Date, query: string): SearchOptions {
+  const windowDays = DOMAIN_CONFIGS[domain].sourceWindowDays
+  return {
+    startDate: dateInShanghai(new Date(now.getTime() - windowDays * 86_400_000)),
+    endDate: dateInShanghai(new Date(now.getTime() + 86_400_000)),
+    includeDomains: officialDomainsForQuery(query),
+  }
 }
