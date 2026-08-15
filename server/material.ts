@@ -11,6 +11,14 @@ type PageMaterial = {
   publishedAt: string | null
 }
 
+export type DateRecoveryRecord = {
+  url: string
+  domain: Candidate['domain']
+  candidateId: string
+  status: 'recovered' | 'missing' | 'expired' | 'future-dated'
+  publishedAt: string | null
+}
+
 function validIsoDate(value: unknown) {
   if (typeof value !== 'string' || !value.trim()) return null
   const time = new Date(value).getTime()
@@ -74,6 +82,7 @@ export class ArticleReader {
   succeeded = 0
   metadataAttempted = 0
   metadataRecovered = 0
+  readonly dateRecoveryRecords: DateRecoveryRecord[] = []
   private readonly cache = new Map<string, Promise<PageMaterial>>()
 
   constructor(
@@ -85,12 +94,13 @@ export class ArticleReader {
   }
 
   private load(url: string) {
-    const cached = this.cache.get(url)
+    const key = cleanUrl(url)
+    const cached = this.cache.get(key)
     if (cached) return cached
     if (this.attempted >= this.limit) return Promise.resolve({ text: null, publishedAt: null })
     this.attempted += 1
-    const pending = this.fetchPage(url)
-    this.cache.set(url, pending)
+    const pending = this.fetchPage(key)
+    this.cache.set(key, pending)
     return pending
   }
 
@@ -140,35 +150,64 @@ export async function recoverMissingCandidateDates(
 ) {
   const reliability = { primary: 4, 'tier-1': 3, 'tier-2': 2, other: 1 }
   const remaining = Math.max(0, 8 - reader.metadataAttempted)
-  const seenUrls = new Set<string>()
-  const unknown = candidates
-    .filter((candidate) => candidate.dateConfidence === 'unknown')
-    .sort((a, b) => reliability[b.source.reliability] - reliability[a.source.reliability] || compareCandidates(a, b))
-    .filter((candidate) => {
-      const url = cleanUrl(candidate.url)
-      if (seenUrls.has(url)) return false
-      seenUrls.add(url)
-      return true
-    })
+  const unknownByUrl = new Map<string, Candidate[]>()
+  for (const candidate of candidates.filter((item) => item.dateConfidence === 'unknown')) {
+    const url = cleanUrl(candidate.url)
+    const group = unknownByUrl.get(url) ?? []
+    group.push(candidate)
+    unknownByUrl.set(url, group)
+  }
+  const unknown = [...unknownByUrl.entries()]
+    .map(([url, copies]) => ({ url, copies: copies.sort(compareCandidates) }))
+    .sort((a, b) => reliability[b.copies[0].source.reliability] - reliability[a.copies[0].source.reliability]
+      || compareCandidates(a.copies[0], b.copies[0]) || a.url.localeCompare(b.url))
     .slice(0, Math.max(0, Math.min(remaining, limit)))
   const rejected = new Set<string>()
-  for (const candidate of unknown) {
+  for (const group of unknown) {
     reader.metadataAttempted += 1
-    const recovered = await reader.readPublishedAt(candidate.url)
-    if (!recovered) continue
-    const recoveredTime = new Date(recovered).getTime()
-    const ageDays = (now.getTime() - recoveredTime) / 86_400_000
-    if (!Number.isFinite(recoveredTime) || ageDays > DOMAIN_CONFIGS[candidate.domain].sourceWindowDays || ageDays < -1) {
-      rejected.add(candidate.id)
+    const recovered = await reader.readPublishedAt(group.url)
+    if (!recovered) {
+      for (const candidate of group.copies) reader.dateRecoveryRecords.push({
+        url: group.url,
+        domain: candidate.domain,
+        candidateId: candidate.id,
+        status: 'missing',
+        publishedAt: null,
+      })
       continue
     }
-    const ageHours = Math.max(0, (now.getTime() - recoveredTime) / 3_600_000)
-    candidate.publishedAt = new Date(recoveredTime).toISOString()
-    candidate.dateConfidence = 'reliable'
-    candidate.score += 20 + Math.max(0, 36 - ageHours / 4)
-    reader.metadataRecovered += 1
+    const recoveredTime = new Date(recovered).getTime()
+    let recoveredAny = false
+    for (const candidate of group.copies) {
+      const ageDays = (now.getTime() - recoveredTime) / 86_400_000
+      if (!Number.isFinite(recoveredTime) || ageDays > DOMAIN_CONFIGS[candidate.domain].sourceWindowDays || ageDays < -1) {
+        const status = ageDays < -1 ? 'future-dated' : 'expired'
+        rejected.add(`${candidate.domain}:${candidate.id}`)
+        reader.dateRecoveryRecords.push({
+          url: group.url,
+          domain: candidate.domain,
+          candidateId: candidate.id,
+          status,
+          publishedAt: Number.isFinite(recoveredTime) ? new Date(recoveredTime).toISOString() : null,
+        })
+        continue
+      }
+      const ageHours = Math.max(0, (now.getTime() - recoveredTime) / 3_600_000)
+      candidate.publishedAt = new Date(recoveredTime).toISOString()
+      candidate.dateConfidence = 'reliable'
+      candidate.score += 20 + Math.max(0, 36 - ageHours / 4)
+      recoveredAny = true
+      reader.dateRecoveryRecords.push({
+        url: group.url,
+        domain: candidate.domain,
+        candidateId: candidate.id,
+        status: 'recovered',
+        publishedAt: candidate.publishedAt,
+      })
+    }
+    if (recoveredAny) reader.metadataRecovered += 1
   }
-  return candidates.filter((candidate) => !rejected.has(candidate.id))
+  return candidates.filter((candidate) => !rejected.has(`${candidate.domain}:${candidate.id}`))
 }
 
 export async function materializeEvents(events: NewsEvent[], reader: ArticleReader) {

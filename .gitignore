@@ -6,6 +6,7 @@ dist/
 *.log
 coverage/
 .cache/
+.diagnostics/
 *.tsbuildinfo
 
 # Local Codex and design-workbench state

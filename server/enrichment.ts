@@ -1,12 +1,13 @@
 import { DOMAIN_CONFIGS } from './sources.js'
 import { DOMAIN_ORDER } from './sources.js'
 import {
-  candidateFromSearchHit,
+  assessSearchHit,
   createEvent,
   eventMatch,
   extractActions,
   extractKeyNumbers,
   keyNumberQueryLabel,
+  type CandidateDecision,
   type NewsEvent,
 } from './pipeline.js'
 import { searchOptionsForDomain, type SearchRuntime } from './search.js'
@@ -21,7 +22,12 @@ export function buildVerificationQuery(event: NewsEvent) {
     .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
 }
 
-export async function searchSecondSource(event: NewsEvent, runtime: SearchRuntime, now = new Date()) {
+export async function searchSecondSource(
+  event: NewsEvent,
+  runtime: SearchRuntime,
+  now = new Date(),
+  onDecision?: (decision: CandidateDecision) => void,
+) {
   if (!runtime.enabled || !runtime.reserveSecondSourceEvent(event.domain)) return event
   const query = buildVerificationQuery(event)
   const hits = await runtime.search(
@@ -31,7 +37,19 @@ export async function searchSecondSource(event: NewsEvent, runtime: SearchRuntim
     { domain: event.domain, phase: 'verification' },
   )
   const additions = hits.flatMap((hit) => {
-    const candidate = candidateFromSearchHit(DOMAIN_CONFIGS[event.domain], hit, query, now)
+    const assessment = assessSearchHit(DOMAIN_CONFIGS[event.domain], hit, query, now, 'verification')
+    const candidate = assessment.candidate
+    if (!candidate) {
+      onDecision?.(assessment.decision)
+      return []
+    }
+    const duplicateUrl = event.articles.some((article) => article.url === candidate.url)
+    const accepted = !duplicateUrl && eventMatch(event.primaryArticle, candidate)
+    onDecision?.({
+      ...assessment.decision,
+      accepted,
+      reason: accepted ? 'accepted' : duplicateUrl ? 'duplicate-url' : 'event-mismatch',
+    })
     if (!candidate || event.articles.some((article) => article.url === candidate.url)) return []
     return eventMatch(event.primaryArticle, candidate) ? [candidate] : []
   })
@@ -45,6 +63,7 @@ export async function enrichImportantEvents(
   events: NewsEvent[],
   runtime: SearchRuntime,
   now = new Date(),
+  onDecision?: (decision: CandidateDecision) => void,
 ) {
   const enriched: NewsEvent[] = []
   const evidencePriority = { confirmed: 20, corroborated: 15, 'single-source': 3, unverified: -12 }
@@ -54,7 +73,7 @@ export async function enrichImportantEvents(
       .sort((a, b) => (b.primaryArticle.score + evidencePriority[b.evidence.level])
         - (a.primaryArticle.score + evidencePriority[a.evidence.level]) || a.id.localeCompare(b.id))
       .slice(0, 2)
-    for (const event of selected) enriched.push(await searchSecondSource(event, runtime, now))
+    for (const event of selected) enriched.push(await searchSecondSource(event, runtime, now, onDecision))
   }
   return enriched
 }

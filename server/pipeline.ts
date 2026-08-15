@@ -7,6 +7,7 @@ import {
   discoveryMethodForQuery,
   searchOptionsForDomain,
   type SearchHit,
+  type SearchPhase,
   type SearchRuntime,
   sourceForSearchResult,
 } from './search.js'
@@ -28,7 +29,39 @@ export type Candidate = {
   independenceKey?: string
   query?: string
   relevanceScore?: number
+  searchPhase?: SearchPhase
   duplicates?: Candidate[]
+}
+
+export type CandidateDecision = {
+  domain: DomainId
+  stage: 'rss' | SearchPhase
+  accepted: boolean
+  reason: 'accepted' | 'missing-title-or-url' | 'irrelevant' | 'expired' | 'future-dated' | 'duplicate-url' | 'event-mismatch'
+  candidateId?: string
+  title: string
+  url: string
+  sourceId: string
+  sourceName: string
+  publishedAt: string
+  dateConfidence: Candidate['dateConfidence']
+  score?: number
+  query?: string
+}
+
+export type SyndicationFinding = {
+  leftId: string
+  rightId: string
+  confidence: 'high' | 'medium'
+  wireKey: string | null
+  reasons: string[]
+}
+
+export type EventDateConflict = {
+  earliestPublishedAt: string
+  latestPublishedAt: string
+  spreadHours: number
+  articleIds: string[]
 }
 
 export type NewsEvent = {
@@ -43,6 +76,8 @@ export type NewsEvent = {
   latestUpdateAt: string
   sourceCount: number
   evidence: EventEvidence
+  dateConflict?: EventDateConflict
+  syndicationWarnings?: SyndicationFinding[]
 }
 
 const parser = new Parser({
@@ -329,7 +364,7 @@ function scoreCandidate(
   return source.weight + freshness + Math.min(impact, 18) + detail - uncertainDatePenalty
 }
 
-export function sourceIndependenceKey(candidate: Pick<Candidate, 'source' | 'title' | 'description' | 'independenceKey'>) {
+function explicitWireKey(candidate: Pick<Candidate, 'source' | 'title' | 'description'>) {
   const material = `${candidate.title} ${candidate.description}`
   if (/\breuters\b|路透(?:社)?/i.test(material) || candidate.source.id.includes('reuters')) return 'wire:reuters'
   if (/\bassociated press\b|\bAP News\b|美联社/i.test(material) || candidate.source.id.includes('apnews')) return 'wire:ap'
@@ -337,11 +372,80 @@ export function sourceIndependenceKey(candidate: Pick<Candidate, 'source' | 'tit
   if (/\bxinhua\b|新华社|新华网/i.test(material)) return 'wire:xinhua'
   if (/\bpr newswire\b|美通社/i.test(material)) return 'wire:pr-newswire'
   if (/\bbusiness wire\b/i.test(material)) return 'wire:business-wire'
+  return null
+}
+
+export function sourceIndependenceKey(candidate: Pick<Candidate, 'source' | 'title' | 'description' | 'independenceKey'>) {
+  const wire = explicitWireKey(candidate)
+  if (wire) return wire
   if (candidate.independenceKey) return candidate.independenceKey
   return `publisher:${candidate.source.id}`
 }
 
-async function fetchSource(config: DomainConfig, source: FeedSource, now: Date): Promise<Candidate[]> {
+function contentSimilarity(left: Candidate, right: Candidate) {
+  const title = titleSimilarity(left.title, right.title)
+  const description = setSimilarity(textTokens(left.description), textTokens(right.description))
+  const exactTitle = normalizeTitle(left.title) === normalizeTitle(right.title)
+  const exactDescription = Boolean(left.description && normalizeTitle(left.description) === normalizeTitle(right.description))
+  return { title, description, exactTitle, exactDescription }
+}
+
+export function diagnoseSyndication(articles: Candidate[]) {
+  const effectiveKeys = new Map(articles.map((article) => [article.id, sourceIndependenceKey(article)]))
+  const findings: SyndicationFinding[] = []
+  for (let leftIndex = 0; leftIndex < articles.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < articles.length; rightIndex += 1) {
+      const left = articles[leftIndex]
+      const right = articles[rightIndex]
+      if (left.source.id === right.source.id) continue
+      const leftWire = explicitWireKey(left)
+      const rightWire = explicitWireKey(right)
+      const similarity = contentSimilarity(left, right)
+      const reasons: string[] = []
+      const sameCanonicalUrl = cleanUrl(left.url) === cleanUrl(right.url)
+      if (leftWire && rightWire && leftWire === rightWire) reasons.push('explicit-wire-attribution')
+      if (sameCanonicalUrl) reasons.push('canonical-url')
+      if (similarity.exactTitle) reasons.push('exact-title-fingerprint')
+      if (similarity.exactDescription) reasons.push('exact-summary-fingerprint')
+      if (similarity.title >= 0.9) reasons.push('strong-title-fingerprint')
+      if (similarity.description >= 0.9) reasons.push('strong-summary-fingerprint')
+      const wireKey = leftWire ?? rightWire
+        ?? (sameCanonicalUrl ? `content:url:${createHash('sha1').update(cleanUrl(left.url)).digest('hex').slice(0, 12)}` : null)
+        ?? (similarity.exactTitle && similarity.exactDescription
+          ? `content:fingerprint:${createHash('sha1').update(`${normalizeTitle(left.title)}:${normalizeTitle(left.description)}`).digest('hex').slice(0, 12)}`
+          : null)
+      const high = Boolean(
+        sameCanonicalUrl
+        || (similarity.exactTitle && similarity.exactDescription)
+        || (leftWire && rightWire && leftWire === rightWire)
+        || (wireKey && (similarity.exactTitle || similarity.exactDescription || (similarity.title >= 0.9 && similarity.description >= 0.82))),
+      )
+      const medium = !high && Boolean(
+        wireKey && (similarity.title >= 0.75 || similarity.description >= 0.72)
+        || similarity.exactTitle
+        || (similarity.title >= 0.84 && similarity.description >= 0.72),
+      )
+      if (!high && !medium) continue
+      const confidence = high ? 'high' : 'medium'
+      findings.push({ leftId: left.id, rightId: right.id, confidence, wireKey, reasons })
+      if (high && wireKey) {
+        effectiveKeys.set(left.id, wireKey)
+        effectiveKeys.set(right.id, wireKey)
+      }
+    }
+  }
+  return {
+    effectiveKeys,
+    findings: findings.sort((left, right) => left.leftId.localeCompare(right.leftId) || left.rightId.localeCompare(right.rightId)),
+  }
+}
+
+async function fetchSource(
+  config: DomainConfig,
+  source: FeedSource,
+  now: Date,
+  onDecision?: (decision: CandidateDecision) => void,
+): Promise<Candidate[]> {
   const feed = await parser.parseURL(source.url)
   return feed.items.flatMap((item) => {
     const title = stripHtml(item.title ?? '')
@@ -352,8 +456,20 @@ async function fetchSource(config: DomainConfig, source: FeedSource, now: Date):
     const publishedAt = Number.isNaN(parsedDate.getTime()) ? now.toISOString() : parsedDate.toISOString()
     const ageDays = (now.getTime() - new Date(publishedAt).getTime()) / 86_400_000
     const text = `${title} ${description}`
-    if (!title || !url || ageDays > config.sourceWindowDays || ageDays < -1 || (!source.focused && !isRelevant(config, text))) return []
-    return [{
+    const rejectedReason = !title || !url ? 'missing-title-or-url'
+      : ageDays > config.sourceWindowDays ? 'expired'
+        : ageDays < -1 ? 'future-dated'
+          : !source.focused && !isRelevant(config, text) ? 'irrelevant'
+            : null
+    if (rejectedReason) {
+      onDecision?.({
+        domain: config.id, stage: 'rss', accepted: false, reason: rejectedReason,
+        title, url, sourceId: source.id, sourceName: source.name, publishedAt,
+        dateConfidence: 'reliable',
+      })
+      return []
+    }
+    const candidate: Candidate = {
       id: createHash('sha1').update(`${config.id}:${source.id}:${url || title}`).digest('hex').slice(0, 12),
       domain: config.id,
       title,
@@ -367,27 +483,57 @@ async function fetchSource(config: DomainConfig, source: FeedSource, now: Date):
       discoveryMethod: 'rss',
       materialLevel: 'snippet-only',
       independenceKey: `publisher:${source.id}`,
-    }]
+    }
+    onDecision?.({
+      domain: config.id, stage: 'rss', accepted: true, reason: 'accepted', candidateId: candidate.id,
+      title, url, sourceId: source.id, sourceName: source.name, publishedAt,
+      dateConfidence: candidate.dateConfidence, score: candidate.score,
+    })
+    return [candidate]
   })
 }
 
-export function candidateFromSearchHit(config: DomainConfig, hit: SearchHit, query: string, now: Date): Candidate | null {
+export function assessSearchHit(
+  config: DomainConfig,
+  hit: SearchHit,
+  query: string,
+  now: Date,
+  phase: SearchPhase = 'base',
+): { candidate: Candidate | null; decision: CandidateDecision } {
   const title = stripHtml(hit.title)
   const description = stripHtml(hit.snippet)
   const url = cleanUrl(hit.url)
   const text = `${title} ${description}`
-  if (!title || !url) return null
   const source = sourceForSearchResult(url, hit.publisher)
+  const baseDecision = {
+    domain: config.id,
+    stage: phase,
+    title,
+    url,
+    sourceId: source.id,
+    sourceName: source.name,
+    publishedAt: '',
+    dateConfidence: 'unknown' as Candidate['dateConfidence'],
+    query,
+  }
+  if (!title || !url) return { candidate: null, decision: { ...baseDecision, accepted: false, reason: 'missing-title-or-url' } }
   const match = domainMatchSignals(config, text, query, source)
-  if (!match.relevant) return null
+  if (!match.relevant) return { candidate: null, decision: { ...baseDecision, accepted: false, reason: 'irrelevant' } }
   const parsedTime = hit.publishedAt?.trim() ? new Date(hit.publishedAt).getTime() : Number.NaN
   const dateConfidence: Candidate['dateConfidence'] = Number.isFinite(parsedTime) ? 'reliable' : 'unknown'
   const publishedAt = dateConfidence === 'reliable' ? new Date(parsedTime).toISOString() : ''
   if (dateConfidence === 'reliable') {
     const ageDays = (now.getTime() - parsedTime) / 86_400_000
-    if (ageDays > config.sourceWindowDays || ageDays < -1) return null
+    if (ageDays > config.sourceWindowDays) return {
+      candidate: null,
+      decision: { ...baseDecision, accepted: false, reason: 'expired', publishedAt, dateConfidence },
+    }
+    if (ageDays < -1) return {
+      candidate: null,
+      decision: { ...baseDecision, accepted: false, reason: 'future-dated', publishedAt, dateConfidence },
+    }
   }
-  return {
+  const candidate: Candidate = {
     id: createHash('sha1').update(`${config.id}:search:${url}`).digest('hex').slice(0, 12),
     domain: config.id,
     title,
@@ -405,7 +551,30 @@ export function candidateFromSearchHit(config: DomainConfig, hit: SearchHit, que
     independenceKey: `publisher:${source.id}`,
     query,
     relevanceScore: match.score,
+    searchPhase: phase,
   }
+  return {
+    candidate,
+    decision: {
+      ...baseDecision,
+      accepted: true,
+      reason: 'accepted',
+      candidateId: candidate.id,
+      publishedAt,
+      dateConfidence,
+      score: candidate.score,
+    },
+  }
+}
+
+export function candidateFromSearchHit(
+  config: DomainConfig,
+  hit: SearchHit,
+  query: string,
+  now: Date,
+  phase: SearchPhase = 'base',
+): Candidate | null {
+  return assessSearchHit(config, hit, query, now, phase).candidate
 }
 
 const ENTITY_QUERY_LABELS: Record<string, string> = {
@@ -458,6 +627,7 @@ export async function collectSearchCandidates(
   runtime: SearchRuntime,
   now = new Date(),
   previousSignals: string[] = [],
+  onDecision?: (decision: CandidateDecision) => void,
 ) {
   if (!runtime.enabled) return []
   const config = DOMAIN_CONFIGS[domain]
@@ -465,8 +635,9 @@ export async function collectSearchCandidates(
   const baseBatches = await Promise.all(baseQueries.map(async (query) => {
     const hits = await runtime.search(query, 8, searchOptionsForDomain(domain, now, query), { domain, phase: 'base' })
     return hits.flatMap((hit) => {
-      const candidate = candidateFromSearchHit(config, hit, query, now)
-      return candidate ? [candidate] : []
+      const assessment = assessSearchHit(config, hit, query, now, 'base')
+      onDecision?.(assessment.decision)
+      return assessment.candidate ? [assessment.candidate] : []
     })
   }))
   const baseCandidates = baseBatches.flat().sort(compareCandidates)
@@ -474,8 +645,9 @@ export async function collectSearchCandidates(
   const dynamicBatches = await Promise.all(dynamicQueries.map(async (query) => {
     const hits = await runtime.search(query, 8, searchOptionsForDomain(domain, now, query), { domain, phase: 'dynamic' })
     return hits.flatMap((hit) => {
-      const candidate = candidateFromSearchHit(config, hit, query, now)
-      return candidate ? [candidate] : []
+      const assessment = assessSearchHit(config, hit, query, now, 'dynamic')
+      onDecision?.(assessment.decision)
+      return assessment.candidate ? [assessment.candidate] : []
     })
   }))
   return [...baseCandidates, ...dynamicBatches.flat()].sort(compareCandidates)
@@ -531,10 +703,11 @@ export function buildEvidence(articles: Candidate[]): EventEvidence {
   const uniqueSources = new Map(articles.map((article) => [article.source.id, article.source]))
   const sources = [...uniqueSources.values()]
   const primarySourcePresent = sources.some((source) => source.reliability === 'primary')
+  const syndication = diagnoseSyndication(articles)
   const reliableIndependentSources = new Set(
     articles
       .filter((article) => article.source.reliability === 'tier-1' || article.source.reliability === 'tier-2')
-      .map(sourceIndependenceKey),
+      .map((article) => syndication.effectiveKeys.get(article.id) ?? sourceIndependenceKey(article)),
   )
   const independentSourceCount = reliableIndependentSources.size
   const sourceCount = sources.length
@@ -560,6 +733,20 @@ export function createEvent(domain: DomainId, members: Candidate[]): NewsEvent {
   const entities = [...new Set(articles.flatMap((article) => extractEntities(`${article.title} ${article.description}`)))]
   const topicTags = [...new Set(articles.flatMap((article) => article.tags))].slice(0, 6)
   const evidence = buildEvidence(articles)
+  const syndication = diagnoseSyndication(articles)
+  const datedArticles = articles
+    .map((article) => ({ id: article.id, sourceId: article.source.id, time: new Date(article.publishedAt).getTime() }))
+    .filter((article) => Number.isFinite(article.time))
+    .sort((left, right) => left.time - right.time || left.id.localeCompare(right.id))
+  const dateSpreadHours = datedArticles.length > 1
+    ? (datedArticles.at(-1)!.time - datedArticles[0].time) / 3_600_000
+    : 0
+  const dateConflict = dateSpreadHours > 24 && new Set(datedArticles.map((article) => article.sourceId)).size > 1 ? {
+    earliestPublishedAt: new Date(datedArticles[0].time).toISOString(),
+    latestPublishedAt: new Date(datedArticles.at(-1)!.time).toISOString(),
+    spreadHours: Math.round(dateSpreadHours * 10) / 10,
+    articleIds: datedArticles.map((article) => article.id),
+  } : undefined
   const id = createHash('sha1').update(`${domain}:event:${primaryArticle.id}`).digest('hex').slice(0, 12)
   return {
     id,
@@ -573,6 +760,8 @@ export function createEvent(domain: DomainId, members: Candidate[]): NewsEvent {
     latestUpdateAt,
     sourceCount: evidence.sourceCount,
     evidence,
+    dateConflict,
+    syndicationWarnings: syndication.findings.filter((finding) => finding.confidence === 'medium'),
   }
 }
 
@@ -749,10 +938,15 @@ export type CollectionResult = {
 export async function collectCandidates(
   domain: DomainId,
   now = new Date(),
-  options: { searchRuntime?: SearchRuntime; previousSignals?: string[]; previousTitles?: string[] } = {},
+  options: {
+    searchRuntime?: SearchRuntime
+    previousSignals?: string[]
+    previousTitles?: string[]
+    onCandidateDecision?: (decision: CandidateDecision) => void
+  } = {},
 ): Promise<CollectionResult> {
   const config = DOMAIN_CONFIGS[domain]
-  const results = await Promise.allSettled(config.sources.map((source) => fetchSource(config, source, now)))
+  const results = await Promise.allSettled(config.sources.map((source) => fetchSource(config, source, now, options.onCandidateDecision)))
   const warnings: string[] = []
   const candidates: Candidate[] = []
   let sourceCount = 0
@@ -769,7 +963,7 @@ export async function collectCandidates(
     ? options.searchRuntime.callsFor(domain, 'base') + options.searchRuntime.callsFor(domain, 'dynamic')
     : 0
   const searched = options.searchRuntime
-    ? await collectSearchCandidates(domain, options.searchRuntime, now, options.previousSignals)
+    ? await collectSearchCandidates(domain, options.searchRuntime, now, options.previousSignals, options.onCandidateDecision)
     : []
   const searchCandidates = searched.length
   candidates.push(...searched)

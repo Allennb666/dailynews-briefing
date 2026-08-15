@@ -102,6 +102,7 @@ npm run dev
 | --- | --- |
 | `npm run dev` | 启动本地开发服务器 |
 | `npm run briefing:generate` | 抓取 RSS 并生成四领域简报 |
+| `npm run diagnostics:evaluate -- --input <diagnostic.json> --output <directory>` | 完全离线评估一次生成诊断 |
 | `npm test` | 运行采集和排序管线测试 |
 | `npm run build` | 运行 TypeScript 检查并构建生产版本 |
 | `npm run preview` | 本地预览生产构建 |
@@ -118,6 +119,8 @@ npm run dev
 | `data/briefings/YYYY-MM-DD-<domain>.json` | 单个领域每日归档 |
 
 数据结构版本、新闻字段和趋势字段定义在 `shared/briefing.ts`。如任一领域少于 5 条合格新闻，生成任务会失败并保留上一期数据。
+
+每次生成还会把不含密钥和完整正文的诊断写入被 Git 忽略的 `.diagnostics/`。它记录查询、候选决策、聚类、跨领域归属、证据升级和最终入选状态，不属于网页数据，也不会进入 Pages。离线评估会生成 `evaluation.json` 与 `evaluation.md`；只有显式提供版本化 benchmark 时才计算召回率、聚类 Precision/Recall 和领域归属准确率，否则只报告增量产出、疑似问题和低置信度。
 
 ## 新闻来源与筛选
 
@@ -145,10 +148,11 @@ Tavily 查询结果保存在 GitHub Actions 的同日缓存中。首次运行仍
 1. 安装锁定依赖；
 2. 运行测试；
 3. 恢复当日搜索缓存并生成简报；
-4. 运行生产构建；
-5. 仅在数据发生变化时提交最新简报和每日归档。
+4. 无论生成成功或失败，都运行离线质量评估并把 `.diagnostics/` 上传为保留 30 天的 Actions artifact，同时写入 Step Summary；
+5. 生成失败时停止发布，成功时运行生产构建；
+6. 仅在数据发生变化时提交最新简报和每日归档。
 
-即使生成阶段未通过质量门禁，工作流也会先保存当天搜索缓存再结束；之后的同日重跑可以继续编辑而不重复搜索。
+即使生成阶段未通过质量门禁，工作流也会先保存当天搜索缓存和诊断 artifact 再结束；之后的同日重跑可以继续编辑而不重复搜索。最初的诊断仅告警，至少积累 7 次真实定时运行后再评估是否设置阈值。
 
 在仓库 **Settings → Secrets and variables → Actions** 中配置 `DASHSCOPE_API_KEY` 和 `TAVILY_API_KEY`。使用自定义 Qwen 兼容接口时，将地址保存为 `QWEN_BASE_URL` Secret；未配置时使用 DashScope 默认接口。密钥不要粘贴到聊天、代码或 JSON。同时需要在 **Actions → General → Workflow permissions** 中允许工作流写入仓库。
 

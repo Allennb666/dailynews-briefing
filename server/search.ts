@@ -29,6 +29,18 @@ export type SearchAllocation = {
   phase: SearchPhase
 }
 
+export type SearchTrace = {
+  domain: DomainId | null
+  phase: SearchPhase | null
+  query: string
+  maxResults: number
+  startDate: string | null
+  endDate: string | null
+  includeDomains: string[]
+  resultCount: number
+  outcome: 'completed' | 'cache-hit' | 'duplicate-query' | 'replay-miss' | 'disabled' | 'quota-exhausted' | 'failed'
+}
+
 export interface NewsSearchProvider {
   readonly id: string
   search(request: SearchRequest): Promise<SearchHit[]>
@@ -114,6 +126,7 @@ export class SearchRuntime {
   readonly dynamicQueriesPerDomain = 2
   readonly secondSourceEventLimit: number
   readonly stats: SearchStats = { calls: 0, cacheHits: 0, failures: 0, skippedDuplicateQueries: 0, exhausted: false }
+  readonly traces: SearchTrace[] = []
   private readonly seenQueries = new Set<string>()
   private readonly phaseCalls = new Map<string, number>()
   private readonly verificationEvents = new Map<DomainId, number>()
@@ -155,8 +168,24 @@ export class SearchRuntime {
     allocation?: SearchAllocation,
   ): Promise<SearchHit[]> {
     const normalized = query.toLocaleLowerCase().replace(/\s+/g, ' ').trim()
-    if ((!this.provider && !this.cache) || !normalized) return []
     const includeDomains = [...new Set(options.includeDomains ?? [])].sort()
+    const trace = (outcome: SearchTrace['outcome'], resultCount = 0) => {
+      this.traces.push({
+        domain: allocation?.domain ?? null,
+        phase: allocation?.phase ?? null,
+        query: normalized,
+        maxResults,
+        startDate: options.startDate ?? null,
+        endDate: options.endDate ?? null,
+        includeDomains,
+        resultCount,
+        outcome,
+      })
+    }
+    if ((!this.provider && !this.cache) || !normalized) {
+      trace('disabled')
+      return []
+    }
     const signature = JSON.stringify({
       query: normalized,
       maxResults,
@@ -166,22 +195,34 @@ export class SearchRuntime {
     })
     if (this.seenQueries.has(signature)) {
       this.stats.skippedDuplicateQueries += 1
+      trace('duplicate-query')
       return []
     }
     this.seenQueries.add(signature)
     const cached = await this.cache?.get(signature) ?? await this.cache?.get(normalized)
     if (cached) {
       this.stats.cacheHits += 1
+      trace('cache-hit', cached.length)
       return cached
     }
-    if (this.replayOnly) return []
-    if (!this.provider) return []
+    if (this.replayOnly) {
+      trace('replay-miss')
+      return []
+    }
+    if (!this.provider) {
+      trace('disabled')
+      return []
+    }
     if (allocation) {
       const phaseLimit = allocation.phase === 'base' ? 4 : 2
-      if (this.callsFor(allocation.domain, allocation.phase) >= phaseLimit) return []
+      if (this.callsFor(allocation.domain, allocation.phase) >= phaseLimit) {
+        trace('quota-exhausted')
+        return []
+      }
     }
     if (this.stats.calls >= this.dailyLimit) {
       this.stats.exhausted = true
+      trace('quota-exhausted')
       return []
     }
     this.stats.calls += 1
@@ -192,9 +233,11 @@ export class SearchRuntime {
     try {
       const hits = await this.provider.search({ query, maxResults, ...options, includeDomains })
       await this.cache?.set(signature, hits)
+      trace('completed', hits.length)
       return hits
     } catch {
       this.stats.failures += 1
+      trace('failed')
       return []
     }
   }

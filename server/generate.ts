@@ -3,6 +3,7 @@ import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { DailyBriefing, DailyDigest, DomainId } from '../shared/briefing.js'
+import { DiagnosticRecorder, type RunDiagnostics } from './diagnostics.js'
 import { buildDailyDigest, deduplicateAcrossDomains, validateCrossDomainUniqueness } from './editorial.js'
 import { enrichImportantEvents } from './enrichment.js'
 import { ArticleReader, materializeEvents, recoverMissingCandidateDates } from './material.js'
@@ -87,99 +88,133 @@ async function writeActionsSummary(lines: string[], published: boolean) {
 
 async function main() {
   const startedAt = new Date()
-  const previous = await loadPreviousDigest()
+  const diagnostics = new DiagnosticRecorder(startedAt)
   const searchRuntime = createSearchRuntimeFromEnvironment(fetch, startedAt)
-  await searchRuntime.prepare()
-  const model = createEditorialModelFromEnvironment()
   const articleReader = new ArticleReader()
-  console.log(`[DailyNews] 开始动态新闻与编辑管线：${startedAt.toISOString()}`)
-  console.log(`[DailyNews] 搜索：${searchRuntime.cacheReplay ? '复用当日搜索缓存（不调用 Tavily）' : searchRuntime.enabled ? 'Tavily Basic' : '未配置，RSS 回退'}；模型：${model ? 'qwen3.5-27b' : '规则降级'}`)
+  let diagnosticStatus: RunDiagnostics['status'] = 'failed'
+  let published = false
+  let diagnosticError: unknown = null
+  try {
+    const previous = await loadPreviousDigest()
+    await searchRuntime.prepare()
+    const model = createEditorialModelFromEnvironment()
+    console.log(`[DailyNews] 开始动态新闻与编辑管线：${startedAt.toISOString()}`)
+    console.log(`[DailyNews] 搜索：${searchRuntime.cacheReplay ? '复用当日搜索缓存（不调用 Tavily）' : searchRuntime.enabled ? 'Tavily Basic' : '未配置，RSS 回退'}；模型：${model ? 'qwen3.5-27b' : '规则降级'}`)
 
-  const collections = await Promise.all(DOMAIN_ORDER.map(async (domain) => {
-    return collectCandidates(domain, startedAt, {
+    const collections = await Promise.all(DOMAIN_ORDER.map(async (domain) => {
+      return collectCandidates(domain, startedAt, {
+        searchRuntime,
+        previousSignals: previousSignals(previous, domain),
+        previousTitles: previousTitles(previous, domain),
+        onCandidateDecision: diagnostics.recordDecision,
+      })
+    }))
+    diagnostics.captureBeforeDateRecovery(collections)
+    const retainedAfterDateRecovery = await recoverMissingCandidateDates(
+      collections.flatMap((collection) => collection.candidates),
+      articleReader,
+      startedAt,
+    )
+    const retainedCandidateIds = new Set(retainedAfterDateRecovery.map((candidate) => `${candidate.domain}:${candidate.id}`))
+    for (const collection of collections) {
+      collection.candidates = collection.candidates.filter((candidate) => retainedCandidateIds.has(`${candidate.domain}:${candidate.id}`))
+      collection.fetched = collection.candidates.length
+      collection.searchCandidates = collection.candidates.filter((candidate) => candidate.discoveryMethod !== 'rss').length
+      collection.sourceCount = new Set(collection.candidates.map((candidate) => candidate.source.id)).size
+    }
+    diagnostics.captureAfterDateRecovery(collections)
+    for (const collection of collections) {
+      const domain = collection.domain
+      console.log(`[DailyNews] ${DOMAIN_CONFIGS[domain].title}：RSS ${collection.rssCandidates ?? 0} + 搜索 ${collection.searchCandidates ?? 0}，共 ${collection.fetched} 条`)
+    }
+
+    const preselected = []
+    for (const collection of collections) {
+      const result = await preselectEvents(collection, model)
+      preselected.push({ domain: collection.domain, events: result.events, warnings: result.warnings })
+      console.log(`[DailyNews] ${DOMAIN_CONFIGS[collection.domain].title}：预选 ${result.events.length} 个事件（${result.usedModel ? 'Qwen' : '规则'}）`)
+    }
+    const beforeOwnership = preselected.map(({ domain, events }) => ({ domain, events }))
+    diagnostics.capturePreselected(beforeOwnership)
+    let selections = deduplicateAcrossDomains(beforeOwnership)
+    diagnostics.captureOwnership(beforeOwnership, selections)
+    const beforeVerification = selections.flatMap((selection) => selection.events)
+    const enriched = await enrichImportantEvents(beforeVerification, searchRuntime, startedAt, diagnostics.recordDecision)
+    diagnostics.captureVerification(beforeVerification, enriched)
+    await searchRuntime.markCacheComplete()
+    selections = replaceEnrichedEvents(selections, enriched)
+
+    const materialOrder = [
+      ...enriched,
+      ...selections.flatMap((selection) => selection.events).filter((event) => !enriched.some((item) => item.id === event.id)),
+    ]
+    await materializeEvents(materialOrder, articleReader)
+
+    const briefings: DailyBriefing[] = []
+    for (const collection of collections) {
+      const selection = selections.find((item) => item.domain === collection.domain)!
+      console.log(`[DailyNews] 正在最终编辑：${DOMAIN_CONFIGS[collection.domain].title}`)
+      const briefing = await finalizeBriefing(collection, selection.events, model, startedAt)
+      const preselectionWarnings = preselected.find((item) => item.domain === collection.domain)?.warnings ?? []
+      briefings.push({
+        ...briefing,
+        pipeline: {
+          ...briefing.pipeline,
+          searchCalls: collection.searchCalls ?? 0,
+          articleFetchSuccess: articleReader.succeeded,
+          warnings: [...briefing.pipeline.warnings, ...preselectionWarnings],
+        },
+      })
+      const latest = briefings.at(-1)!
+      if (latest.pipeline.warnings.length) console.warn(`[DailyNews] ${latest.domainTitle} 提醒：${latest.pipeline.warnings.join('；')}`)
+    }
+
+    const crossDomainErrors = validateCrossDomainUniqueness(briefings)
+    const degraded = briefings.some((briefing) => briefing.pipeline.qualityStatus !== 'passed')
+    const lines = summaryLines(briefings, searchRuntime, articleReader)
+    diagnostics.captureFinal(briefings, [
+      ...briefings.flatMap((briefing) => briefing.pipeline.warnings),
+      ...crossDomainErrors,
+    ])
+    lines.forEach((line) => console.log(`[DailyNews] ${line}`))
+    if (crossDomainErrors.length) console.error(`[DailyNews] 跨领域门禁失败：${crossDomainErrors.join('；')}`)
+    if (degraded || crossDomainErrors.length) {
+      diagnosticStatus = 'held'
+      console.error('[DailyNews] 严重质量门禁未通过；保留上一期 latest 和历史文件，不发布降级稿。')
+      await writeActionsSummary([...lines, ...crossDomainErrors], false)
+      process.exitCode = 2
+      return
+    }
+
+    const digest = buildDailyDigest(briefings, selections, startedAt)
+    const date = digest.date
+    await Promise.all([
+      writeJson(resolve(projectRoot, 'public/data/briefings/daily-latest.json'), digest),
+      writeJson(resolve(projectRoot, `data/briefings/${date}-daily.json`), digest),
+      ...briefings.flatMap((briefing) => [
+        writeJson(resolve(projectRoot, `public/data/briefings/${briefing.domain}-latest.json`), briefing),
+        writeJson(resolve(projectRoot, `data/briefings/${date}-${briefing.domain}.json`), briefing),
+      ]),
+    ])
+    published = true
+    diagnosticStatus = 'succeeded'
+    await writeActionsSummary(lines, true)
+    console.log(`[DailyNews] 已发布 ${date}：${resolve(projectRoot, 'public/data/briefings/daily-latest.json')}`)
+  } catch (error) {
+    diagnosticError = error
+    throw error
+  } finally {
+    const directory = process.env.DIAGNOSTICS_DIR?.trim() || resolve(projectRoot, '.diagnostics')
+    const snapshot = diagnostics.build(
       searchRuntime,
-      previousSignals: previousSignals(previous, domain),
-      previousTitles: previousTitles(previous, domain),
-    })
-  }))
-  const retainedAfterDateRecovery = await recoverMissingCandidateDates(
-    collections.flatMap((collection) => collection.candidates),
-    articleReader,
-    startedAt,
-  )
-  const retainedCandidateIds = new Set(retainedAfterDateRecovery.map((candidate) => `${candidate.domain}:${candidate.id}`))
-  for (const collection of collections) {
-    collection.candidates = collection.candidates.filter((candidate) => retainedCandidateIds.has(`${candidate.domain}:${candidate.id}`))
-    collection.fetched = collection.candidates.length
-    collection.searchCandidates = collection.candidates.filter((candidate) => candidate.discoveryMethod !== 'rss').length
-    collection.sourceCount = new Set(collection.candidates.map((candidate) => candidate.source.id)).size
+      articleReader.dateRecoveryRecords,
+      diagnosticStatus,
+      published,
+      diagnosticError,
+    )
+    await diagnostics.write(directory, snapshot)
+    console.log(`[DailyNews] 非公开诊断已写入 ${resolve(directory, 'latest.json')}`)
   }
-  for (const collection of collections) {
-    const domain = collection.domain
-    console.log(`[DailyNews] ${DOMAIN_CONFIGS[domain].title}：RSS ${collection.rssCandidates ?? 0} + 搜索 ${collection.searchCandidates ?? 0}，共 ${collection.fetched} 条`)
-  }
-
-  const preselected = []
-  for (const collection of collections) {
-    const result = await preselectEvents(collection, model)
-    preselected.push({ domain: collection.domain, events: result.events, warnings: result.warnings })
-    console.log(`[DailyNews] ${DOMAIN_CONFIGS[collection.domain].title}：预选 ${result.events.length} 个事件（${result.usedModel ? 'Qwen' : '规则'}）`)
-  }
-
-  let selections = deduplicateAcrossDomains(preselected.map(({ domain, events }) => ({ domain, events })))
-  const enriched = await enrichImportantEvents(selections.flatMap((selection) => selection.events), searchRuntime, startedAt)
-  await searchRuntime.markCacheComplete()
-  selections = replaceEnrichedEvents(selections, enriched)
-
-  const materialOrder = [
-    ...enriched,
-    ...selections.flatMap((selection) => selection.events).filter((event) => !enriched.some((item) => item.id === event.id)),
-  ]
-  await materializeEvents(materialOrder, articleReader)
-
-  const briefings: DailyBriefing[] = []
-  for (const collection of collections) {
-    const selection = selections.find((item) => item.domain === collection.domain)!
-    console.log(`[DailyNews] 正在最终编辑：${DOMAIN_CONFIGS[collection.domain].title}`)
-    const briefing = await finalizeBriefing(collection, selection.events, model, startedAt)
-    const preselectionWarnings = preselected.find((item) => item.domain === collection.domain)?.warnings ?? []
-    briefings.push({
-      ...briefing,
-      pipeline: {
-        ...briefing.pipeline,
-        searchCalls: collection.searchCalls ?? 0,
-        articleFetchSuccess: articleReader.succeeded,
-        warnings: [...briefing.pipeline.warnings, ...preselectionWarnings],
-      },
-    })
-    const latest = briefings.at(-1)!
-    if (latest.pipeline.warnings.length) console.warn(`[DailyNews] ${latest.domainTitle} 提醒：${latest.pipeline.warnings.join('；')}`)
-  }
-
-  const crossDomainErrors = validateCrossDomainUniqueness(briefings)
-  const degraded = briefings.some((briefing) => briefing.pipeline.qualityStatus !== 'passed')
-  const lines = summaryLines(briefings, searchRuntime, articleReader)
-  lines.forEach((line) => console.log(`[DailyNews] ${line}`))
-  if (crossDomainErrors.length) console.error(`[DailyNews] 跨领域门禁失败：${crossDomainErrors.join('；')}`)
-  if (degraded || crossDomainErrors.length) {
-    console.error('[DailyNews] 严重质量门禁未通过；保留上一期 latest 和历史文件，不发布降级稿。')
-    await writeActionsSummary([...lines, ...crossDomainErrors], false)
-    process.exitCode = 2
-    return
-  }
-
-  const digest = buildDailyDigest(briefings, selections, startedAt)
-  const date = digest.date
-  await Promise.all([
-    writeJson(resolve(projectRoot, 'public/data/briefings/daily-latest.json'), digest),
-    writeJson(resolve(projectRoot, `data/briefings/${date}-daily.json`), digest),
-    ...briefings.flatMap((briefing) => [
-      writeJson(resolve(projectRoot, `public/data/briefings/${briefing.domain}-latest.json`), briefing),
-      writeJson(resolve(projectRoot, `data/briefings/${date}-${briefing.domain}.json`), briefing),
-    ]),
-  ])
-  await writeActionsSummary(lines, true)
-  console.log(`[DailyNews] 已发布 ${date}：${resolve(projectRoot, 'public/data/briefings/daily-latest.json')}`)
 }
 
 main().catch((error) => {

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "id": "dailynews-search-quality-v1",
+  "description": "固定离线样本，仅用于诊断搜索增量、聚类和领域归属，不代表真实新闻。",
+  "events": [
+    {
+      "eventId": "nvidia-factory",
+      "titleAliases": ["NVIDIA announces $10 billion AI chip factory", "英伟达宣布投资100亿美元建设AI芯片工厂"],
+      "entities": ["nvidia"],
+      "actions": ["build", "funding"],
+      "keyNumbers": ["usd:10b"],
+      "date": "2026-08-14",
+      "correctDomain": "ai-tech",
+      "correctCluster": "cluster-nvidia-factory",
+      "expectedSourceTypes": ["official", "independent-media"],
+      "articles": [
+        { "id": "nvidia-official", "title": "NVIDIA announces $10 billion AI chip factory", "summary": "NVIDIA will invest $10 billion to build an AI chip factory.", "url": "https://nvidia.example/news/factory", "publishedAt": "2026-08-14T01:00:00Z", "sourceType": "official", "reliability": "primary" },
+        { "id": "nvidia-cn", "title": "英伟达宣布投资100亿美元建设AI芯片工厂", "summary": "独立媒体报道英伟达建设AI芯片工厂的投资计划。", "url": "https://media-cn.example/nvidia-factory", "publishedAt": "2026-08-14T02:00:00Z", "sourceType": "media", "reliability": "tier-1" }
+      ]
+    },
+    {
+      "eventId": "nvidia-earnings",
+      "titleAliases": ["NVIDIA reports quarterly earnings and guidance", "英伟达公布季度财报与业绩指引"],
+      "entities": ["nvidia"],
+      "actions": ["earnings"],
+      "keyNumbers": ["18%"],
+      "date": "2026-08-14",
+      "correctDomain": "markets",
+      "correctCluster": "cluster-nvidia-earnings",
+      "expectedSourceTypes": ["official"],
+      "articles": [
+        { "id": "nvidia-ir", "title": "NVIDIA reports quarterly earnings and guidance", "summary": "Quarterly revenue rose 18 percent and management issued guidance.", "url": "https://investor-nvidia.example/results", "publishedAt": "2026-08-14T20:00:00Z", "sourceType": "official", "reliability": "primary" }
+      ]
+    },
+    {
+      "eventId": "ai-funding",
+      "titleAliases": ["Anthropic raises $12 billion in new funding", "Anthropic完成120亿美元新一轮融资"],
+      "entities": ["anthropic"],
+      "actions": ["funding"],
+      "keyNumbers": ["usd:12b"],
+      "date": "2026-08-13",
+      "correctDomain": "markets",
+      "correctCluster": "cluster-ai-funding",
+      "expectedSourceTypes": ["independent-media"],
+      "articles": [
+        { "id": "funding-en", "title": "Anthropic raises $12 billion in new funding", "summary": "The AI company raised $12 billion from investors.", "url": "https://finance.example/anthropic-round", "publishedAt": "2026-08-13T08:00:00Z", "sourceType": "media", "reliability": "tier-1" },
+        { "id": "funding-cn", "title": "Anthropic完成120亿美元新一轮融资", "summary": "这家人工智能公司完成新一轮融资。", "url": "https://cn-finance.example/anthropic-round", "publishedAt": "2026-08-13T09:00:00Z", "sourceType": "media", "reliability": "tier-1" }
+      ]
+    },
+    {
+      "eventId": "hormuz-shipping",
+      "titleAliases": ["Strait of Hormuz shipping disruption lifts oil risk", "霍尔木兹海峡航运中断推高油价风险"],
+      "entities": ["strait-of-hormuz"],
+      "actions": ["restriction"],
+      "keyNumbers": ["20%"],
+      "date": "2026-08-14",
+      "correctDomain": "world",
+      "correctCluster": "cluster-hormuz",
+      "expectedSourceTypes": ["independent-media", "wire-copy"],
+      "articles": [
+        { "id": "hormuz-wire", "title": "Strait of Hormuz shipping disruption lifts oil risk", "summary": "Reuters reports shipping traffic fell 20 percent after restrictions.", "url": "https://wire.example/hormuz", "publishedAt": "2026-08-14T04:00:00Z", "sourceType": "media", "reliability": "tier-1" },
+        { "id": "hormuz-copy", "title": "Strait of Hormuz shipping disruption lifts oil risk", "summary": "Shipping traffic fell 20 percent after restrictions in the Strait of Hormuz.", "url": "https://republisher.example/hormuz", "publishedAt": "2026-08-14T04:20:00Z", "sourceType": "media", "reliability": "tier-2" }
+      ]
+    },
+    {
+      "eventId": "black-sea",
+      "titleAliases": ["Black Sea ceasefire talks resume", "黑海停火谈判重新启动"],
+      "entities": ["black-sea"],
+      "actions": ["agreement"],
+      "keyNumbers": [],
+      "date": "2026-08-14",
+      "correctDomain": "world",
+      "correctCluster": "cluster-black-sea",
+      "expectedSourceTypes": ["official", "independent-media"],
+      "articles": [
+        { "id": "black-sea-official", "title": "Black Sea ceasefire talks resume", "summary": "Officials confirmed renewed ceasefire talks concerning Black Sea shipping.", "url": "https://un.example/black-sea-talks", "publishedAt": "2026-08-14T05:00:00Z", "sourceType": "official", "reliability": "primary" },
+        { "id": "black-sea-media", "title": "黑海停火谈判重新启动", "summary": "独立媒体确认有关黑海航运的停火谈判恢复。", "url": "https://world-media.example/black-sea-talks", "publishedAt": "2026-08-14T06:00:00Z", "sourceType": "media", "reliability": "tier-1" }
+      ]
+    },
+    {
+      "eventId": "smic-capex",
+      "titleAliases": ["SMIC raises capital spending guidance", "中芯国际上调资本开支指引"],
+      "entities": ["smic"],
+      "actions": ["earnings", "funding"],
+      "keyNumbers": ["usd:9b"],
+      "date": "2026-08-14",
+      "correctDomain": "markets",
+      "correctCluster": "cluster-smic-capex",
+      "expectedSourceTypes": ["official", "independent-media"],
+      "articles": [
+        { "id": "smic-ir", "title": "SMIC raises capital spending guidance", "summary": "SMIC raised annual capital spending guidance to $9 billion.", "url": "https://smic.example/investors/capex", "publishedAt": "2026-08-14T10:00:00Z", "sourceType": "official", "reliability": "primary" },
+        { "id": "smic-media", "title": "中芯国际上调资本开支指引", "summary": "中芯国际把年度资本开支指引上调至90亿美元。", "url": "https://markets-cn.example/smic-capex", "publishedAt": "2026-08-14T10:30:00Z", "sourceType": "media", "reliability": "tier-1" }
+      ]
+    },
+    {
+      "eventId": "oecd-pisa",
+      "titleAliases": ["OECD publishes PISA assessment framework update", "OECD发布PISA评估框架更新"],
+      "entities": ["oecd", "pisa"],
+      "actions": ["policy"],
+      "keyNumbers": [],
+      "date": "2026-08-12",
+      "correctDomain": "learning",
+      "correctCluster": "cluster-oecd-pisa",
+      "expectedSourceTypes": ["official", "independent-media"],
+      "articles": [
+        { "id": "oecd-official", "title": "OECD publishes PISA assessment framework update", "summary": "The OECD published an updated PISA assessment framework.", "url": "https://oecd.example/pisa/framework", "publishedAt": "2026-08-12T09:00:00Z", "sourceType": "official", "reliability": "primary" },
+        { "id": "pisa-media", "title": "OECD发布PISA评估框架更新", "summary": "新框架调整课程能力与评估设计。", "url": "https://education-media.example/pisa-framework", "publishedAt": "2026-08-12T11:00:00Z", "sourceType": "media", "reliability": "tier-1" }
+      ]
+    },
+    {
+      "eventId": "ib-ai-literacy",
+      "titleAliases": ["IB releases AI literacy curriculum guidance", "国际文凭组织发布AI素养课程指南"],
+      "entities": ["international-baccalaureate"],
+      "actions": ["launch", "policy"],
+      "keyNumbers": [],
+      "date": "2026-08-13",
+      "correctDomain": "learning",
+      "correctCluster": "cluster-ib-ai-literacy",
+      "expectedSourceTypes": ["official"],
+      "articles": [
+        { "id": "ib-official", "title": "IB releases AI literacy curriculum guidance", "summary": "The International Baccalaureate released curriculum guidance for AI literacy and assessment.", "url": "https://ibo.example/news/ai-literacy", "publishedAt": "2026-08-13T07:00:00Z", "sourceType": "official", "reliability": "primary" }
+      ]
+    }
+  ]
+}

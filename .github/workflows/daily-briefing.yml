@@ -51,6 +51,18 @@ jobs:
         with:
           path: .cache/dailynews
           key: dailynews-search-${{ steps.briefing-date.outputs.date }}-${{ github.run_id }}
+      - name: Evaluate private diagnostics
+        if: always()
+        continue-on-error: true
+        run: npm run diagnostics:evaluate -- --input .diagnostics/latest.json --output .diagnostics/reports --summary
+      - name: Upload private diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: dailynews-diagnostics-${{ steps.briefing-date.outputs.date }}-${{ github.run_id }}
+          path: .diagnostics
+          include-hidden-files: true
+          retention-days: 30
       - name: Stop when generation failed
         if: steps.generate-briefing.outcome == 'failure'
         run: exit 1

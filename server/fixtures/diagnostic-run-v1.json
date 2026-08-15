@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "runId": "fixture-offline-v1",
+  "startedAt": "2026-08-15T00:00:00.000Z",
+  "completedAt": "2026-08-15T00:05:00.000Z",
+  "status": "succeeded",
+  "published": true,
+  "error": null,
+  "search": {
+    "calls": 2,
+    "cacheHits": 0,
+    "failures": 0,
+    "exhausted": false,
+    "traces": [
+      { "domain": "ai-tech", "phase": "base", "query": "AI chip official", "maxResults": 8, "startDate": "2026-08-05", "endDate": "2026-08-16", "includeDomains": [], "resultCount": 2, "outcome": "completed" },
+      { "domain": "ai-tech", "phase": "verification", "query": "NVIDIA build $10 billion 2026-08-14", "maxResults": 8, "startDate": "2026-08-05", "endDate": "2026-08-16", "includeDomains": [], "resultCount": 1, "outcome": "completed" }
+    ]
+  },
+  "candidateDecisions": [
+    { "domain": "ai-tech", "stage": "rss", "accepted": true, "reason": "accepted", "candidateId": "fixture-rss", "title": "NVIDIA announces $10 billion AI chip factory", "url": "https://nvidia.example/news/factory", "sourceId": "nvidia.example", "sourceName": "NVIDIA", "publishedAt": "2026-08-14T01:00:00.000Z", "dateConfidence": "reliable", "score": 98 },
+    { "domain": "ai-tech", "stage": "verification", "accepted": true, "reason": "accepted", "candidateId": "fixture-media", "title": "英伟达宣布投资100亿美元建设AI芯片工厂", "url": "https://media-cn.example/nvidia-factory", "sourceId": "media-cn.example", "sourceName": "Media CN", "publishedAt": "2026-08-14T02:00:00.000Z", "dateConfidence": "reliable", "score": 91, "query": "NVIDIA build $10 billion 2026-08-14" }
+  ],
+  "candidateDispositions": [
+    { "domain": "ai-tech", "candidateId": "fixture-rss", "eventId": "fixture-event", "outcome": "selected", "reason": "final-selected" }
+  ],
+  "candidatesBeforeDateRecovery": [
+    { "id": "fixture-rss", "domain": "ai-tech", "title": "NVIDIA announces $10 billion AI chip factory", "url": "https://nvidia.example/news/factory", "source": { "id": "nvidia.example", "name": "NVIDIA", "type": "official", "reliability": "primary" }, "publishedAt": "2026-08-14T01:00:00.000Z", "dateConfidence": "reliable", "score": 98, "relevanceScore": null, "discoveryStage": "rss", "discoveryMethod": "rss", "query": null, "titleFingerprint": "fixture-title-1", "snippetFingerprint": "fixture-snippet-1" }
+  ],
+  "candidatesAfterDateRecovery": [
+    { "id": "fixture-rss", "domain": "ai-tech", "title": "NVIDIA announces $10 billion AI chip factory", "url": "https://nvidia.example/news/factory", "source": { "id": "nvidia.example", "name": "NVIDIA", "type": "official", "reliability": "primary" }, "publishedAt": "2026-08-14T01:00:00.000Z", "dateConfidence": "reliable", "score": 98, "relevanceScore": null, "discoveryStage": "rss", "discoveryMethod": "rss", "query": null, "titleFingerprint": "fixture-title-1", "snippetFingerprint": "fixture-snippet-1" }
+  ],
+  "dateRecovery": [],
+  "clusters": [
+    { "id": "fixture-event", "domain": "ai-tech", "canonicalTitle": "NVIDIA announces $10 billion AI chip factory", "articleIds": ["fixture-rss"], "articleUrls": ["https://nvidia.example/news/factory"], "entities": ["nvidia"], "actions": ["build", "funding"], "keyNumbers": ["usd:10b"], "publishedAt": "2026-08-14T01:00:00.000Z", "latestUpdateAt": "2026-08-14T01:00:00.000Z", "evidence": { "level": "single-source", "sourceCount": 1, "independentSourceCount": 0, "primarySourcePresent": true }, "dateConflict": null, "syndication": [], "suspectedFalseMergeReasons": [] }
+  ],
+  "suspectedMissedMerges": [],
+  "preselected": [{ "domain": "ai-tech", "eventIds": ["fixture-event"] }],
+  "ownership": [{ "eventId": "fixture-event", "memberEventIds": ["fixture-event"], "originalDomains": ["ai-tech"], "assignedDomain": "ai-tech", "domainFits": [{ "domain": "ai-tech", "score": 30 }, { "domain": "markets", "score": 18 }, { "domain": "world", "score": 2 }, { "domain": "learning", "score": 1 }], "confidenceMargin": 12, "lowConfidence": false }],
+  "verification": [
+    { "domain": "ai-tech", "eventId": "fixture-event", "evidenceBefore": { "level": "single-source", "sourceCount": 1, "independentSourceCount": 0, "primarySourcePresent": true }, "evidenceAfter": { "level": "confirmed", "sourceCount": 2, "independentSourceCount": 1, "primarySourcePresent": true }, "addedArticleIds": ["fixture-media"], "eventAfter": { "id": "fixture-event", "domain": "ai-tech", "canonicalTitle": "NVIDIA announces $10 billion AI chip factory", "articleIds": ["fixture-media", "fixture-rss"], "articleUrls": ["https://media-cn.example/nvidia-factory", "https://nvidia.example/news/factory"], "entities": ["nvidia"], "actions": ["build", "funding"], "keyNumbers": ["usd:10b"], "publishedAt": "2026-08-14T01:00:00.000Z", "latestUpdateAt": "2026-08-14T02:00:00.000Z", "evidence": { "level": "confirmed", "sourceCount": 2, "independentSourceCount": 1, "primarySourcePresent": true }, "dateConflict": null, "syndication": [], "suspectedFalseMergeReasons": [] } }
+  ],
+  "finalSelection": [{ "domain": "ai-tech", "eventId": "fixture-event", "rank": 1, "primarySourceId": "nvidia.example" }],
+  "qualityWarnings": []
+}
