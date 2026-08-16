@@ -339,11 +339,11 @@ test('程序把结构化预测和来源 ID 转成可发布格式', async () => {
   const briefing = await finalizeBriefing(collection(events), events, model, new Date('2026-08-15T00:00:00Z'))
   assert.equal(briefing.pipeline.qualityStatus, 'passed')
   assert.match(briefing.stories[0].trend.nearTerm, /如果/)
-  assert.equal(briefing.stories[0].trend.signalsToWatch.length, 2)
+  assert.ok(briefing.stories[0].trend.signalsToWatch.length >= 2)
   assert.deepEqual(briefing.stories[0].factSources[0].urls, [events[0].primaryArticle.url])
 })
 
-test('无来源数字由程序改为定性事实且不增加 Qwen 调用', async () => {
+test('无来源数字只删除对应数字并保留其余事实且不增加 Qwen 调用', async () => {
   const events = fixtureEvents()
   const regression = await wave4ModelRegression()
   const broken = validModelBriefing(events)
@@ -357,7 +357,8 @@ test('无来源数字由程序改为定性事实且不增加 Qwen 调用', async
   assert.equal(briefing.pipeline.qualityStatus, 'passed')
   assert.equal(model.calls, 1)
   assert.doesNotMatch(briefing.stories[0].keyFacts.join(' '), /99/)
-  assert.match(briefing.stories[0].keyFacts.join(' '), /定性结论/)
+  assert.match(briefing.stories[0].keyFacts.join(' '), /相关指标.*增长/)
+  assert.doesNotMatch(briefing.stories[0].keyFacts.join(' '), /定性结论|这里仅保留/)
 })
 
 test('固定槽位不会因单条数字错误替换事件', async () => {

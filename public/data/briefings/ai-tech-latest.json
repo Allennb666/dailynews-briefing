@@ -53,7 +53,6 @@
       "summary": "印尼通信与数字事务部联合 Indosat、NVIDIA 及加查马达大学（UGM），在日惹正式启用该国首个大学 AI 技术中心。该中心依托 NVIDIA 全栈平台与 Indosat 主权 GPU 服务，聚焦医疗、农业及灾害响应三大领域，旨在解决结核病筛查、精准农业及自然灾害预警等紧迫国家挑战，培养本土 AI 人才。",
       "keyFacts": [
         "” “UGM is committed to supporting Indonesia&#8217;",
-        "来源材料披露了与当前事件相关的量化变化；为避免脱离原文语境，这里仅保留定性结论。",
         "Indonesia records over 1 million new tuberculosis (TB) cases every year."
       ],
       "whyItMatters": "此举标志着印尼从单纯的 AI 技术采用者向创新贡献者转型。通过整合政府政策、电信基础设施与顶尖学术资源，印尼试图突破算力匮乏瓶颈，直接利用 AI 解决本国人口规模大、农业占比高及自然灾害频发等结构性难题，具有显著的地缘战略意义。",
@@ -128,12 +127,6 @@
           "urls": [
             "https://blogs.nvidia.com/blog/ugm-indosat-nvidia-ai-technology-center"
           ]
-        },
-        {
-          "factIndex": 2,
-          "urls": [
-            "https://blogs.nvidia.com/blog/ugm-indosat-nvidia-ai-technology-center"
-          ]
         }
       ],
       "publishedAt": "2026-08-14T17:13:05.000Z",
@@ -153,10 +146,10 @@
       "id": "287dabd3d3cc",
       "eventId": "287dabd3d3cc",
       "rank": 2,
-      "title": "investor.nvidia.com发布芯片相关更新",
-      "summary": "来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。",
+      "title": "NVIDIA联合多家金融机构设立AI算力基础设施融资平台",
+      "summary": "NVIDIA联合多家金融机构设立AI算力基础设施融资平台；现有来源材料明确记录了这一具体动作。",
       "keyFacts": [
-        "来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。"
+        "NVIDIA联合多家金融机构设立AI算力基础设施融资平台。"
       ],
       "whyItMatters": "这条信息可能影响技术供应商与开发者与企业客户，但仍需结合后续数据判断真实影响。",
       "background": "这条信息需要放在技术能力、产品落地与产业供给三个层面分别判断，不能只看发布标题。",
@@ -305,7 +298,7 @@
         {
           "factIndex": 0,
           "urls": [
-            "https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Partners-With-Apollo-BlackRock-Blackstone-Brookfield-Goldman-Sachs-and-KKR-to-Establish-AI-Compute-Infrastructure-Financing-Platforms-to-Mobilize-Over-500-Billion-of-Third-Party-Capital/default.aspx"
+            "https://nvidianews.nvidia.com/news/nvidia-partners-with-apollo-blackrock-blackstone-brookfield-goldman-sachs-and-kkr-to-establish-ai-compute-infrastructure-financing-platforms-to-mobilize-over-500-billion-of-third-party-capital"
           ]
         }
       ],
@@ -326,10 +319,10 @@
       "id": "f397434a108a",
       "eventId": "f397434a108a",
       "rank": 3,
-      "title": "cnbc.com发布芯片相关更新",
-      "summary": "来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。",
+      "title": "SK海力士扩建AI内存产能",
+      "summary": "SK海力士扩建AI内存产能；现有来源材料明确记录了这一具体动作。",
       "keyFacts": [
-        "来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。"
+        "SK海力士扩建AI内存产能。"
       ],
       "whyItMatters": "这条信息可能影响技术供应商与开发者与企业客户，但仍需结合后续数据判断真实影响。",
       "background": "这条信息需要放在技术能力、产品落地与产业供给三个层面分别判断，不能只看发布标题。",
@@ -404,10 +397,10 @@
       "id": "3f8e41d7f1d3",
       "eventId": "3f8e41d7f1d3",
       "rank": 4,
-      "title": "TechCrunch AI发布AI相关更新",
-      "summary": "来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。",
+      "title": "Grok卷入将儿童照片生成露骨图像的滥用指控",
+      "summary": "Grok卷入将儿童照片生成露骨图像的滥用指控；现有来源材料明确记录了这一具体动作。",
       "keyFacts": [
-        "来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。"
+        "Grok卷入将儿童照片生成露骨图像的滥用指控。"
       ],
       "whyItMatters": "这条信息可能影响技术供应商与开发者与企业客户，但仍需结合后续数据判断真实影响。",
       "background": "这条信息需要放在技术能力、产品落地与产业供给三个层面分别判断，不能只看发布标题。",
@@ -480,10 +473,10 @@
       "id": "c867cc36cbcb",
       "eventId": "c867cc36cbcb",
       "rank": 5,
-      "title": "TechCrunch AI发布模型相关更新",
-      "summary": "来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。",
+      "title": "Anthropic公布Claude新水印机制细节",
+      "summary": "Anthropic公布Claude新水印机制细节；现有来源材料明确记录了这一具体动作。",
       "keyFacts": [
-        "来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。"
+        "Anthropic公布Claude新水印机制细节。"
       ],
       "whyItMatters": "这条信息可能影响技术供应商与开发者与企业客户，但仍需结合后续数据判断真实影响。",
       "background": "这条信息需要放在技术能力、产品落地与产业供给三个层面分别判断，不能只看发布标题。",

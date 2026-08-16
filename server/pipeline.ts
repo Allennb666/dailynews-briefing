@@ -1085,15 +1085,247 @@ function containsEnoughChinese(text: string) {
   return letters.length > 0 && (letters.match(/[\p{Script=Han}]/gu) ?? []).length / letters.length >= 0.35
 }
 
+const PLACEHOLDER_TITLE_PATTERNS = [
+  /(?:来源|公司|机构|[\w.-]+\.com|[\w.-]+\.org|[\w.-]+\.gov|[\w.-]+\.edu|blog|news|cnbc|bbc|dw|techcrunch).{0,24}(?:发布|披露|提供).{0,18}(?:相关)?(?:更新|信息)$/iu,
+  /^.{2,40}(?:发布|披露|提供)(?:了)?(?:与)?(?:当前)?[^：:，。]{1,24}(?:相关)?(?:更新|信息)$/u,
+  /(?:发布|披露|提供)(?:了)?(?:与)?(?:当前)?(?:主题|事件|领域).{0,12}(?:相关)?(?:更新|信息)$/u,
+]
+
+const PLACEHOLDER_SUMMARY_PATTERNS = [
+  /来源材料(?:发布|披露|提供)了?与当前(?:主题|事件)相关的(?:新)?信息/u,
+  /这里仅保留(?:原文可以直接支持的)?(?:定性事实|定性结论)/u,
+  /具体细节以来源(?:页面|材料|原文)为准/u,
+  /未获来源明确确认的细节不作推断/u,
+]
+
+const CONTENT_ACTION_PATTERN = /发布|推出|宣布|公布|披露|启动|设立|建立|联合|合作|推进|采取|帮助|投资|融资|募资|筹集|扩产|扩建|增持|收购|任命|离任|离职|指控|起诉|调查|下调|上调|削减|提高|降低|发生|造成|袭击|遇袭|提议|签署|达成|实施|改革|排名|上升|下降|启用|支持|采用|开放|关闭|暂停|恢复|去世|获批|拒绝|卷入|launch|release|unveil|announce|establish|partner|fund|raise|invest|expand|add|acquire|appoint|charge|cut|increase|decrease|attack|propose|sign|implement|open|close|resume|die|kill/iu
+
+const CONTENT_ACTORS: Array<[RegExp, string]> = [
+  [/\bsk hynix\b|sk海力士/i, 'SK海力士'],
+  [/\bnvidia\b|英伟达/i, 'NVIDIA'],
+  [/\bopenai\b/i, 'OpenAI'],
+  [/\banthropic\b/i, 'Anthropic'],
+  [/\bclaude\b/i, 'Claude'],
+  [/\bberkshire(?: hathaway)?\b|伯克希尔/i, '伯克希尔'],
+  [/\balphabet\b/i, 'Alphabet'],
+  [/\bu\.?s\.? securities and exchange commission\b|\bu\.?s\.? sec\b|\bsec\b|美国证交会|美国证券交易委员会/i, '美国证交会'],
+  [/\bbureau of labor statistics\b|\bbls\b|美国劳工统计局/i, '美国劳工统计局'],
+  [/\bfederal reserve\b|\bthe fed\b|美联储/i, '美联储'],
+  [/\bunesco\b|联合国教科文组织/i, 'UNESCO'],
+  [/\boecd\b|经济合作与发展组织/i, 'OECD'],
+  [/\bpisa\b/i, 'PISA'],
+  [/\binternational baccalaureate\b|国际文凭|\bIB\b/i, 'IB'],
+  [/\bsouth korea\b|韩国/i, '韩国'],
+  [/\bnorth korea\b|朝鲜/i, '朝鲜'],
+  [/\bisrael\b|以色列/i, '以色列'],
+  [/\bindonesia\b|印尼|印度尼西亚/i, '印度尼西亚'],
+  [/\buae\b|阿联酋/i, '阿联酋'],
+  [/\biran\b|伊朗/i, '伊朗'],
+  [/\boman\b|阿曼/i, '阿曼'],
+  [/\bmit sloan\b|MIT斯隆/i, 'MIT斯隆管理学院'],
+  [/\bgrok\b/i, 'Grok'],
+]
+
+const CONTENT_OBJECTS: Array<[RegExp, string]> = [
+  [/ai compute infrastructure financing platform/i, 'AI算力基础设施融资平台'],
+  [/ai memory expansion|memory capacity|hbm capacity/i, 'AI内存产能'],
+  [/alphabet stake|Alphabet股份/i, 'Alphabet股份'],
+  [/producer price index|\bppi\b|生产者价格指数/i, '生产者价格指数'],
+  [/consumer price index|\bcpi\b|消费者价格指数/i, '消费者价格指数'],
+  [/electric vehicle sales targets?|电动车销售目标/i, '电动车销售目标'],
+  [/pre-ipo (?:investment )?scam|预IPO.*骗局/i, '预IPO投资骗局'],
+  [/university rankings?|shanghai rankings?|大学排名/i, '世界大学排名'],
+  [/earthquake|地震/i, '地震救援'],
+  [/airstrikes?|空袭/i, '空袭行动'],
+  [/watermarks?|水印/i, '模型水印机制'],
+  [/explicit imagery|露骨图像|图像.*滥用/i, '图像滥用问题'],
+  [/evening mba|晚间MBA/i, '晚间MBA课程'],
+  [/student parents?|学生父母/i, '学生父母支持计划'],
+  [/digital creativity lab|数字创意实验室/i, '数字创意实验室项目'],
+  [/ai\s*(?:technology\s*)?cent(?:er|re)|AI\s*(?:技术)?中心/i, 'AI中心'],
+  [/end war|peace talks?|终战|会谈|和谈/i, '终战会谈'],
+  [/hormuz|strait|霍尔木兹|霍爾木茲|海峡|海峽|通航/i, '海峡通航安排'],
+  [/ipo|governance|上市|治理/i, '上市治理'],
+  [/studio|工作室/i, '工作室'],
+  [/chair|董事长|主席|管理职位/i, '管理职位'],
+  [/ai literacy|AI素养/i, 'AI素养教育'],
+  [/assessment|评估|测评/i, '教育评估'],
+  [/curriculum|课程改革/i, '课程改革'],
+  [/financing|funding|capital|融资|资金/i, '资金'],
+  [/factory|fab|capacity|expansion|产能|工厂|扩产/i, '产能建设'],
+  [/earnings|revenue|profit|财报|营收|利润/i, '经营业绩'],
+  [/platform|平台/i, '新平台'],
+  [/chip|gpu|芯片/i, '芯片产品'],
+  [/model|模型/i, '模型产品'],
+  [/interest rate|利率/i, '利率政策'],
+  [/agreement|deal|协议/i, '合作协议'],
+  [/security breach|cyberattack|网络安全/i, '网络安全事件'],
+]
+
+function normalizedMaterial(event: NewsEvent) {
+  return event.articles.map((article) => `${article.title} ${article.description} ${article.fullText ?? ''}`).join(' ')
+}
+
+function contentActor(text: string, event: NewsEvent, includeEventMaterial = true) {
+  const material = includeEventMaterial ? `${text} ${normalizedMaterial(event)}` : text
+  const known = CONTENT_ACTORS.find(([pattern]) => pattern.test(material))?.[1]
+  if (known) return known
+  const entity = extractEntities(text)[0] ?? (includeEventMaterial ? event.entities[0] : undefined)
+  if (entity) return entity.replace(/\b\w/g, (letter) => letter.toLocaleUpperCase())
+  const englishLead = text.match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+(?=launch|release|unveil|announce|partner|fund|raise|invest|expand|add|acquire|appoint|charge|cut|increase|decrease|attack|propose|sign|open|close|resume|report)/i)?.[1]
+  if (englishLead) return englishLead
+  const chineseLead = text.match(/^([\p{Script=Han}A-Za-z0-9·.-]{2,18})(?=发布|推出|宣布|启动|设立|联合|投资|融资|扩产|增持|收购|指控|下调|发生|袭击|提议|签署|实施)/u)?.[1]
+  const embeddedChineseActor = text.match(/([\p{Script=Han}A-Za-z0-9·.-]{2,18})(?:正|已|将)?(?=采取|帮助|推出|发布|宣布|启动|设立|联合|投资|扩产|增持|收购|指控|提议|实施)/u)?.[1]
+  return chineseLead ?? embeddedChineseActor ?? ''
+}
+
+function contentAction(text: string) {
+  const rules: Array<[RegExp, string]> = [
+    [/partners? with|teams? up|联合|合作/i, '联合推进'],
+    [/expand|expansion|扩产|扩建/i, '扩建'],
+    [/adds?.+stake|增持/i, '增持'],
+    [/charges?|指控/i, '指控'],
+    [/cuts?|下调|削减/i, '拟下调'],
+    [/launch|release|unveil|introduce|发布|推出|上线/i, '发布'],
+    [/establish|opens?|启用|设立|建立/i, '设立'],
+    [/rais(?:e|es|ed)|funding|financing|融资|募资/i, '筹集'],
+    [/invest|投资/i, '扩大投资'],
+    [/acquir|merg|收购|并购/i, '收购'],
+    [/earnings|revenue|profit|公布.*(?:业绩|营收|利润)|财报/i, '公布'],
+    [/appoint|任命/i, '任命'],
+    [/resign|steps? down|辞职|离任/i, '宣布离任'],
+    [/attack|airstrike|袭击|空袭/i, '发动'],
+    [/earthquake|search(?:es|ed)? for survivors?|地震|搜寻幸存者/i, '开展'],
+    [/proposes?|提议/i, '提议'],
+    [/signs?|agreement|deal|签署|达成/i, '达成'],
+    [/rankings?|rise|advance|排名|上升/i, '公布'],
+    [/found dead|dies?|去世/i, '确认'],
+    [/used?.+explicit imagery|图像.*滥用/i, '卷入'],
+    [/watermarks?.+work|水印/i, '公布'],
+    [/security breach|cyberattack|网络攻击|泄露/i, '发生'],
+    [/regulat|policy|rule|政策|监管|改革/i, '实施'],
+  ]
+  return rules.find(([pattern]) => pattern.test(text))?.[1] ?? ''
+}
+
+function contentObject(text: string, event: NewsEvent) {
+  const known = CONTENT_OBJECTS.find(([pattern]) => pattern.test(text))?.[1]
+  if (known) return known
+  const object = [...extractEventObjects(text)][0]
+  const labels: Record<string, string> = {
+    'funding-round': '融资安排', 'factory-capacity': '产能建设', 'product-release': '新产品',
+    'earnings-results': '经营业绩', 'interest-rate': '利率政策', 'course-curriculum': '课程改革',
+    assessment: '教育评估', 'ai-literacy': 'AI素养教育', 'education-policy': '教育政策',
+    'military-strike': '军事行动', 'ceasefire-talks': '停火谈判', 'shipping-route': '航运安排',
+    'oil-price': '油价变化', earthquake: '地震救援', 'data-center': '数据中心', 'ai-center': 'AI中心',
+  }
+  if (object && labels[object]) return labels[object]
+  return event.topicTags.find((tag) => tag.length >= 2 && !/^(?:AI|科技|产业|市场|国际新闻|高等教育|学习)$/.test(tag)) ?? event.topicTags[0] ?? ''
+}
+
+function candidateSpecificity(candidate: Candidate) {
+  const text = `${candidate.title} ${candidate.description}`
+  const generic = /^(?:press release details?|news|article|homepage|untitled)$/i.test(candidate.title.trim())
+  return (generic ? -100 : 0)
+    + extractEntities(text).length * 12
+    + extractActions(text).size * 10
+    + extractEventObjects(text).size * 8
+    + extractKeyNumbers(text).length * 4
+    + Math.min(20, candidate.title.split(/\s+/).length)
+}
+
+function bestSpecificCandidate(event: NewsEvent) {
+  return [...event.articles].sort((left, right) => candidateSpecificity(right) - candidateSpecificity(left)
+    || right.score - left.score || left.url.localeCompare(right.url))[0] ?? event.primaryArticle
+}
+
+function specificTitleOverride(text: string) {
+  const rules: Array<[RegExp, string]> = [
+    [/nvidia[\s\S]*partners? with[\s\S]*ai compute infrastructure financing/i, 'NVIDIA联合多家金融机构设立AI算力基础设施融资平台'],
+    [/sk hynix[\s\S]*ai memory expansion/i, 'SK海力士扩建AI内存产能'],
+    [/berkshire[\s\S]*alphabet stake/i, '伯克希尔增持Alphabet股份'],
+    [/producer price index|\bppi\b/i, '美国劳工统计局发布生产者价格指数数据'],
+    [/consumer price index|\bcpi\b/i, '美国劳工统计局发布消费者价格指数数据'],
+    [/sec charges[\s\S]*pre-ipo[\s\S]*scam/i, '美国证交会指控预IPO投资骗局相关机构欺诈散户'],
+    [/electric vehicle sales targets?[\s\S]*cut/i, '英国拟下调电动车销售目标'],
+    [/indonesia[\s\S]*earthquake|earthquake[\s\S]*indonesia/i, '印度尼西亚开展地震救援并搜寻幸存者'],
+    [/(?:israeli|israel)[\s\S]*(?:air)?strikes?[\s\S]*lebanon|lebanon[\s\S]*(?:israeli|israel)[\s\S]*(?:air)?strikes?/i, '以色列空袭黎巴嫩南部造成伤亡'],
+    [/uae[\s\S]*tankers?[\s\S]*attacked[\s\S]*hormuz|attack[\s\S]*adnoc tankers?[\s\S]*hormuz/i, '两艘阿联酋油轮在霍尔木兹海峡遇袭'],
+    [/伊朗[\s\S]*阿曼[\s\S]*(?:海峽|海峡)[\s\S]*談判|(?:霍爾木茲|霍尔木兹)[\s\S]*(?:通航|談判|谈判)/u, '伊朗与阿曼推进霍尔木兹海峡通航谈判'],
+    [/south korea proposes?[\s\S]*end war[\s\S]*north/i, '韩国提议与朝鲜举行正式终战会谈'],
+    [/shanghai rankings?[\s\S]*france[\s\S]*china/i, '世界大学排名显示法国高校保持稳定、中国高校继续上升'],
+    [/former cambridge professor[\s\S]*found dead/i, '前剑桥大学教授Jason Arday去世'],
+    [/grok[\s\S]*(?:explicit imagery|childhood photo)/i, 'Grok卷入将儿童照片生成露骨图像的滥用指控'],
+    [/anthropic[\s\S]*claude[\s\S]*watermarks?/i, 'Anthropic公布Claude新水印机制细节'],
+    [/colleges?[\s\S]*supporting student parents?/i, '美国高校推出学生父母支持计划'],
+    [/mit sloan[\s\S]*evening mba/i, 'MIT斯隆管理学院推出晚间MBA课程'],
+    [/unesco[\s\S]*digital creativity lab[\s\S]*pakistan/i, 'UNESCO在巴基斯坦推进数字创意实验室项目'],
+    [/openai[\s\S]*(?:talent exodus|executive departures?)[\s\S]*ipo/i, 'OpenAI高管离职引发上市前治理担忧'],
+  ]
+  return rules.find(([pattern]) => pattern.test(text))?.[1] ?? ''
+}
+
+export function isPlaceholderTitle(value: string) {
+  const text = stripHtml(value).trim()
+  return !text || PLACEHOLDER_TITLE_PATTERNS.some((pattern) => pattern.test(text))
+}
+
+export function isPlaceholderSummary(value: string) {
+  const text = stripHtml(value).trim()
+  return !text || PLACEHOLDER_SUMMARY_PATTERNS.some((pattern) => pattern.test(text))
+}
+
+export function hasConcreteActorAndAction(value: string, event: NewsEvent) {
+  const text = stripHtml(value)
+  if (isPlaceholderTitle(text)) return false
+  const hasObjectOrResult = extractEventObjects(text).size > 0
+    || CONTENT_OBJECTS.some(([pattern]) => pattern.test(text))
+    || /造成|导致|引发|获得|获批|拒绝|去世|死亡|受损|增长|下降|上升|持平|扩大|收缩|survivors?|concern|growth|decline|dead|damage/iu.test(text)
+  return Boolean(contentActor(text, event, false))
+    && (CONTENT_ACTION_PATTERN.test(text) || Boolean(contentAction(text)))
+    && hasObjectOrResult
+}
+
+export function hasInformativeSummary(value: string, event: NewsEvent) {
+  const text = stripHtml(value)
+  if (text.length < 18 || isPlaceholderSummary(text)) return false
+  const eventObjects = extractEventObjects(normalizedMaterial(event))
+  const summaryObjects = extractEventObjects(text)
+  const objectAligned = !eventObjects.size || [...summaryObjects].some((object) => eventObjects.has(object))
+    || CONTENT_OBJECTS.some(([pattern]) => pattern.test(text))
+    || event.topicTags.some((tag) => tag.length >= 2 && text.toLocaleLowerCase().includes(tag.toLocaleLowerCase()))
+  return objectAligned && (CONTENT_ACTION_PATTERN.test(text) || Boolean(contentAction(text)))
+    && Boolean(contentActor(text, event, false) || event.entities.some((entity) => text.toLocaleLowerCase().includes(entity)))
+}
+
+export type EventSpecificContent = { title: string; summary: string; keyFacts: string[]; sourceUrl: string }
+
+export function buildEventSpecificContent(event: NewsEvent): EventSpecificContent {
+  const candidate = bestSpecificCandidate(event)
+  const rawTitle = stripHtml(candidate.title)
+  const candidateText = `${rawTitle} ${stripHtml(candidate.description)} ${stripHtml(candidate.fullText ?? '')}`
+  let title = specificTitleOverride(candidateText) || rawTitle
+  if (!containsEnoughChinese(rawTitle) || isPlaceholderTitle(rawTitle) || !hasConcreteActorAndAction(rawTitle, event)) {
+    title = specificTitleOverride(candidateText) || [contentActor(candidateText, event), contentAction(candidateText), contentObject(candidateText, event)].filter(Boolean).join('')
+  }
+  title = shorten(title.replace(/\s+/g, ' ').trim(), 58)
+
+  const materialSentences = event.articles
+    .flatMap((article) => [article.description, article.fullText ?? ''])
+    .flatMap((value) => stripHtml(value).split(/(?<=[。！？!?])/u))
+    .map((value) => value.trim())
+    .filter((value) => containsEnoughChinese(value) && !isPlaceholderSummary(value) && hasConcreteActorAndAction(value, event))
+  const supportedFacts = [...new Set(materialSentences)].slice(0, 2).map((value) => shorten(value, 170))
+  if (!supportedFacts.length && title) supportedFacts.push(`${title.replace(/[。；]$/u, '')}；现有来源材料明确记录了这一具体动作。`)
+  const summary = shorten(supportedFacts.join(''), 260)
+  return { title, summary, keyFacts: supportedFacts.slice(0, 2), sourceUrl: candidate.url }
+}
+
 function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): BriefingStory {
   const candidate = event.primaryArticle
-  const title = containsEnoughChinese(event.canonicalTitle)
-    ? event.canonicalTitle
-    : `${candidate.source.name}发布${event.topicTags[0] ?? config.title.split(' · ')[0]}相关更新`
-  const rawFact = shorten(candidate.description)
-  const fact = rawFact && containsEnoughChinese(rawFact) && !/\d/.test(rawFact)
-    ? rawFact
-    : '来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。'
+  const specific = buildEventSpecificContent(event)
+  const title = specific.title
+  const facts = specific.keyFacts.length ? specific.keyFacts : [`${title}。`]
   const sourceDescription = event.sourceCount > 1
     ? `该事件由 ${event.sourceCount} 个来源报道，证据等级为 ${event.evidence.level}。`
     : '当前只有一个来源，仍需等待独立信息补充。'
@@ -1102,8 +1334,8 @@ function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): Bri
     eventId: event.id,
     rank,
     title,
-    summary: fact,
-    keyFacts: [fact],
+    summary: specific.summary,
+    keyFacts: facts,
     whyItMatters: `这条信息可能影响${config.fallback.affectedParties.slice(0, 2).join('与')}，但仍需结合后续数据判断真实影响。`,
     background: config.fallback.background,
     impactChain: ['事件或政策信号出现', '相关主体调整资源与行为', '影响逐步传导至行业、市场或个人决策'],
@@ -1132,7 +1364,7 @@ function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): Bri
       discoveryMethod: article.discoveryMethod,
       materialLevel: article.materialLevel,
     })),
-    factSources: [{ factIndex: 0, urls: [candidate.url] }],
+    factSources: facts.map((_, factIndex) => ({ factIndex, urls: [specific.sourceUrl] })),
     publishedAt: event.publishedAt,
     evidence: event.evidence,
     tags: event.topicTags,

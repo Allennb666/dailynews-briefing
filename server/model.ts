@@ -1,4 +1,5 @@
 import type {
+  BriefingStory,
   DailyBriefing,
   GlossaryTerm,
   StoryTrend,
@@ -6,7 +7,21 @@ import type {
 } from '../shared/briefing.js'
 import { DOMAIN_CONFIGS } from './sources.js'
 import type { CollectionResult, NewsEvent } from './pipeline.js'
-import { buildCandidatePool, buildRulesBriefing, extractKeyNumbers, keyNumbersCompatible } from './pipeline.js'
+import {
+  buildCandidatePool,
+  buildEventSpecificContent,
+  buildRulesBriefing,
+  extractActions,
+  extractDates,
+  extractEntities,
+  extractEventObjects,
+  extractKeyNumbers,
+  hasConcreteActorAndAction,
+  hasInformativeSummary,
+  isPlaceholderSummary,
+  isPlaceholderTitle,
+  keyNumbersCompatible,
+} from './pipeline.js'
 
 type ProviderConfig = {
   mode: 'qwen'
@@ -213,13 +228,34 @@ function normalizedNumberTokens(value: string) {
   return (value.match(/\d[\d,.]*(?:\.\d+)?%?/g) ?? []).map((token) => token.replaceAll(',', '').toLocaleLowerCase())
 }
 
-function articleSupportsNumbers(article: NewsEvent['articles'][number], tokens: string[]) {
+function articleSupportsNumbers(article: NewsEvent['articles'][number], tokens: string[], sentence = tokens.join(' ')) {
   const material = `${article.title} ${article.description} ${article.fullText ?? ''}`
   const materialClaims = extractKeyNumbers(material)
-  const tokenClaims = extractKeyNumbers(tokens.join(' '))
-  if (tokenClaims.length && materialClaims.length) return tokenClaims.every((claim) => keyNumbersCompatible([claim], materialClaims))
+  const tokenClaims = extractKeyNumbers(sentence)
+  if (tokenClaims.length && (!materialClaims.length || !tokenClaims.every((claim) => keyNumbersCompatible([claim], materialClaims)))) return false
   const normalizedMaterial = material.replaceAll(',', '').toLocaleLowerCase()
-  return tokens.length > 0 && tokens.every((token) => normalizedMaterial.includes(token))
+  const rawTokens = tokenClaims.length ? [] : tokens
+  if (rawTokens.length && !rawTokens.every((token) => normalizedMaterial.includes(token))) return false
+
+  const sentenceObjects = extractEventObjects(sentence)
+  const materialObjects = extractEventObjects(material)
+  const indicators = new Set(['cpi', 'ppi', 'pce', 'interest-rate', 'bond-yield', 'earnings-results', 'oil-price'])
+  const sentenceIndicators = new Set([...sentenceObjects].filter((item) => indicators.has(item)))
+  const materialIndicators = new Set([...materialObjects].filter((item) => indicators.has(item)))
+  if (sentenceIndicators.size && materialIndicators.size && ![...sentenceIndicators].some((item) => materialIndicators.has(item))) return false
+
+  const sentenceEntities = new Set(extractEntities(sentence))
+  const materialEntities = new Set(extractEntities(material))
+  if (sentenceEntities.size && materialEntities.size && ![...sentenceEntities].some((item) => materialEntities.has(item))) return false
+
+  const sentenceActions = extractActions(sentence)
+  const materialActions = extractActions(material)
+  if (sentenceActions.size && materialActions.size && ![...sentenceActions].some((item) => materialActions.has(item))) return false
+
+  const sentenceDates = extractDates(sentence)
+  const materialDates = extractDates(material)
+  if (sentenceDates.length && materialDates.length && !sentenceDates.every((date) => materialDates.includes(date))) return false
+  return tokenClaims.length > 0 || rawTokens.length > 0
 }
 
 export type NumericFactWhitelistItem = { fact: string; sourceIds: string[]; urls: string[] }
@@ -249,41 +285,94 @@ export function numericFactWhitelist(event: NewsEvent): NumericFactWhitelistItem
   return [...facts.values()].slice(0, 24)
 }
 
-function qualitativeNumericFallback(event: NewsEvent) {
-  void event
-  return '来源材料披露了与当前事件相关的量化变化；为避免脱离原文语境，这里仅保留定性结论。'
+const NUMERIC_EXPRESSION = /(?:[$€£¥￥]\s*)?\d[\d,.]*(?:\.\d+)?(?:\s*[–-]\s*\d[\d,.]*(?:\.\d+)?)?\s*(?:%|percent|percentage points?|basis points?|bps|trillion|billion|million|tn|bn|mn|亿美元|亿元|万亿元|万亿|万吨|gw|mw|级|人|家|所|年|月|日)?/giu
+
+function numericExpressions(value: string) {
+  return [...value.matchAll(NUMERIC_EXPRESSION)].map((match) => ({ raw: match[0].trim(), index: match.index ?? 0 }))
+}
+
+function supportingArticlesForText(value: string, event: NewsEvent, articles = event.articles) {
+  const tokens = normalizedNumberTokens(value)
+  if (!tokens.length) return articles
+  return articles.filter((article) => articleSupportsNumbers(article, tokens, value))
+}
+
+function articleSupportsNumericExpression(article: NewsEvent['articles'][number], expression: string, context: string) {
+  if (!articleSupportsNumbers(article, normalizedNumberTokens(expression), expression)) return false
+  const material = `${article.title} ${article.description} ${article.fullText ?? ''}`
+  const contextObjects = extractEventObjects(context)
+  const materialObjects = extractEventObjects(material)
+  const indicators = new Set(['cpi', 'ppi', 'pce', 'interest-rate', 'bond-yield', 'earnings-results', 'oil-price'])
+  const contextIndicators = new Set([...contextObjects].filter((item) => indicators.has(item)))
+  const materialIndicators = new Set([...materialObjects].filter((item) => indicators.has(item)))
+  if (contextIndicators.size && materialIndicators.size && ![...contextIndicators].some((item) => materialIndicators.has(item))) return false
+  const contextEntities = new Set(extractEntities(context))
+  const materialEntities = new Set(extractEntities(material))
+  if (contextEntities.size && materialEntities.size && ![...contextEntities].some((item) => materialEntities.has(item))) return false
+  const contextActions = extractActions(context)
+  const materialActions = extractActions(material)
+  if (contextActions.size && materialActions.size && ![...contextActions].some((item) => materialActions.has(item))) return false
+  const contextDates = extractDates(context)
+  const materialDates = extractDates(material)
+  if (contextDates.length && materialDates.length && !contextDates.every((date) => materialDates.includes(date))) return false
+  return true
+}
+
+function removeUnsupportedNumericExpressions(value: string, event: NewsEvent, articles = event.articles) {
+  const expressions = numericExpressions(value)
+  if (!expressions.length) return value.trim()
+  let output = value
+  for (const expression of [...expressions].reverse()) {
+    if (articles.some((article) => articleSupportsNumericExpression(article, expression.raw, value))) continue
+    output = `${output.slice(0, expression.index)}${output.slice(expression.index + expression.raw.length)}`
+  }
+  return output
+    .replace(/(?:约|超过|近|逾|达到|增至|升至|降至|为)\s*(?=[，。；、]|$)/gu, '')
+    .replace(/(?:筹集|募集|融资|投资)\s*(?=建设|扩建|扩产|推进|用于)/gu, (action) => `${action}资金并`)
+    .replace(/增长\s*(?=[，。；]|$)/gu, '出现增长')
+    .replace(/下降\s*(?=[，。；]|$)/gu, '出现下降')
+    .replace(/\(\s*\)|（\s*）/gu, '')
+    .replace(/\s+([，。；！？])/gu, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/[，；、]{2,}/gu, '，')
+    .trim()
 }
 
 function sanitizeNumericText(value: string, event: NewsEvent, fallback: string) {
-  if (!normalizedNumberTokens(value).length) return value
-  const allowed = numericFactWhitelist(event)
-  const exact = allowed.find((item) => item.fact === value.normalize('NFKC').replace(/\s+/g, ' ').trim())
-  return exact ? exact.fact : fallback
+  if (!normalizedNumberTokens(value).length) return value.trim()
+  const sentences = value.split(/(?<=[。！？!?；;])\s*/u).filter(Boolean)
+  const repaired = sentences.map((sentence) => removeUnsupportedNumericExpressions(sentence, event)).filter((sentence) => {
+    const meaningful = sentence.replace(/[\s\p{P}\p{S}]/gu, '')
+    return meaningful.length >= 6
+  })
+  return repaired.join('').trim() || fallback
 }
 
 export function sanitizeModelFacts(event: NewsEvent, facts: string[], incomingSources: unknown) {
-  const whitelist = numericFactWhitelist(event)
-  const sourceUrls = new Map(event.articles.map((article, index) => [articleSourceId(event, index), article.url]))
   const resolvedIncoming = resolveFactSources(incomingSources, event, facts)
   const incomingByIndex = new Map(resolvedIncoming.map((item) => [item.factIndex, item.urls]))
   const keyFacts: string[] = []
   const factSources: Array<{ factIndex: number; urls: string[] }> = []
   facts.slice(0, 4).forEach((fact, originalIndex) => {
     const normalized = fact.normalize('NFKC').replace(/\s+/g, ' ').trim()
-    const numeric = normalizedNumberTokens(normalized).length > 0
-    const allowed = numeric ? whitelist.find((item) => item.fact === normalized) : undefined
-    const safeFact = numeric && !allowed ? qualitativeNumericFallback(event) : normalized
+    const incomingUrls = incomingByIndex.get(originalIndex) ?? []
+    const linkedArticles = incomingUrls.length ? event.articles.filter((article) => incomingUrls.includes(article.url)) : event.articles
+    const safeFact = removeUnsupportedNumericExpressions(normalized, event, linkedArticles)
     if (!safeFact || keyFacts.includes(safeFact)) return
     const factIndex = keyFacts.length
     keyFacts.push(safeFact)
-    const urls = allowed?.sourceIds.flatMap((sourceId) => sourceUrls.get(sourceId) ?? [])
-      ?? incomingByIndex.get(originalIndex)
-      ?? [event.primaryArticle.url]
+    const numericMatches = supportingArticlesForText(safeFact, event, linkedArticles)
+    const urls = incomingUrls.length ? incomingUrls
+      : numericMatches.length ? numericMatches.slice(0, 2).map((article) => article.url)
+        : [event.primaryArticle.url]
     factSources.push({ factIndex, urls: [...new Set(urls)].filter(Boolean) })
   })
-  if (!keyFacts.length) return {
-    keyFacts: [qualitativeNumericFallback(event)],
-    factSources: [{ factIndex: 0, urls: [event.primaryArticle.url] }],
+  if (!keyFacts.length) {
+    const specific = buildEventSpecificContent(event)
+    return {
+      keyFacts: specific.keyFacts,
+      factSources: specific.keyFacts.map((_, factIndex) => ({ factIndex, urls: [specific.sourceUrl] })),
+    }
   }
   return { keyFacts, factSources }
 }
@@ -310,7 +399,7 @@ function resolveFactSources(
     if (resolved.has(factIndex)) return
     const tokens = normalizedNumberTokens(fact)
     if (!tokens.length) return
-    const matches = event.articles.filter((article) => articleSupportsNumbers(article, tokens))
+    const matches = event.articles.filter((article) => articleSupportsNumbers(article, tokens, fact))
     if (matches.length) resolved.set(factIndex, new Set(matches.slice(0, 2).map((article) => article.url)))
   })
   return [...resolved.entries()]
@@ -439,11 +528,12 @@ function mergeModelBriefing(baseline: DailyBriefing, value: unknown, events: New
     const sanitizedFacts = hasIncomingKeyFacts
       ? sanitizeModelFacts(event, incoming.keyFacts, incoming.factSources)
       : { keyFacts: story.keyFacts, factSources: story.factSources }
+    const specific = buildEventSpecificContent(event)
     const safeArray = (value: unknown, minimum: number, fallback: string[]) => stringArray(value, minimum)
-      ? value.slice(0, 5).map((item, itemIndex) => sanitizeNumericText(item, event, fallback[itemIndex] ?? fallback[0] ?? qualitativeNumericFallback(event)))
+      ? value.slice(0, 5).map((item, itemIndex) => sanitizeNumericText(item, event, fallback[itemIndex] ?? fallback[0] ?? specific.summary))
       : fallback
     const trend = normalizeTrend(incoming.trend, story.trend, event)
-    return {
+    const mergedStory = {
       ...story,
       title: sanitizeNumericText(preferredString(incoming.title, story.title), event, story.title),
       summary: sanitizeNumericText(preferredString(incoming.summary, story.summary), event, story.summary),
@@ -465,6 +555,7 @@ function mergeModelBriefing(baseline: DailyBriefing, value: unknown, events: New
       },
       tags: stringArray(incoming.tags) ? incoming.tags.slice(0, 3) : story.tags,
     }
+    return repairStoryContentFields(mergedStory, story, event)
   })
   return {
     ...baseline,
@@ -492,6 +583,64 @@ function hanRatio(value: string) {
   return (meaningful.match(/[\p{Script=Han}]/gu) ?? []).length / meaningful.length
 }
 
+export function repairStoryContentFields(story: BriefingStory, baseline: BriefingStory, event: NewsEvent): BriefingStory {
+  const specific = buildEventSpecificContent(event)
+  const originalTitleWasPlaceholder = isPlaceholderTitle(story.title)
+  const originalTitleMatchedEventShape = hasConcreteActorAndAction(story.title, event)
+  const probableWrongEventDraft = !originalTitleWasPlaceholder && !originalTitleMatchedEventShape
+  const fallbackTitle = !isPlaceholderTitle(baseline.title) && hasConcreteActorAndAction(baseline.title, event)
+    ? baseline.title
+    : specific.title
+  const title = isPlaceholderTitle(story.title) || !hasConcreteActorAndAction(story.title, event) || hanRatio(story.title) < 0.18
+    ? fallbackTitle
+    : story.title
+  const titleGroundedSummary = `${title.replace(/[。；]$/u, '')}；现有来源材料明确记录了这一具体动作。`
+  const fallbackSummary = !isPlaceholderSummary(baseline.summary) && hasInformativeSummary(baseline.summary, event)
+    ? baseline.summary
+    : hasInformativeSummary(titleGroundedSummary, event) ? titleGroundedSummary : specific.summary
+  const summary = isPlaceholderSummary(story.summary) || !hasInformativeSummary(story.summary, event) || hanRatio(story.summary) < 0.32
+    ? fallbackSummary
+    : story.summary
+
+  const retainedFacts: string[] = []
+  const retainedSources: BriefingStory['factSources'] = []
+  const allowedUrls = new Set(event.articles.map((article) => article.url))
+  story.keyFacts.forEach((fact, originalIndex) => {
+    if (!fact.trim() || isPlaceholderSummary(fact)) return
+    const urls = story.factSources.find((link) => link.factIndex === originalIndex)?.urls ?? []
+    if (!urls.length || urls.some((url) => !allowedUrls.has(url))) return
+    const numberTokens = normalizedNumberTokens(fact)
+    if (numberTokens.length) {
+      const linkedArticles = event.articles.filter((article) => urls.includes(article.url))
+      if (!linkedArticles.some((article) => articleSupportsNumbers(article, numberTokens, fact))) return
+    }
+    const factIndex = retainedFacts.length
+    retainedFacts.push(fact)
+    retainedSources.push({ factIndex, urls })
+  })
+  const keyFacts = retainedFacts.length ? retainedFacts : specific.keyFacts
+  const factSources = retainedFacts.length
+    ? retainedSources
+    : specific.keyFacts.map((_, factIndex) => ({ factIndex, urls: [specific.sourceUrl] }))
+  const prediction = `${story.trend.nearTerm} ${story.trend.mediumTerm}`
+  const trend = CONDITIONAL_PREDICTION.test(prediction) && story.trend.signalsToWatch.length >= 2 ? story.trend : baseline.trend
+  return {
+    ...story,
+    title,
+    summary,
+    keyFacts,
+    factSources,
+    whyItMatters: !probableWrongEventDraft && hanRatio(story.whyItMatters) >= 0.32 ? story.whyItMatters : baseline.whyItMatters,
+    background: !probableWrongEventDraft && hanRatio(story.background) >= 0.32 ? story.background : baseline.background,
+    impactChain: probableWrongEventDraft ? baseline.impactChain : story.impactChain,
+    affectedParties: probableWrongEventDraft ? baseline.affectedParties : story.affectedParties,
+    uncertainties: !probableWrongEventDraft && hanRatio(story.uncertainties) >= 0.25 ? story.uncertainties : baseline.uncertainties,
+    glossary: probableWrongEventDraft ? baseline.glossary : story.glossary,
+    trend: probableWrongEventDraft ? baseline.trend : trend,
+    tags: probableWrongEventDraft ? baseline.tags : story.tags,
+  }
+}
+
 export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
   const errors: string[] = []
   const eventById = new Map(events.map((event) => [event.id, event]))
@@ -507,6 +656,11 @@ export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
     const narrow = event?.entities[0] ?? story.tags[0] ?? story.id
     entityCounts.set(narrow, (entityCounts.get(narrow) ?? 0) + 1)
     if (hanRatio(story.title) < 0.18 || hanRatio(`${story.summary}${story.whyItMatters}${story.background}`) < 0.45) errors.push(`${story.id} 不是自然完整中文`)
+    if (isPlaceholderTitle(story.title)) errors.push(`${story.id} 使用占位模板标题`)
+    if (isPlaceholderSummary(story.summary)) errors.push(`${story.id} 使用占位模板摘要`)
+    if (event && !hasConcreteActorAndAction(story.title, event)) errors.push(`${story.id} 标题未说明具体主体与动作`)
+    if (event && !hasInformativeSummary(story.summary, event)) errors.push(`${story.id} 摘要没有来源支持的具体变化`)
+    if (story.keyFacts.some((fact) => isPlaceholderSummary(fact))) errors.push(`${story.id} 关键事实包含占位文案`)
     const allowedUrls = new Set(event?.articles.map((article) => article.url) ?? [])
     story.keyFacts.forEach((fact, factIndex) => {
       const links = story.factSources.find((link) => link.factIndex === factIndex)?.urls ?? []
@@ -517,7 +671,7 @@ export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
       }
       if (numberTokens.length) {
         const linkedArticles = event?.articles.filter((article) => links.includes(article.url)) ?? []
-        if (!linkedArticles.some((article) => articleSupportsNumbers(article, numberTokens))) {
+        if (!linkedArticles.some((article) => articleSupportsNumbers(article, numberTokens, fact))) {
           errors.push(`${story.id} 的数字事实 ${factIndex} 未被关联来源材料支持`)
         }
       }
@@ -582,18 +736,13 @@ function finalPrompt(collection: CollectionResult, events: NewsEvent[]) {
   return `你是 DailyNews 的中文深度简报主编，当前领域是“${config.title}”。程序已经确定并排序了 5 个事件槽位。请逐槽写作，不得选择、删除、交换或自行生成事件 ID。
 
 硬规则：严格按 slot 1–5 返回且每个 slot 仅一次；不要输出 id。标题与正文使用自然克制中文。
-事实规则：数字事实只能逐字复制该槽位 numericFactWhitelist 中的完整 fact，不得改写、舍入、拼接或新增数字。非数字事实只能来自 articles。每条 keyFacts 都要用 factSources 关联已有 sourceId；不要复制或编造 URL。不得把分析写成事实。
+事实规则：每个数字都必须能在该槽位 numericFactWhitelist 或 articles 中按“主体、指标、数值、单位、时间、来源”对应；允许等值货币单位转换、百分比与合理舍入，不得把不同指标拼接。无法确认的数字只删去对应数字或句子，绝不能把整条新闻改成套话。非数字事实只能来自 articles。每条 keyFacts 都要用 factSources 关联已有 sourceId；不要复制或编造 URL。不得把分析写成事实。
+内容规则：每个标题必须明确“谁做了什么”，并包含动作对象或结果；摘要必须写出 1–2 个来源直接支持的具体变化。禁止“来源/公司＋发布＋主题＋相关更新”，也禁止“来源材料发布了相关新信息”“这里只保留定性结论”“具体细节以来源为准”等占位文案。英文材料要写成具体中文，不得退化成来源名模板。
 预测规则：nearTerm 和 mediumTerm 分别输出 condition 与 outlook；condition 说明成立条件，outlook 只写条件成立时可能发生的结果。另给 2–4 个可验证 signalsToWatch。
 深度：summary 80–150 字；keyFacts 2–4 条；whyItMatters 80–150 字；background 100–180 字；impactChain 3–5 节点；affectedParties 2–4 条；uncertainties 明确信息边界；glossary 1–4 个。领域 overview/logic/newKnowledge/outlook 各 100–200 字，keyTakeaway 50–100 字。
 只输出 JSON：
 {"overview":"","keyTakeaway":"","logic":"","newKnowledge":"","outlook":"","trendRadar":[{"theme":"","direction":"↑↑|↑|→|↓|高波动","reason":""}],"watchNext":[""],"stories":[{"slot":1,"title":"","summary":"","keyFacts":["",""],"factSources":[{"factIndex":0,"sourceIds":[""]}],"whyItMatters":"","background":"","impactChain":["","", ""],"affectedParties":["",""],"uncertainties":"","glossary":[{"term":"","definition":""}],"trend":{"nearTerm":{"condition":"如果……","outlook":"可能……"},"mediumTerm":{"condition":"若……","outlook":"可能……"},"signalsToWatch":["",""]},"tags":[""]}]}
 固定槽位：${JSON.stringify(modelInput(events, 5_000, collection.previousTitles ?? [], true))}`
-}
-
-function storyIdsFromErrors(errors: string[], events: NewsEvent[]) {
-  return events
-    .map((event) => event.id)
-    .filter((id) => errors.some((error) => error.startsWith(`${id} `)))
 }
 
 function pipelineMetrics(briefing: DailyBriefing, retries: number) {
@@ -649,11 +798,15 @@ export async function finalizeBriefing(
       const merged = normalizeRanking(mergeModelBriefing(fallback, value, slotEvents))
       lastErrors = validateBriefing(merged, slotEvents)
       if (lastErrors.length) {
-        const affectedIds = new Set(storyIdsFromErrors(lastErrors, slotEvents))
         const fallbackById = new Map(fallback.stories.map((story) => [story.id, story]))
+        const eventById = new Map(slotEvents.map((event) => [event.id, event]))
         const locallyRepaired = normalizeRanking({
           ...merged,
-          stories: merged.stories.map((story) => affectedIds.has(story.id) ? fallbackById.get(story.id) ?? story : story),
+          stories: merged.stories.map((story) => {
+            const event = eventById.get(story.id)
+            const baselineStory = fallbackById.get(story.id)
+            return event && baselineStory ? repairStoryContentFields(story, baselineStory, event) : story
+          }),
         })
         const repairedErrors = validateBriefing(locallyRepaired, slotEvents)
         if (!repairedErrors.length) {
@@ -662,7 +815,7 @@ export async function finalizeBriefing(
             pipeline: {
               ...pipelineMetrics(locallyRepaired, Math.max(0, modelCalls - 1)),
               qualityStatus: 'passed' as const,
-              warnings: [...locallyRepaired.pipeline.warnings, `程序已将 ${affectedIds.size} 条未通过事实或语言门禁的新闻回退为来源约束稿`],
+              warnings: [...locallyRepaired.pipeline.warnings, '程序已逐字段修复未通过事实或语言门禁的内容，保留其余合格字段'],
             },
           }
         }

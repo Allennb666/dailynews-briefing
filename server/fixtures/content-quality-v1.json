@@ -1,0 +1,19 @@
+{
+  "nvidiaFinancing": {
+    "title": "Press Release Details",
+    "description": "NVIDIA Partners With Apollo, BlackRock, Blackstone, Brookfield, Goldman Sachs and KKR to Establish AI Compute Infrastructure Financing Platforms to Mobilize Over $500 Billion of Third-Party Capital",
+    "secondaryTitle": "Nvidia and Wall Street team up on $500 billion bet on AI infrastructure"
+  },
+  "skHynixExpansion": {
+    "title": "Exclusive look inside SK Hynix's $720 billion AI memory expansion",
+    "description": "SK Hynix is expanding AI memory capacity to serve rising demand for AI infrastructure."
+  },
+  "englishSource": {
+    "title": "Berkshire adds $17 billion to Alphabet stake",
+    "description": "Berkshire Hathaway added to its Alphabet stake."
+  },
+  "placeholderTitle": "CNBC发布投资市场相关更新",
+  "placeholderSummary": "来源材料发布了与当前主题相关的新信息；这里仅保留原文可以直接支持的定性事实，具体细节以来源页面为准。",
+  "placeholderNumeric": "来源材料披露了与当前事件相关的量化变化；为避免脱离原文语境，这里仅保留定性结论。",
+  "unsupportedNumericFact": "NVIDIA计划募集999亿美元用于AI算力基础设施建设。"
+}
