@@ -55,10 +55,10 @@
           "eventId": "049f3f634743",
           "rank": 1,
           "title": "印尼首所大学 AI 中心启用：政府、企业与高校共建本土算力生态",
-          "summary": "印尼通信与数字事务部联合 Indosat、NVIDIA 及加查马达大学（UGM），在日惹正式启用该国首个大学 AI 技术中心。该中心依托 NVIDIA 全栈平台与 Indosat 主权 GPU 服务，聚焦医疗、农业及灾害响应三大领域，旨在解决结核病筛查、精准农业及自然灾害预警等紧迫国家挑战，培养本土 AI 人才。",
+          "summary": "印度尼西亚通信与数字事务部联合Indosat、NVIDIA和加查马达大学，在日惹启用该国首个大学AI技术中心；项目聚焦医疗、农业与灾害响应，并以本土算力和人才培养支撑实际应用。",
           "keyFacts": [
-            "” “UGM is committed to supporting Indonesia&#8217;",
-            "Indonesia records over 1 million new tuberculosis (TB) cases every year."
+            "该中心设在日惹，由政府、Indosat、NVIDIA与加查马达大学共同推进。",
+            "首批应用方向包括医疗、农业和灾害响应。"
           ],
           "whyItMatters": "此举标志着印尼从单纯的 AI 技术采用者向创新贡献者转型。通过整合政府政策、电信基础设施与顶尖学术资源，印尼试图突破算力匮乏瓶颈，直接利用 AI 解决本国人口规模大、农业占比高及自然灾害频发等结构性难题，具有显著的地缘战略意义。",
           "background": "作为全球第四人口大国，印尼长期面临高端计算资源短缺问题，限制了科研从理论到落地的转化。此次成立的 UGM Indosat NVAITC 是印尼“卓越 AI 中心”倡议的核心成果，旨在通过提供企业级加速计算、开源模型及技术指导，连接全球专家网络，赋能本地研究人员开发针对本土场景的解决方案。",
@@ -152,9 +152,10 @@
           "eventId": "287dabd3d3cc",
           "rank": 2,
           "title": "NVIDIA联合多家金融机构设立AI算力基础设施融资平台",
-          "summary": "NVIDIA联合多家金融机构设立AI算力基础设施融资平台；现有来源材料明确记录了这一具体动作。",
+          "summary": "参与合作的机构包括Apollo、BlackRock、Blackstone、Brookfield、高盛和KKR；融资平台计划为AI算力基础设施动员超过5000亿美元第三方资本。",
           "keyFacts": [
-            "NVIDIA联合多家金融机构设立AI算力基础设施融资平台。"
+            "融资平台计划动员超过5000亿美元第三方资本。",
+            "合作方包括Apollo、BlackRock、Blackstone、Brookfield、高盛和KKR。"
           ],
           "whyItMatters": "这条信息可能影响技术供应商与开发者与企业客户，但仍需结合后续数据判断真实影响。",
           "background": "这条信息需要放在技术能力、产品落地与产业供给三个层面分别判断，不能只看发布标题。",
@@ -303,7 +304,13 @@
             {
               "factIndex": 0,
               "urls": [
-                "https://nvidianews.nvidia.com/news/nvidia-partners-with-apollo-blackrock-blackstone-brookfield-goldman-sachs-and-kkr-to-establish-ai-compute-infrastructure-financing-platforms-to-mobilize-over-500-billion-of-third-party-capital"
+                "https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Partners-With-Apollo-BlackRock-Blackstone-Brookfield-Goldman-Sachs-and-KKR-to-Establish-AI-Compute-Infrastructure-Financing-Platforms-to-Mobilize-Over-500-Billion-of-Third-Party-Capital/default.aspx"
+              ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Partners-With-Apollo-BlackRock-Blackstone-Brookfield-Goldman-Sachs-and-KKR-to-Establish-AI-Compute-Infrastructure-Financing-Platforms-to-Mobilize-Over-500-Billion-of-Third-Party-Capital/default.aspx"
               ]
             }
           ],
@@ -325,9 +332,10 @@
           "eventId": "f397434a108a",
           "rank": 3,
           "title": "SK海力士扩建AI内存产能",
-          "summary": "SK海力士扩建AI内存产能；现有来源材料明确记录了这一具体动作。",
+          "summary": "CNBC披露的扩产计划规模为7200亿美元，重点指向AI内存供给；这使事件从一般产能表态变成一项有明确规模的长期扩建安排。",
           "keyFacts": [
-            "SK海力士扩建AI内存产能。"
+            "扩产计划的公开规模为7200亿美元。",
+            "扩建对象是面向AI需求的内存产能。"
           ],
           "whyItMatters": "这条信息可能影响技术供应商与开发者与企业客户，但仍需结合后续数据判断真实影响。",
           "background": "这条信息需要放在技术能力、产品落地与产业供给三个层面分别判断，不能只看发布标题。",
@@ -383,6 +391,12 @@
               "urls": [
                 "https://www.cnbc.com/video/2026/08/13/exclusive-look-inside-sk-hynixs-720-billion-ai-memory-expansion.html"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.cnbc.com/video/2026/08/13/exclusive-look-inside-sk-hynixs-720-billion-ai-memory-expansion.html"
+              ]
             }
           ],
           "publishedAt": "2026-08-13T08:59:01.000Z",
@@ -403,9 +417,10 @@
           "eventId": "3f8e41d7f1d3",
           "rank": 4,
           "title": "Grok卷入将儿童照片生成露骨图像的滥用指控",
-          "summary": "Grok卷入将儿童照片生成露骨图像的滥用指控；现有来源材料明确记录了这一具体动作。",
+          "summary": "一名女性称，其继父使用Grok把她的童年照片转换成露骨图像；争议涉及真实儿童照片被二次生成，问题核心是产品滥用与未成年人图像安全。",
           "keyFacts": [
-            "Grok卷入将儿童照片生成露骨图像的滥用指控。"
+            "投诉者称涉事原图是她的童年照片。",
+            "指控称该照片被Grok转换为露骨图像。"
           ],
           "whyItMatters": "这条信息可能影响技术供应商与开发者与企业客户，但仍需结合后续数据判断真实影响。",
           "background": "这条信息需要放在技术能力、产品落地与产业供给三个层面分别判断，不能只看发布标题。",
@@ -461,6 +476,12 @@
               "urls": [
                 "https://techcrunch.com/2026/08/15/woman-claims-her-stepfather-used-grok-to-transform-childhood-photo-into-explicit-imagery"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://techcrunch.com/2026/08/15/woman-claims-her-stepfather-used-grok-to-transform-childhood-photo-into-explicit-imagery"
+              ]
             }
           ],
           "publishedAt": "2026-08-15T21:29:19.000Z",
@@ -479,9 +500,10 @@
           "eventId": "c867cc36cbcb",
           "rank": 5,
           "title": "Anthropic公布Claude新水印机制细节",
-          "summary": "Anthropic公布Claude新水印机制细节；现有来源材料明确记录了这一具体动作。",
+          "summary": "此次披露聚焦Claude新水印的具体运作方式，并把水印直接用于识别模型生成材料；相比只宣布推出功能，新增信息是机制如何承担内容标记与识别作用。",
           "keyFacts": [
-            "Anthropic公布Claude新水印机制细节。"
+            "披露对象是Claude的新水印机制。",
+            "新材料重点说明水印如何用于识别模型生成内容。"
           ],
           "whyItMatters": "这条信息可能影响技术供应商与开发者与企业客户，但仍需结合后续数据判断真实影响。",
           "background": "这条信息需要放在技术能力、产品落地与产业供给三个层面分别判断，不能只看发布标题。",
@@ -537,6 +559,12 @@
               "urls": [
                 "https://techcrunch.com/2026/08/15/anthropic-shares-more-details-about-how-claudes-new-watermarks-will-work"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://techcrunch.com/2026/08/15/anthropic-shares-more-details-about-how-claudes-new-watermarks-will-work"
+              ]
             }
           ],
           "publishedAt": "2026-08-15T18:58:39.000Z",
@@ -570,7 +598,15 @@
           "Google Blog 暂时无法获取"
         ],
         "articleFetchSuccess": 18,
-        "qwenRetries": 0
+        "qwenRetries": 0,
+        "contentQuality": {
+          "repeatedSummaryCount": 0,
+          "noNewFactSummaryCount": 0,
+          "titleSummaryMismatchCount": 0,
+          "crossEventSourceCount": 0,
+          "htmlArtifactCount": 0,
+          "englishFragmentCount": 0
+        }
       }
     },
     {
@@ -614,10 +650,11 @@
           "id": "8f0d7aa10720",
           "eventId": "8f0d7aa10720",
           "rank": 1,
-          "title": "OpenAI 高管离职潮引 IPO 前‘红旗’预警",
-          "summary": "OpenAI 高管离职潮引 IPO 前‘红旗’预警；现有来源材料明确记录了这一具体动作。",
+          "title": "OpenAI高管离职潮引发IPO前治理担忧",
+          "summary": "在高管离职引发上市前治理担忧之际，内部信息显示OpenAI七月收入运行率环比增长超过20%，企业客户相关收入增长32%；业务扩张与组织稳定性风险同时上升。",
           "keyFacts": [
-            "Brockman told employees on Thursday that run rate revenue increased more than 20% month over month in July, including 32% growth for business customers, according to an internal Slack message shared with CNBC."
+            "OpenAI七月收入运行率环比增长超过20%。",
+            "企业客户相关收入增长32%。"
           ],
           "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
           "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -684,6 +721,12 @@
               "urls": [
                 "https://www.cnbc.com/2026/08/14/open-ai-ipo-red-flag.html"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.cnbc.com/2026/08/14/open-ai-ipo-red-flag.html"
+              ]
             }
           ],
           "publishedAt": "2026-08-14T19:07:11.000Z",
@@ -704,9 +747,10 @@
           "eventId": "fa194d1031b8",
           "rank": 2,
           "title": "伯克希尔增持Alphabet股份",
-          "summary": "伯克希尔增持Alphabet股份；现有来源材料明确记录了这一具体动作。",
+          "summary": "伯克希尔此次增加的Alphabet持仓价值约170亿美元；公开标题给出了明确的增持对象与规模，使这次组合调整可以与其其他大型持仓变化分开观察。",
           "keyFacts": [
-            "伯克希尔增持Alphabet股份。"
+            "伯克希尔增加了Alphabet持仓。",
+            "新增持仓价值约170亿美元。"
           ],
           "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
           "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -762,6 +806,12 @@
               "urls": [
                 "https://www.cnbc.com/2026/08/15/berkshire-adds-17-billion-to-alphabet-stake.html"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.cnbc.com/2026/08/15/berkshire-adds-17-billion-to-alphabet-stake.html"
+              ]
             }
           ],
           "publishedAt": "2026-08-15T12:50:41.000Z",
@@ -779,10 +829,11 @@
           "id": "03a29f0e1d12",
           "eventId": "03a29f0e1d12",
           "rank": 3,
-          "title": "美国劳工统计局发布生产者价格指数数据",
-          "summary": "美国劳工统计局发布生产者价格指数数据；现有来源材料明确记录了这一具体动作。",
+          "title": "美国劳工统计局发布2026年7月生产者价格指数结果",
+          "summary": "这次官方更新对应2026年7月生产者价格指数结果，发布主体是美国劳工统计局；事件的可核验增量是统计月份和指标口径，而不是一条泛化的通胀消息。",
           "keyFacts": [
-            "美国劳工统计局发布生产者价格指数数据。"
+            "本次发布对应2026年7月数据。",
+            "发布指标是生产者价格指数，来源为美国劳工统计局。"
           ],
           "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
           "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -838,6 +889,12 @@
               "urls": [
                 "https://www.bls.gov/news.release/archives/ppi_08132026.htm"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.bls.gov/news.release/archives/ppi_08132026.htm"
+              ]
             }
           ],
           "publishedAt": "2026-08-13T12:38:39.000Z",
@@ -855,10 +912,11 @@
           "id": "cd800abcbfbb",
           "eventId": "cd800abcbfbb",
           "rank": 4,
-          "title": "英国拟下调电动车销售目标",
-          "summary": "英国拟下调电动车销售目标；现有来源材料明确记录了这一具体动作。",
+          "title": "英国拟在车企施压后下调电动车销售目标",
+          "summary": "英国正讨论下调电动车销售目标，直接背景是汽车制造商施压；这意味着调整对象是销售目标本身，而非取消电动车政策，后续要看正式目标和执行时间是否变化。",
           "keyFacts": [
-            "英国拟下调电动车销售目标。"
+            "英国正在讨论下调电动车销售目标。",
+            "这项讨论发生在汽车制造商施压之后。"
           ],
           "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
           "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -914,6 +972,12 @@
               "urls": [
                 "https://www.bbc.co.uk/news/articles/c1l1yj0zd9no?at_medium=RSS&at_campaign=rss"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.bbc.co.uk/news/articles/c1l1yj0zd9no?at_medium=RSS&at_campaign=rss"
+              ]
             }
           ],
           "publishedAt": "2026-08-14T15:58:21.000Z",
@@ -931,10 +995,11 @@
           "id": "b7e4db6530ba",
           "eventId": "b7e4db6530ba",
           "rank": 5,
-          "title": "美国证交会指控预IPO投资骗局相关机构欺诈散户",
-          "summary": "美国证交会指控预IPO投资骗局相关机构欺诈散户；现有来源材料明确记录了这一具体动作。",
+          "title": "美国证交会指控四方实施7400万美元预IPO投资骗局",
+          "summary": "美国证交会指控一名电话推销操盘者和三家实体欺诈散户，涉案预IPO投资骗局规模为7400万美元；案件同时给出了被告范围、受害对象与金额。",
           "keyFacts": [
-            "美国证交会指控预IPO投资骗局相关机构欺诈散户。"
+            "被指控对象包括一名操盘者和三家实体。",
+            "涉案预IPO投资骗局规模为7400万美元，受害对象为散户投资者。"
           ],
           "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
           "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -990,6 +1055,12 @@
               "urls": [
                 "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo"
+              ]
             }
           ],
           "publishedAt": "2026-08-14T20:16:34.000Z",
@@ -1023,7 +1094,15 @@
         "qualityStatus": "passed",
         "warnings": [],
         "articleFetchSuccess": 18,
-        "qwenRetries": 0
+        "qwenRetries": 0,
+        "contentQuality": {
+          "repeatedSummaryCount": 0,
+          "noNewFactSummaryCount": 0,
+          "titleSummaryMismatchCount": 0,
+          "crossEventSourceCount": 0,
+          "htmlArtifactCount": 0,
+          "englishFragmentCount": 0
+        }
       }
     },
     {
@@ -1073,9 +1152,10 @@
           "eventId": "a16bd13492f0",
           "rank": 1,
           "title": "两艘阿联酋油轮在霍尔木兹海峡遇袭",
-          "summary": "两艘阿联酋油轮在霍尔木兹海峡遇袭；现有来源材料明确记录了这一具体动作。",
+          "summary": "两艘隶属阿联酋ADNOC的油轮在通过霍尔木兹海峡时遭到袭击，阿联酋随后公开谴责；事件直接涉及关键能源航道与商业油轮安全。",
           "keyFacts": [
-            "两艘阿联酋油轮在霍尔木兹海峡遇袭。"
+            "遇袭对象是两艘阿联酋ADNOC油轮。",
+            "袭击发生在油轮通过霍尔木兹海峡期间。"
           ],
           "whyItMatters": "两艘油轮在霍尔木兹海峡遇袭，会直接抬高关键航道的安全风险，并可能影响船舶调度、保险成本和能源运输预期。事件的实际外溢程度取决于后续通航情况及地区各方行动。",
           "background": "霍尔木兹海峡连接波斯湾与外海，是能源运输和地区安全的关键航道。油轮遇袭不仅是单一船舶安全事件，也会通过航运安排、保险定价和供应预期影响跨境企业与能源市场。",
@@ -1184,6 +1264,12 @@
               "urls": [
                 "https://apnews.com/article/iran-uae-us-strait-hormuz-august-14-2026-e8565c608ac5283ec8103c85df924b13"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://apnews.com/article/iran-uae-us-strait-hormuz-august-14-2026-e8565c608ac5283ec8103c85df924b13"
+              ]
             }
           ],
           "publishedAt": "2026-08-13T00:00:00.000Z",
@@ -1203,10 +1289,11 @@
           "id": "14514ccce144",
           "eventId": "14514ccce144",
           "rank": 2,
-          "title": "印度尼西亚开展地震救援并搜寻幸存者",
-          "summary": "印度尼西亚开展地震救援并搜寻幸存者；现有来源材料明确记录了这一具体动作。",
+          "title": "印度尼西亚7.7级地震后展开救援",
+          "summary": "印度尼西亚近海发生7.7级强震并触发大规模疏散，东部地区已有数十人死亡；救援人员继续搜寻幸存者，事件包含震级、伤亡和疏散三项明确信息。",
           "keyFacts": [
-            "印度尼西亚开展地震救援并搜寻幸存者。"
+            "近海地震震级为7.7级，并触发大规模疏散。",
+            "东部地区已有数十人死亡，救援人员仍在搜寻幸存者。"
           ],
           "whyItMatters": "印尼地处环太平洋火山带，地震频发。此次强震不仅造成重大人员伤亡，还暴露了偏远地区基础设施脆弱及应急响应能力的不足。海啸预警虽已解除，但余震风险仍存，需警惕次生灾害。",
           "background": "弗洛雷斯岛位于印尼东部，地质活动频繁。印尼气象、气候和地球物理局（BMKG）在地震后迅速发布海啸预警，促使数千人撤离至高地。此类灾害往往导致通信中断和交通瘫痪，极大增加搜救难度。",
@@ -1316,7 +1403,13 @@
             {
               "factIndex": 0,
               "urls": [
-                "https://www.dw.com/en/indonesia-dozens-dead-after-earthquake-off-flores-island/a-78377990?maca=en-rss-en-top-1022-rdf"
+                "https://www.bbc.co.uk/news/articles/c3v00w5ylw9o?at_medium=RSS&at_campaign=rss"
+              ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.bbc.co.uk/news/articles/c3v00w5ylw9o?at_medium=RSS&at_campaign=rss"
               ]
             }
           ],
@@ -1336,10 +1429,11 @@
           "id": "92680a8c0a1d",
           "eventId": "92680a8c0a1d",
           "rank": 3,
-          "title": "以色列空袭黎巴嫩南部造成伤亡",
-          "summary": "以色列空袭黎巴嫩南部造成伤亡；现有来源材料明确记录了这一具体动作。",
+          "title": "以色列空袭黎巴嫩南部造成11人死亡",
+          "summary": "黎巴嫩方面称，以色列对南部地区的空袭共造成11人死亡；其中安萨尔村外围一栋住宅遭轰炸，7人死亡且建筑被夷平。",
           "keyFacts": [
-            "Israeli warplanes bombed a home on the outskirts of the village of Ansar, killing seven people and flattening the building early on Saturday morning."
+            "黎巴嫩方面公布的总死亡人数为11人。",
+            "安萨尔村外围一栋住宅遭轰炸，7人死亡。"
           ],
           "whyItMatters": "此次袭击打破了六月的停火默契，标志着黎以边境局势急剧恶化。以色列声称打击真主党基础设施，而黎巴嫩总理谴责针对平民的袭击。若冲突升级，可能将周边国家卷入，重燃地区战火。",
           "background": "地缘事件需要区分已发生行动、各方表态、谈判条件和媒体推测，并观察是否出现可验证的现实变化。",
@@ -1434,7 +1528,13 @@
             {
               "factIndex": 0,
               "urls": [
-                "https://www.theguardian.com/world/2026/aug/15/israeli-strike-on-southern-lebanon-kills-seven-in-worst-toll-since-june-state-media-says"
+                "https://www.dw.com/en/lebanon-says-11-killed-in-israeli-airstrikes/a-78383713?maca=en-rss-en-top-1022-rdf"
+              ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.dw.com/en/lebanon-says-11-killed-in-israeli-airstrikes/a-78383713?maca=en-rss-en-top-1022-rdf"
               ]
             }
           ],
@@ -1453,10 +1553,11 @@
           "id": "4d9d2d959ec4",
           "eventId": "4d9d2d959ec4",
           "rank": 4,
-          "title": "韩国提议举行会谈，正式结束与朝鲜的战争状态",
-          "summary": "韩国提议举行会谈，正式结束与朝鲜的战争状态；现有来源材料明确记录了这一具体动作。",
+          "title": "韩国提议与朝鲜举行正式终战会谈",
+          "summary": "韩国总统李在明提出与朝鲜举行会谈，以正式结束仍停留在停战状态的冲突；朝鲜战争自1953年停战协定后一直没有以和平条约正式结束。",
           "keyFacts": [
-            "Lee Jae Myung offers chance to end the conflict, which has been frozen since an armistice in 1953."
+            "韩国提出与朝鲜举行正式终战会谈。",
+            "双方自1953年停战协定后仍未签署正式和平条约。"
           ],
           "whyItMatters": "结束战争状态不仅是象征性的政治姿态，更是构建半岛永久和平机制的基础。这将有助于降低军事误判风险，促进经济合作，并为解决核问题创造更有利的外交环境。",
           "background": "地缘事件需要区分已发生行动、各方表态、谈判条件和媒体推测，并观察是否出现可验证的现实变化。",
@@ -1523,6 +1624,12 @@
               "urls": [
                 "https://www.bbc.co.uk/news/articles/c8en2z9jp2xo?at_medium=RSS&at_campaign=rss"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.bbc.co.uk/news/articles/c8en2z9jp2xo?at_medium=RSS&at_campaign=rss"
+              ]
             }
           ],
           "publishedAt": "2026-08-15T14:40:15.000Z",
@@ -1542,10 +1649,10 @@
           "eventId": "28f24219dc7e",
           "rank": 5,
           "title": "伊朗与阿曼推进霍尔木兹海峡通航谈判",
-          "summary": "伊朗与阿曼推进霍尔木兹海峡通航谈判；现有来源材料明确记录了这一具体动作。",
+          "summary": "卡塔尔方面称，伊朗与阿曼就重启海峡通航机制的谈判已进入较深入阶段，但方案可能只允许暂时、部分恢复通行，伊朗船只仍需申请许可。",
           "keyFacts": [
-            "彭博能源分析師威爾·甘迺迪 (Will Kennedy) 指出,布蘭特原油 (Brent crude) 本周漲約 12%,反映市場對短期內霍爾木茲通航大幅改善持悲觀態度。",
-            "卡塔爾外交部發言人透露,伊朗與阿曼 (Oman) 就重啟海峽機制的談判已進入先進階段,但細節不透明——可能僅暫時、部分恢復通行,伊朗船隻仍需申請許可。"
+            "谈判涉及暂时、分阶段恢复霍尔木兹海峡通行。",
+            "现有方案下，伊朗船只仍需申请通行许可。"
           ],
           "whyItMatters": "霍尔木兹海峡是全球石油运输的关键咽喉，任何通行限制都将直接冲击全球能源供应。当前谈判的不确定性及船只规避行为表明，尽管有外交接触，实际安全风险并未消除，市场对此反应敏感。",
           "background": "该海峡连接波斯湾与阿曼湾，每日约有全球三分之一的海运石油经此通过。近年来，伊朗与美国及其盟友在该地区的摩擦不断，包括无人机袭击油轮和美军直升机被击落等事件。特朗普政府近期强硬表态加剧了紧张气氛。",
@@ -1653,7 +1760,15 @@
           "UN News 暂时无法获取"
         ],
         "articleFetchSuccess": 18,
-        "qwenRetries": 0
+        "qwenRetries": 0,
+        "contentQuality": {
+          "repeatedSummaryCount": 0,
+          "noNewFactSummaryCount": 0,
+          "titleSummaryMismatchCount": 0,
+          "crossEventSourceCount": 0,
+          "htmlArtifactCount": 0,
+          "englishFragmentCount": 0
+        }
       }
     },
     {
@@ -1707,11 +1822,11 @@
           "id": "ba02b25b1134",
           "eventId": "ba02b25b1134",
           "rank": 1,
-          "title": "世界大学排名显示法国高校保持稳定、中国高校继续上升",
-          "summary": "世界大学排名显示法国高校保持稳定、中国高校继续上升；现有来源材料明确记录了这一具体动作。",
+          "title": "上海软科排名显示法国高校持平、中国高校继续上升",
+          "summary": "2026年上海软科排名收录27所法国高校，与2025年数量相同，其中4所进入全球前100；与此同时，中国高校名次继续上升，榜单仍主要由美国和英国高校占据前列。",
           "keyFacts": [
-            "France maintains its presence in the annual world university rankings, with 27 universities listed, unchanged from 2025, including four in the top 100.",
-            "Chinese universities continue to rise in a ranking still dominated by American and British institutions."
+            "法国共有27所高校上榜，与2025年持平。",
+            "法国有4所高校进入前100，中国高校整体名次继续上升。"
           ],
           "whyItMatters": "大学排名不仅是学术声誉的体现，也影响国际人才流动、科研合作与政府教育投资决策。中国高校的进步显示其在全球知识体系中的角色正在增强。",
           "background": "教育变化需要区分政策倡议、课堂试点、研究证据与大规模实施，单个案例不能直接代表普遍效果。",
@@ -1800,11 +1915,11 @@
           "id": "07a3997b08c8",
           "eventId": "07a3997b08c8",
           "rank": 2,
-          "title": "UNESCO启动数字创意实验室第三阶段，聚焦巴基斯坦",
-          "summary": "UNESCO启动数字创意实验室第三阶段，聚焦巴基斯坦；现有来源材料明确记录了这一具体动作。",
+          "title": "UNESCO在巴基斯坦实施数字创意实验室第三阶段",
+          "summary": "UNESCO通过韩国信托基金在巴基斯坦实施数字创意实验室第三阶段，项目周期为2025至2027年；当地版权产业估计贡献1360亿巴基斯坦卢比，并吸纳约15%的劳动力。",
           "keyFacts": [
-            "UNESCO, through the Korea Funds-in-Trust (KFIT), is implementing the third phase of the Digital Creativity Lab project (2025–2027).",
-            "Copyright-based industries contribute an estimated PKR 136 billion to GDP, and approximately 15% of the national workforce is employed in creative sectors, with youth (ages 15–24) comprising nearly a third."
+            "数字创意实验室第三阶段的项目周期为2025至2027年。",
+            "巴基斯坦版权产业估计贡献1360亿卢比，并吸纳约15%的劳动力。"
           ],
           "whyItMatters": "数字技能已成为创意产业生存关键。该项目不仅提升个体竞争力，也有助于推动国家文化出口与经济多元化。",
           "background": "教育变化需要区分政策倡议、课堂试点、研究证据与大规模实施，单个案例不能直接代表普遍效果。",
@@ -1893,10 +2008,11 @@
           "id": "c94f518ba17b",
           "eventId": "c94f518ba17b",
           "rank": 3,
-          "title": "前剑桥大学教授Jason Arday去世",
-          "summary": "前剑桥大学教授Jason Arday去世；现有来源材料明确记录了这一具体动作。",
+          "title": "前剑桥大学教授Jason Arday在伦敦去世",
+          "summary": "警方称，41岁的Jason Arday在伦敦南部一处地址被发现失去反应，并在现场被宣布死亡；现有材料支持的是发现地点、年龄与现场死亡确认。",
           "keyFacts": [
-            "Greenberg Fri, 08/14/2026 - 04:25 PM Police say the 41-year-old was found unresponsive at an address in south London and pronounced dead at the scene."
+            "Jason Arday去世时41岁。",
+            "他在伦敦南部一处地址被发现失去反应，并在现场被宣布死亡。"
           ],
           "whyItMatters": "Jason Arday是英国少数族裔学者代表人物之一，其突然离世凸显学术圈心理健康议题的重要性，也可能促使高校重新审视教师支持机制。",
           "background": "Arday曾担任剑桥大学社会学系讲师，专注于种族、教育与不平等问题研究。他多次公开讨论学术环境中的系统性障碍，并倡导包容性改革。",
@@ -1960,6 +2076,12 @@
               "urls": [
                 "https://www.insidehighered.com/news/faculty/2026/08/14/former-cambridge-professor-jason-arday-found-dead"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.insidehighered.com/news/faculty/2026/08/14/former-cambridge-professor-jason-arday-found-dead"
+              ]
             }
           ],
           "publishedAt": "2026-08-14T20:25:00.000Z",
@@ -1980,9 +2102,10 @@
           "eventId": "43b323d94ec7",
           "rank": 4,
           "title": "四所美国高校推出学生父母支持计划",
-          "summary": "从奖学金到免费托儿服务，再到入职前培训，四所美国高校正采取措施帮助有子女的学生坚持学业。这些举措反映了高等教育机构对非传统学生群体日益增长的关注。",
+          "summary": "四所高校分别提供奖学金、免费托儿、入学前辅导和就业培训，帮助有子女的学生及照护者继续完成学业；新增信息是支持措施的具体形式，而不只是一般性的校园关怀。",
           "keyFacts": [
-            "From scholarships and free childcare to pre-orientation programs and workforce training, institutions are helping student parents and caregivers persist."
+            "支持措施包括奖学金、免费托儿和入学前辅导。",
+            "部分学校还提供就业培训，服务对象是学生父母和照护者。"
           ],
           "whyItMatters": "学生父母往往面临时间与经济双重压力，缺乏支持易导致辍学。此类计划有助于提升完成率，促进教育公平。",
           "background": "随着成人学习者比例上升，越来越多高校意识到需调整服务模式。部分学校已设立专门办公室协调育儿资源与学术辅导。",
@@ -2046,6 +2169,12 @@
               "urls": [
                 "https://www.insidehighered.com/news/student-success/college-experience/2026/08/14/how-4-colleges-are-supporting-student-parents"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://www.insidehighered.com/news/student-success/college-experience/2026/08/14/how-4-colleges-are-supporting-student-parents"
+              ]
             }
           ],
           "publishedAt": "2026-08-14T07:00:00.000Z",
@@ -2066,9 +2195,10 @@
           "eventId": "f053aeb560af",
           "rank": 5,
           "title": "MIT斯隆管理学院推出晚间MBA课程",
-          "summary": "MIT斯隆管理学院院长Richard Locke介绍新推出的晚间MBA项目，旨在为在职专业人士提供更多学习机会，同时加强与大波士顿地区创新经济的联系。",
+          "summary": "MIT斯隆管理学院推出晚间MBA项目，为在职专业人士扩大就读机会；院长Richard Locke表示，项目还将加强学院与大波士顿地区创新经济的联系。",
           "keyFacts": [
-            "Dean Richard Locke discusses a new program that expands access for working professionals while deepening connections to Greater Boston’s innovation economy."
+            "晚间MBA项目面向在职专业人士。",
+            "项目目标之一是加强与大波士顿地区创新经济的联系。"
           ],
           "whyItMatters": "晚间MBA满足职场人士边工作边深造的需求，有助于提升区域人才素质，并促进产学研融合。",
           "background": "传统全日制MBA难以兼顾职业发展，许多顶尖商学院开始探索灵活学制。MIT斯隆此举顺应趋势，强化其在继续教育领域的布局。",
@@ -2132,6 +2262,12 @@
               "urls": [
                 "https://news.mit.edu/2026/3-questions-mit-sloan-launches-evening-mba-0811"
               ]
+            },
+            {
+              "factIndex": 1,
+              "urls": [
+                "https://news.mit.edu/2026/3-questions-mit-sloan-launches-evening-mba-0811"
+              ]
             }
           ],
           "publishedAt": "2026-08-11T17:40:00.000Z",
@@ -2165,7 +2301,15 @@
         "qualityStatus": "passed",
         "warnings": [],
         "articleFetchSuccess": 18,
-        "qwenRetries": 0
+        "qwenRetries": 0,
+        "contentQuality": {
+          "repeatedSummaryCount": 0,
+          "noNewFactSummaryCount": 0,
+          "titleSummaryMismatchCount": 0,
+          "crossEventSourceCount": 0,
+          "htmlArtifactCount": 0,
+          "englishFragmentCount": 0
+        }
       }
     }
   ],

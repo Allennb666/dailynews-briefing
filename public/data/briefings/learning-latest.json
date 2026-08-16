@@ -49,11 +49,11 @@
       "id": "ba02b25b1134",
       "eventId": "ba02b25b1134",
       "rank": 1,
-      "title": "世界大学排名显示法国高校保持稳定、中国高校继续上升",
-      "summary": "世界大学排名显示法国高校保持稳定、中国高校继续上升；现有来源材料明确记录了这一具体动作。",
+      "title": "上海软科排名显示法国高校持平、中国高校继续上升",
+      "summary": "2026年上海软科排名收录27所法国高校，与2025年数量相同，其中4所进入全球前100；与此同时，中国高校名次继续上升，榜单仍主要由美国和英国高校占据前列。",
       "keyFacts": [
-        "France maintains its presence in the annual world university rankings, with 27 universities listed, unchanged from 2025, including four in the top 100.",
-        "Chinese universities continue to rise in a ranking still dominated by American and British institutions."
+        "法国共有27所高校上榜，与2025年持平。",
+        "法国有4所高校进入前100，中国高校整体名次继续上升。"
       ],
       "whyItMatters": "大学排名不仅是学术声誉的体现，也影响国际人才流动、科研合作与政府教育投资决策。中国高校的进步显示其在全球知识体系中的角色正在增强。",
       "background": "教育变化需要区分政策倡议、课堂试点、研究证据与大规模实施，单个案例不能直接代表普遍效果。",
@@ -142,11 +142,11 @@
       "id": "07a3997b08c8",
       "eventId": "07a3997b08c8",
       "rank": 2,
-      "title": "UNESCO启动数字创意实验室第三阶段，聚焦巴基斯坦",
-      "summary": "UNESCO启动数字创意实验室第三阶段，聚焦巴基斯坦；现有来源材料明确记录了这一具体动作。",
+      "title": "UNESCO在巴基斯坦实施数字创意实验室第三阶段",
+      "summary": "UNESCO通过韩国信托基金在巴基斯坦实施数字创意实验室第三阶段，项目周期为2025至2027年；当地版权产业估计贡献1360亿巴基斯坦卢比，并吸纳约15%的劳动力。",
       "keyFacts": [
-        "UNESCO, through the Korea Funds-in-Trust (KFIT), is implementing the third phase of the Digital Creativity Lab project (2025–2027).",
-        "Copyright-based industries contribute an estimated PKR 136 billion to GDP, and approximately 15% of the national workforce is employed in creative sectors, with youth (ages 15–24) comprising nearly a third."
+        "数字创意实验室第三阶段的项目周期为2025至2027年。",
+        "巴基斯坦版权产业估计贡献1360亿卢比，并吸纳约15%的劳动力。"
       ],
       "whyItMatters": "数字技能已成为创意产业生存关键。该项目不仅提升个体竞争力，也有助于推动国家文化出口与经济多元化。",
       "background": "教育变化需要区分政策倡议、课堂试点、研究证据与大规模实施，单个案例不能直接代表普遍效果。",
@@ -235,10 +235,11 @@
       "id": "c94f518ba17b",
       "eventId": "c94f518ba17b",
       "rank": 3,
-      "title": "前剑桥大学教授Jason Arday去世",
-      "summary": "前剑桥大学教授Jason Arday去世；现有来源材料明确记录了这一具体动作。",
+      "title": "前剑桥大学教授Jason Arday在伦敦去世",
+      "summary": "警方称，41岁的Jason Arday在伦敦南部一处地址被发现失去反应，并在现场被宣布死亡；现有材料支持的是发现地点、年龄与现场死亡确认。",
       "keyFacts": [
-        "Greenberg Fri, 08/14/2026 - 04:25 PM Police say the 41-year-old was found unresponsive at an address in south London and pronounced dead at the scene."
+        "Jason Arday去世时41岁。",
+        "他在伦敦南部一处地址被发现失去反应，并在现场被宣布死亡。"
       ],
       "whyItMatters": "Jason Arday是英国少数族裔学者代表人物之一，其突然离世凸显学术圈心理健康议题的重要性，也可能促使高校重新审视教师支持机制。",
       "background": "Arday曾担任剑桥大学社会学系讲师，专注于种族、教育与不平等问题研究。他多次公开讨论学术环境中的系统性障碍，并倡导包容性改革。",
@@ -302,6 +303,12 @@
           "urls": [
             "https://www.insidehighered.com/news/faculty/2026/08/14/former-cambridge-professor-jason-arday-found-dead"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.insidehighered.com/news/faculty/2026/08/14/former-cambridge-professor-jason-arday-found-dead"
+          ]
         }
       ],
       "publishedAt": "2026-08-14T20:25:00.000Z",
@@ -322,9 +329,10 @@
       "eventId": "43b323d94ec7",
       "rank": 4,
       "title": "四所美国高校推出学生父母支持计划",
-      "summary": "从奖学金到免费托儿服务，再到入职前培训，四所美国高校正采取措施帮助有子女的学生坚持学业。这些举措反映了高等教育机构对非传统学生群体日益增长的关注。",
+      "summary": "四所高校分别提供奖学金、免费托儿、入学前辅导和就业培训，帮助有子女的学生及照护者继续完成学业；新增信息是支持措施的具体形式，而不只是一般性的校园关怀。",
       "keyFacts": [
-        "From scholarships and free childcare to pre-orientation programs and workforce training, institutions are helping student parents and caregivers persist."
+        "支持措施包括奖学金、免费托儿和入学前辅导。",
+        "部分学校还提供就业培训，服务对象是学生父母和照护者。"
       ],
       "whyItMatters": "学生父母往往面临时间与经济双重压力，缺乏支持易导致辍学。此类计划有助于提升完成率，促进教育公平。",
       "background": "随着成人学习者比例上升，越来越多高校意识到需调整服务模式。部分学校已设立专门办公室协调育儿资源与学术辅导。",
@@ -388,6 +396,12 @@
           "urls": [
             "https://www.insidehighered.com/news/student-success/college-experience/2026/08/14/how-4-colleges-are-supporting-student-parents"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.insidehighered.com/news/student-success/college-experience/2026/08/14/how-4-colleges-are-supporting-student-parents"
+          ]
         }
       ],
       "publishedAt": "2026-08-14T07:00:00.000Z",
@@ -408,9 +422,10 @@
       "eventId": "f053aeb560af",
       "rank": 5,
       "title": "MIT斯隆管理学院推出晚间MBA课程",
-      "summary": "MIT斯隆管理学院院长Richard Locke介绍新推出的晚间MBA项目，旨在为在职专业人士提供更多学习机会，同时加强与大波士顿地区创新经济的联系。",
+      "summary": "MIT斯隆管理学院推出晚间MBA项目，为在职专业人士扩大就读机会；院长Richard Locke表示，项目还将加强学院与大波士顿地区创新经济的联系。",
       "keyFacts": [
-        "Dean Richard Locke discusses a new program that expands access for working professionals while deepening connections to Greater Boston’s innovation economy."
+        "晚间MBA项目面向在职专业人士。",
+        "项目目标之一是加强与大波士顿地区创新经济的联系。"
       ],
       "whyItMatters": "晚间MBA满足职场人士边工作边深造的需求，有助于提升区域人才素质，并促进产学研融合。",
       "background": "传统全日制MBA难以兼顾职业发展，许多顶尖商学院开始探索灵活学制。MIT斯隆此举顺应趋势，强化其在继续教育领域的布局。",
@@ -474,6 +489,12 @@
           "urls": [
             "https://news.mit.edu/2026/3-questions-mit-sloan-launches-evening-mba-0811"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://news.mit.edu/2026/3-questions-mit-sloan-launches-evening-mba-0811"
+          ]
         }
       ],
       "publishedAt": "2026-08-11T17:40:00.000Z",
@@ -507,6 +528,14 @@
     "qualityStatus": "passed",
     "warnings": [],
     "articleFetchSuccess": 18,
-    "qwenRetries": 0
+    "qwenRetries": 0,
+    "contentQuality": {
+      "repeatedSummaryCount": 0,
+      "noNewFactSummaryCount": 0,
+      "titleSummaryMismatchCount": 0,
+      "crossEventSourceCount": 0,
+      "htmlArtifactCount": 0,
+      "englishFragmentCount": 0
+    }
   }
 }

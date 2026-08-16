@@ -113,6 +113,14 @@ export type DailyBriefing = {
     primarySourceCount?: number
     maxSourceConcentration?: number
     qwenRetries?: number
+    contentQuality?: {
+      repeatedSummaryCount: number
+      noNewFactSummaryCount: number
+      titleSummaryMismatchCount: number
+      crossEventSourceCount: number
+      htmlArtifactCount: number
+      englishFragmentCount: number
+    }
     qualityStatus?: 'passed' | 'degraded' | 'held'
     warnings: string[]
   }

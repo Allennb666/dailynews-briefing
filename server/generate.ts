@@ -61,6 +61,17 @@ function summaryLines(briefings: DailyBriefing[], searchRuntime: SearchRuntime, 
   const sourceCounts = new Map<string, number>()
   for (const story of stories) sourceCounts.set(story.source.name, (sourceCounts.get(story.source.name) ?? 0) + 1)
   const qwenRetries = briefings.reduce((sum, briefing) => sum + (briefing.pipeline.qwenRetries ?? 0), 0)
+  const contentQuality = briefings.reduce((total, briefing) => {
+    const current = briefing.pipeline.contentQuality
+    if (!current) return total
+    total.repeated += current.repeatedSummaryCount
+    total.noNewFact += current.noNewFactSummaryCount
+    total.mismatch += current.titleSummaryMismatchCount
+    total.crossSource += current.crossEventSourceCount
+    total.html += current.htmlArtifactCount
+    total.english += current.englishFragmentCount
+    return total
+  }, { repeated: 0, noNewFact: 0, mismatch: 0, crossSource: 0, html: 0, english: 0 })
   return [
     `RSS 候选：${briefings.reduce((sum, item) => sum + (item.pipeline.rssCandidates ?? 0), 0)}`,
     `搜索候选：${briefings.reduce((sum, item) => sum + (item.pipeline.searchCandidates ?? 0), 0)}`,
@@ -76,6 +87,7 @@ function summaryLines(briefings: DailyBriefing[], searchRuntime: SearchRuntime, 
     `含官方来源：${stories.filter((story) => story.evidence.primarySourcePresent).length}`,
     `最高单一主来源集中度：${Math.max(0, ...sourceCounts.values())}/${stories.length}`,
     `Qwen 修复重试：${qwenRetries}`,
+    `内容门禁：重复摘要=${contentQuality.repeated}，无新增事实=${contentQuality.noNewFact}，错配=${contentQuality.mismatch}，跨事件来源=${contentQuality.crossSource}，HTML=${contentQuality.html}，英文残句=${contentQuality.english}`,
     `质量状态：${briefings.map((item) => `${item.domain}=${item.pipeline.qualityStatus ?? 'unknown'}`).join(', ')}`,
   ]
 }

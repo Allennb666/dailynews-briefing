@@ -108,6 +108,7 @@ export type RunDiagnostics = {
     eventAfter: DiagnosticEvent
   }>
   finalSelection: Array<{ domain: DomainId; eventId: string; rank: number; primarySourceId: string | null }>
+  contentQuality: NonNullable<DailyBriefing['pipeline']['contentQuality']>
   qualityWarnings: string[]
 }
 
@@ -259,6 +260,14 @@ export class DiagnosticRecorder {
   private ownership: DomainOwnershipDiagnostic[] = []
   private verification: RunDiagnostics['verification'] = []
   private finalSelection: RunDiagnostics['finalSelection'] = []
+  private contentQuality: RunDiagnostics['contentQuality'] = {
+    repeatedSummaryCount: 0,
+    noNewFactSummaryCount: 0,
+    titleSummaryMismatchCount: 0,
+    crossEventSourceCount: 0,
+    htmlArtifactCount: 0,
+    englishFragmentCount: 0,
+  }
   private qualityWarnings: string[] = []
 
   constructor(startedAt = new Date()) {
@@ -341,6 +350,19 @@ export class DiagnosticRecorder {
       rank: story.rank,
       primarySourceId: story.url ? normalizedHostname(story.url) : null,
     }))).sort((left, right) => DOMAIN_ORDER.indexOf(left.domain) - DOMAIN_ORDER.indexOf(right.domain) || left.rank - right.rank)
+    this.contentQuality = briefings.reduce((total, briefing) => {
+      const current = briefing.pipeline.contentQuality
+      if (!current) return total
+      for (const key of Object.keys(total) as Array<keyof typeof total>) total[key] += current[key]
+      return total
+    }, {
+      repeatedSummaryCount: 0,
+      noNewFactSummaryCount: 0,
+      titleSummaryMismatchCount: 0,
+      crossEventSourceCount: 0,
+      htmlArtifactCount: 0,
+      englishFragmentCount: 0,
+    })
     this.qualityWarnings = warnings.map(redact).sort()
   }
 
@@ -431,6 +453,7 @@ export class DiagnosticRecorder {
       ownership: this.ownership,
       verification: this.verification,
       finalSelection: this.finalSelection,
+      contentQuality: this.contentQuality,
       qualityWarnings: this.qualityWarnings,
     }
   }

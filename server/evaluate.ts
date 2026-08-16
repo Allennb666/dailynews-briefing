@@ -82,6 +82,14 @@ export type OfflineEvaluation = {
     duplicateUrlRatio: number
     duplicateContentRatio: number
   }
+  contentQuality: {
+    repeatedSummaryCount: number
+    noNewFactSummaryCount: number
+    titleSummaryMismatchCount: number
+    crossEventSourceCount: number
+    htmlArtifactCount: number
+    englishFragmentCount: number
+  }
   benchmarkMetrics?: {
     benchmarkId: string
     candidateRecall: number
@@ -302,6 +310,14 @@ export function evaluateDiagnostics(
       duplicateUrlRatio: pairRatio(afterCandidates, (candidate) => candidate.url),
       duplicateContentRatio: pairRatio(afterCandidates, (candidate) => `${candidate.titleFingerprint}:${candidate.snippetFingerprint}`),
     },
+    contentQuality: diagnostics.contentQuality ?? {
+      repeatedSummaryCount: 0,
+      noNewFactSummaryCount: 0,
+      titleSummaryMismatchCount: 0,
+      crossEventSourceCount: 0,
+      htmlArtifactCount: 0,
+      englishFragmentCount: 0,
+    },
     ...(benchmark ? { benchmarkMetrics: benchmarkMetrics(diagnostics, benchmark) } : {}),
   }
   return evaluation
@@ -322,6 +338,9 @@ export function renderEvaluationMarkdown(evaluation: OfflineEvaluation) {
     `- 最终事件含官方来源：${percent(evaluation.evidence.officialEventRatio)}`,
     `- 验证升级：${evaluation.evidence.verificationUpgrades}/${evaluation.evidence.verificationAttempts}（${percent(evaluation.evidence.verificationUpgradeRatio)}）`,
     `- 最高主来源集中度：${percent(evaluation.diversity.maxPrimarySourceConcentration)}`,
+    `- 摘要重复标题 / 无新增事实：${evaluation.contentQuality.repeatedSummaryCount} / ${evaluation.contentQuality.noNewFactSummaryCount}`,
+    `- 标题摘要错配 / 跨事件来源：${evaluation.contentQuality.titleSummaryMismatchCount} / ${evaluation.contentQuality.crossEventSourceCount}`,
+    `- HTML 残片 / 英文残句：${evaluation.contentQuality.htmlArtifactCount} / ${evaluation.contentQuality.englishFragmentCount}`,
     '',
     '## 各阶段增量产出',
     '',

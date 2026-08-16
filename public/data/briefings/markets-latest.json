@@ -39,10 +39,11 @@
       "id": "8f0d7aa10720",
       "eventId": "8f0d7aa10720",
       "rank": 1,
-      "title": "OpenAI 高管离职潮引 IPO 前‘红旗’预警",
-      "summary": "OpenAI 高管离职潮引 IPO 前‘红旗’预警；现有来源材料明确记录了这一具体动作。",
+      "title": "OpenAI高管离职潮引发IPO前治理担忧",
+      "summary": "在高管离职引发上市前治理担忧之际，内部信息显示OpenAI七月收入运行率环比增长超过20%，企业客户相关收入增长32%；业务扩张与组织稳定性风险同时上升。",
       "keyFacts": [
-        "Brockman told employees on Thursday that run rate revenue increased more than 20% month over month in July, including 32% growth for business customers, according to an internal Slack message shared with CNBC."
+        "OpenAI七月收入运行率环比增长超过20%。",
+        "企业客户相关收入增长32%。"
       ],
       "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
       "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -109,6 +110,12 @@
           "urls": [
             "https://www.cnbc.com/2026/08/14/open-ai-ipo-red-flag.html"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.cnbc.com/2026/08/14/open-ai-ipo-red-flag.html"
+          ]
         }
       ],
       "publishedAt": "2026-08-14T19:07:11.000Z",
@@ -129,9 +136,10 @@
       "eventId": "fa194d1031b8",
       "rank": 2,
       "title": "伯克希尔增持Alphabet股份",
-      "summary": "伯克希尔增持Alphabet股份；现有来源材料明确记录了这一具体动作。",
+      "summary": "伯克希尔此次增加的Alphabet持仓价值约170亿美元；公开标题给出了明确的增持对象与规模，使这次组合调整可以与其其他大型持仓变化分开观察。",
       "keyFacts": [
-        "伯克希尔增持Alphabet股份。"
+        "伯克希尔增加了Alphabet持仓。",
+        "新增持仓价值约170亿美元。"
       ],
       "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
       "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -187,6 +195,12 @@
           "urls": [
             "https://www.cnbc.com/2026/08/15/berkshire-adds-17-billion-to-alphabet-stake.html"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.cnbc.com/2026/08/15/berkshire-adds-17-billion-to-alphabet-stake.html"
+          ]
         }
       ],
       "publishedAt": "2026-08-15T12:50:41.000Z",
@@ -204,10 +218,11 @@
       "id": "03a29f0e1d12",
       "eventId": "03a29f0e1d12",
       "rank": 3,
-      "title": "美国劳工统计局发布生产者价格指数数据",
-      "summary": "美国劳工统计局发布生产者价格指数数据；现有来源材料明确记录了这一具体动作。",
+      "title": "美国劳工统计局发布2026年7月生产者价格指数结果",
+      "summary": "这次官方更新对应2026年7月生产者价格指数结果，发布主体是美国劳工统计局；事件的可核验增量是统计月份和指标口径，而不是一条泛化的通胀消息。",
       "keyFacts": [
-        "美国劳工统计局发布生产者价格指数数据。"
+        "本次发布对应2026年7月数据。",
+        "发布指标是生产者价格指数，来源为美国劳工统计局。"
       ],
       "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
       "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -263,6 +278,12 @@
           "urls": [
             "https://www.bls.gov/news.release/archives/ppi_08132026.htm"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.bls.gov/news.release/archives/ppi_08132026.htm"
+          ]
         }
       ],
       "publishedAt": "2026-08-13T12:38:39.000Z",
@@ -280,10 +301,11 @@
       "id": "cd800abcbfbb",
       "eventId": "cd800abcbfbb",
       "rank": 4,
-      "title": "英国拟下调电动车销售目标",
-      "summary": "英国拟下调电动车销售目标；现有来源材料明确记录了这一具体动作。",
+      "title": "英国拟在车企施压后下调电动车销售目标",
+      "summary": "英国正讨论下调电动车销售目标，直接背景是汽车制造商施压；这意味着调整对象是销售目标本身，而非取消电动车政策，后续要看正式目标和执行时间是否变化。",
       "keyFacts": [
-        "英国拟下调电动车销售目标。"
+        "英国正在讨论下调电动车销售目标。",
+        "这项讨论发生在汽车制造商施压之后。"
       ],
       "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
       "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -339,6 +361,12 @@
           "urls": [
             "https://www.bbc.co.uk/news/articles/c1l1yj0zd9no?at_medium=RSS&at_campaign=rss"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.bbc.co.uk/news/articles/c1l1yj0zd9no?at_medium=RSS&at_campaign=rss"
+          ]
         }
       ],
       "publishedAt": "2026-08-14T15:58:21.000Z",
@@ -356,10 +384,11 @@
       "id": "b7e4db6530ba",
       "eventId": "b7e4db6530ba",
       "rank": 5,
-      "title": "美国证交会指控预IPO投资骗局相关机构欺诈散户",
-      "summary": "美国证交会指控预IPO投资骗局相关机构欺诈散户；现有来源材料明确记录了这一具体动作。",
+      "title": "美国证交会指控四方实施7400万美元预IPO投资骗局",
+      "summary": "美国证交会指控一名电话推销操盘者和三家实体欺诈散户，涉案预IPO投资骗局规模为7400万美元；案件同时给出了被告范围、受害对象与金额。",
       "keyFacts": [
-        "美国证交会指控预IPO投资骗局相关机构欺诈散户。"
+        "被指控对象包括一名操盘者和三家实体。",
+        "涉案预IPO投资骗局规模为7400万美元，受害对象为散户投资者。"
       ],
       "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
       "background": "市场新闻需要同时结合盈利、现金流、估值、利率与风险偏好判断，单日价格变化本身不能说明长期趋势。",
@@ -415,6 +444,12 @@
           "urls": [
             "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo"
+          ]
         }
       ],
       "publishedAt": "2026-08-14T20:16:34.000Z",
@@ -448,6 +483,14 @@
     "qualityStatus": "passed",
     "warnings": [],
     "articleFetchSuccess": 18,
-    "qwenRetries": 0
+    "qwenRetries": 0,
+    "contentQuality": {
+      "repeatedSummaryCount": 0,
+      "noNewFactSummaryCount": 0,
+      "titleSummaryMismatchCount": 0,
+      "crossEventSourceCount": 0,
+      "htmlArtifactCount": 0,
+      "englishFragmentCount": 0
+    }
   }
 }

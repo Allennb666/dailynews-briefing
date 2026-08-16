@@ -45,9 +45,10 @@
       "eventId": "a16bd13492f0",
       "rank": 1,
       "title": "两艘阿联酋油轮在霍尔木兹海峡遇袭",
-      "summary": "两艘阿联酋油轮在霍尔木兹海峡遇袭；现有来源材料明确记录了这一具体动作。",
+      "summary": "两艘隶属阿联酋ADNOC的油轮在通过霍尔木兹海峡时遭到袭击，阿联酋随后公开谴责；事件直接涉及关键能源航道与商业油轮安全。",
       "keyFacts": [
-        "两艘阿联酋油轮在霍尔木兹海峡遇袭。"
+        "遇袭对象是两艘阿联酋ADNOC油轮。",
+        "袭击发生在油轮通过霍尔木兹海峡期间。"
       ],
       "whyItMatters": "两艘油轮在霍尔木兹海峡遇袭，会直接抬高关键航道的安全风险，并可能影响船舶调度、保险成本和能源运输预期。事件的实际外溢程度取决于后续通航情况及地区各方行动。",
       "background": "霍尔木兹海峡连接波斯湾与外海，是能源运输和地区安全的关键航道。油轮遇袭不仅是单一船舶安全事件，也会通过航运安排、保险定价和供应预期影响跨境企业与能源市场。",
@@ -156,6 +157,12 @@
           "urls": [
             "https://apnews.com/article/iran-uae-us-strait-hormuz-august-14-2026-e8565c608ac5283ec8103c85df924b13"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://apnews.com/article/iran-uae-us-strait-hormuz-august-14-2026-e8565c608ac5283ec8103c85df924b13"
+          ]
         }
       ],
       "publishedAt": "2026-08-13T00:00:00.000Z",
@@ -175,10 +182,11 @@
       "id": "14514ccce144",
       "eventId": "14514ccce144",
       "rank": 2,
-      "title": "印度尼西亚开展地震救援并搜寻幸存者",
-      "summary": "印度尼西亚开展地震救援并搜寻幸存者；现有来源材料明确记录了这一具体动作。",
+      "title": "印度尼西亚7.7级地震后展开救援",
+      "summary": "印度尼西亚近海发生7.7级强震并触发大规模疏散，东部地区已有数十人死亡；救援人员继续搜寻幸存者，事件包含震级、伤亡和疏散三项明确信息。",
       "keyFacts": [
-        "印度尼西亚开展地震救援并搜寻幸存者。"
+        "近海地震震级为7.7级，并触发大规模疏散。",
+        "东部地区已有数十人死亡，救援人员仍在搜寻幸存者。"
       ],
       "whyItMatters": "印尼地处环太平洋火山带，地震频发。此次强震不仅造成重大人员伤亡，还暴露了偏远地区基础设施脆弱及应急响应能力的不足。海啸预警虽已解除，但余震风险仍存，需警惕次生灾害。",
       "background": "弗洛雷斯岛位于印尼东部，地质活动频繁。印尼气象、气候和地球物理局（BMKG）在地震后迅速发布海啸预警，促使数千人撤离至高地。此类灾害往往导致通信中断和交通瘫痪，极大增加搜救难度。",
@@ -288,7 +296,13 @@
         {
           "factIndex": 0,
           "urls": [
-            "https://www.dw.com/en/indonesia-dozens-dead-after-earthquake-off-flores-island/a-78377990?maca=en-rss-en-top-1022-rdf"
+            "https://www.bbc.co.uk/news/articles/c3v00w5ylw9o?at_medium=RSS&at_campaign=rss"
+          ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.bbc.co.uk/news/articles/c3v00w5ylw9o?at_medium=RSS&at_campaign=rss"
           ]
         }
       ],
@@ -308,10 +322,11 @@
       "id": "92680a8c0a1d",
       "eventId": "92680a8c0a1d",
       "rank": 3,
-      "title": "以色列空袭黎巴嫩南部造成伤亡",
-      "summary": "以色列空袭黎巴嫩南部造成伤亡；现有来源材料明确记录了这一具体动作。",
+      "title": "以色列空袭黎巴嫩南部造成11人死亡",
+      "summary": "黎巴嫩方面称，以色列对南部地区的空袭共造成11人死亡；其中安萨尔村外围一栋住宅遭轰炸，7人死亡且建筑被夷平。",
       "keyFacts": [
-        "Israeli warplanes bombed a home on the outskirts of the village of Ansar, killing seven people and flattening the building early on Saturday morning."
+        "黎巴嫩方面公布的总死亡人数为11人。",
+        "安萨尔村外围一栋住宅遭轰炸，7人死亡。"
       ],
       "whyItMatters": "此次袭击打破了六月的停火默契，标志着黎以边境局势急剧恶化。以色列声称打击真主党基础设施，而黎巴嫩总理谴责针对平民的袭击。若冲突升级，可能将周边国家卷入，重燃地区战火。",
       "background": "地缘事件需要区分已发生行动、各方表态、谈判条件和媒体推测，并观察是否出现可验证的现实变化。",
@@ -406,7 +421,13 @@
         {
           "factIndex": 0,
           "urls": [
-            "https://www.theguardian.com/world/2026/aug/15/israeli-strike-on-southern-lebanon-kills-seven-in-worst-toll-since-june-state-media-says"
+            "https://www.dw.com/en/lebanon-says-11-killed-in-israeli-airstrikes/a-78383713?maca=en-rss-en-top-1022-rdf"
+          ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.dw.com/en/lebanon-says-11-killed-in-israeli-airstrikes/a-78383713?maca=en-rss-en-top-1022-rdf"
           ]
         }
       ],
@@ -425,10 +446,11 @@
       "id": "4d9d2d959ec4",
       "eventId": "4d9d2d959ec4",
       "rank": 4,
-      "title": "韩国提议举行会谈，正式结束与朝鲜的战争状态",
-      "summary": "韩国提议举行会谈，正式结束与朝鲜的战争状态；现有来源材料明确记录了这一具体动作。",
+      "title": "韩国提议与朝鲜举行正式终战会谈",
+      "summary": "韩国总统李在明提出与朝鲜举行会谈，以正式结束仍停留在停战状态的冲突；朝鲜战争自1953年停战协定后一直没有以和平条约正式结束。",
       "keyFacts": [
-        "Lee Jae Myung offers chance to end the conflict, which has been frozen since an armistice in 1953."
+        "韩国提出与朝鲜举行正式终战会谈。",
+        "双方自1953年停战协定后仍未签署正式和平条约。"
       ],
       "whyItMatters": "结束战争状态不仅是象征性的政治姿态，更是构建半岛永久和平机制的基础。这将有助于降低军事误判风险，促进经济合作，并为解决核问题创造更有利的外交环境。",
       "background": "地缘事件需要区分已发生行动、各方表态、谈判条件和媒体推测，并观察是否出现可验证的现实变化。",
@@ -495,6 +517,12 @@
           "urls": [
             "https://www.bbc.co.uk/news/articles/c8en2z9jp2xo?at_medium=RSS&at_campaign=rss"
           ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.bbc.co.uk/news/articles/c8en2z9jp2xo?at_medium=RSS&at_campaign=rss"
+          ]
         }
       ],
       "publishedAt": "2026-08-15T14:40:15.000Z",
@@ -514,10 +542,10 @@
       "eventId": "28f24219dc7e",
       "rank": 5,
       "title": "伊朗与阿曼推进霍尔木兹海峡通航谈判",
-      "summary": "伊朗与阿曼推进霍尔木兹海峡通航谈判；现有来源材料明确记录了这一具体动作。",
+      "summary": "卡塔尔方面称，伊朗与阿曼就重启海峡通航机制的谈判已进入较深入阶段，但方案可能只允许暂时、部分恢复通行，伊朗船只仍需申请许可。",
       "keyFacts": [
-        "彭博能源分析師威爾·甘迺迪 (Will Kennedy) 指出,布蘭特原油 (Brent crude) 本周漲約 12%,反映市場對短期內霍爾木茲通航大幅改善持悲觀態度。",
-        "卡塔爾外交部發言人透露,伊朗與阿曼 (Oman) 就重啟海峽機制的談判已進入先進階段,但細節不透明——可能僅暫時、部分恢復通行,伊朗船隻仍需申請許可。"
+        "谈判涉及暂时、分阶段恢复霍尔木兹海峡通行。",
+        "现有方案下，伊朗船只仍需申请通行许可。"
       ],
       "whyItMatters": "霍尔木兹海峡是全球石油运输的关键咽喉，任何通行限制都将直接冲击全球能源供应。当前谈判的不确定性及船只规避行为表明，尽管有外交接触，实际安全风险并未消除，市场对此反应敏感。",
       "background": "该海峡连接波斯湾与阿曼湾，每日约有全球三分之一的海运石油经此通过。近年来，伊朗与美国及其盟友在该地区的摩擦不断，包括无人机袭击油轮和美军直升机被击落等事件。特朗普政府近期强硬表态加剧了紧张气氛。",
@@ -625,6 +653,14 @@
       "UN News 暂时无法获取"
     ],
     "articleFetchSuccess": 18,
-    "qwenRetries": 0
+    "qwenRetries": 0,
+    "contentQuality": {
+      "repeatedSummaryCount": 0,
+      "noNewFactSummaryCount": 0,
+      "titleSummaryMismatchCount": 0,
+      "crossEventSourceCount": 0,
+      "htmlArtifactCount": 0,
+      "englishFragmentCount": 0
+    }
   }
 }

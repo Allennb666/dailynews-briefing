@@ -1,5 +1,5 @@
 import { DOMAIN_CONFIGS } from './sources.js'
-import { cleanUrl, compareCandidates, stripHtml, type Candidate, type NewsEvent } from './pipeline.js'
+import { cleanEventMaterial, cleanUrl, compareCandidates, stripHtml, type Candidate, type NewsEvent } from './pipeline.js'
 
 function boundedInteger(value: string | undefined, fallback: number, maximum: number) {
   const parsed = Number.parseInt(value ?? '', 10)
@@ -219,7 +219,7 @@ export async function materializeEvents(events: NewsEvent[], reader: ArticleRead
     for (const article of articles.slice(0, 3)) {
       const fullText = await reader.read(article.url)
       if (fullText) {
-        article.fullText = fullText
+        article.fullText = cleanEventMaterial(article.title, fullText, article.domain)
         article.materialLevel = 'full-text'
       }
       if (reader.attempted >= reader.limit) return

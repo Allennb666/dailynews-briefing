@@ -12,6 +12,7 @@ import { finalizeBriefing, validateBriefing } from './model.js'
 import { FileSearchResultCache } from './search-cache.js'
 import {
   buildEvidence,
+  buildEventSpecificContent,
   buildRulesBriefing,
   createEvent,
   deduplicateCandidates,
@@ -82,7 +83,7 @@ function fixtureEvents(count = 7, domain: DomainId = 'ai-tech') {
     sourceId: `publisher-${index % 5}`,
     score: 100 - index,
     title: subjects[index] ?? `Unique subject ${index} builds facility`,
-    description: `${subjects[index] ?? `Unique subject ${index} builds facility`} with verified details and a distinct action for this event.`,
+    description: `${subjects[index] ?? `Unique subject ${index} builds facility`}. ${(subjects[index] ?? `Unique subject ${index}`).split(' ')[0]} will begin implementation on 2026-08-${String(10 + index).padStart(2, '0')} for its named customers.`,
     tags: [`主题-${index}`],
   })]))
 }
@@ -101,6 +102,7 @@ function collection(events: NewsEvent[], domain: DomainId = 'ai-tech'): Collecti
 }
 
 function validModelBriefing(events: NewsEvent[]): ModelBriefing {
+  const safeContent = events.slice(0, 5).map(buildEventSpecificContent)
   return {
     overview: '本期信息显示产业、政策与市场正在同步变化，需要结合可靠来源、后续执行数据和参与方行动判断其持续性。',
     keyTakeaway: '今日重点是验证政策动作能否转化为实际供给、采用与长期结构变化。',
@@ -114,13 +116,10 @@ function validModelBriefing(events: NewsEvent[]): ModelBriefing {
     watchNext: ['官方文件', '独立媒体复核', '可量化经营数据'],
     stories: events.slice(0, 5).map((event, index) => ({
       id: event.id,
-      title: `第${index + 1}项重要产业事件出现明确进展`,
-      summary: '该事件已经出现可识别的新动作，现有材料说明参与方正在调整资源与执行安排，但影响范围和持续时间仍要等待更多可靠数据确认。',
-      keyFacts: ['相关机构已经公布新的行动安排。', '现有来源提供了可追踪的原始材料。'],
-      factSources: [
-        { factIndex: 0, urls: [event.primaryArticle.url] },
-        { factIndex: 1, urls: [event.primaryArticle.url] },
-      ],
+      title: safeContent[index].title,
+      summary: safeContent[index].summary,
+      keyFacts: safeContent[index].keyFacts,
+      factSources: safeContent[index].keyFacts.map((_, factIndex) => ({ factIndex, urls: [event.primaryArticle.url] })),
       whyItMatters: '这项变化可能影响产业投入、组织决策和用户采用。如果执行范围继续扩大，其影响会从单一参与方逐步传导到上下游。',
       background: '此前相关领域已经经历多轮技术和政策调整，但发布信息并不等于实际采用。判断这次变化需要观察执行主体、资源投入和可重复结果。',
       impactChain: ['正式动作出现', '参与方调整资源', '产业影响逐步显现'],
@@ -357,7 +356,7 @@ test('无来源数字只删除对应数字并保留其余事实且不增加 Qwen
   assert.equal(briefing.pipeline.qualityStatus, 'passed')
   assert.equal(model.calls, 1)
   assert.doesNotMatch(briefing.stories[0].keyFacts.join(' '), /99/)
-  assert.match(briefing.stories[0].keyFacts.join(' '), /相关指标.*增长/)
+  assert.match(briefing.stories[0].keyFacts.join(' '), /Alpha.*2026-08/)
   assert.doesNotMatch(briefing.stories[0].keyFacts.join(' '), /定性结论|这里仅保留/)
 })
 

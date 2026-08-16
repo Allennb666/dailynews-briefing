@@ -92,14 +92,25 @@ const parser = new Parser({
 
 export function stripHtml(value = '') {
   return value
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(?:nav|header|footer|aside|form|svg|noscript)\b[\s\S]*?<\/(?:nav|header|footer|aside|form|svg|noscript)>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&#x([\da-f]+);/gi, (_match, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_match, decimal: string) => String.fromCodePoint(Number.parseInt(decimal, 10)))
+    .replace(/&(?:nbsp|ensp|emsp);/gi, ' ')
     .replace(/&amp;/gi, '&')
-    .replace(/&quot;|&#34;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&hellip;|&#8230;/gi, '…')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&(?:hellip|mldr);/gi, '…')
+    .replace(/&(?:ldquo|rdquo);/gi, '“')
+    .replace(/&(?:lsquo|rsquo);/gi, '’')
+    .replace(/&(?:mdash|ndash);/gi, '—')
+    .replace(/&[a-z][a-z0-9]+;/gi, ' ')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .replace(/[\uFFFD]+/g, ' ')
+    .replace(/(["'“”‘’])\1{1,}/g, '$1')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -162,12 +173,26 @@ const ENTITY_ALIASES: Array<[string, RegExp]> = [
   ['international-baccalaureate', /\binternational baccalaureate\b|\bIB\b|国际文凭/i],
   ['world-bank', /\bworld bank\b|世界银行/i],
   ['imf', /\bIMF\b|international monetary fund|国际货币基金组织/i],
+  ['sk-hynix', /\bsk\s+hynix\b|sk海力士/i],
+  ['berkshire-hathaway', /\bberkshire(?:\s+hathaway)?\b|伯克希尔/i],
+  ['alphabet', /\balphabet\b/i],
+  ['bls', /\bbureau of labor statistics\b|\bbls\b|美国劳工统计局/i],
+  ['grok', /\bgrok\b/i],
+  ['mit-sloan', /\bmit\s+sloan\b|MIT斯隆/i],
+  ['israel', /\bisrael(?:i)?\b|以色列/i],
+  ['iran', /\biran(?:ian)?\b|伊朗/i],
+  ['oman', /\boman\b|阿曼/i],
+  ['indonesia', /\bindonesia(?:n)?\b|印度尼西亚|印尼/i],
+  ['south-korea', /\bsouth korea(?:n)?\b|韩国/i],
+  ['north-korea', /\bnorth korea(?:n)?\b|朝鲜/i],
+  ['uae', /\bUAE\b|united arab emirates|阿联酋/i],
 ]
 
 const GENERIC_ENTITY_WORDS = new Set([
   'a', 'an', 'the', 'new', 'ai', 'us', 'u', 's', 'ceo', 'government', 'company', 'market', 'report',
-  'unique', 'story', 'model',
+  'unique', 'story', 'model', 'press release details', 'press release', 'exclusive', 'details', 'results',
 ])
+const GENERIC_NAMED_ENTITY_TERMS = /\b(?:establish|infrastructure|financing|platforms?|mobilize|over|billion|million|capital|launch|release|report|results?|details?|exclusive|new|latest)\b/i
 
 const TOKEN_STOP_WORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'in', 'is', 'it', 'new', 'of', 'on',
@@ -179,17 +204,28 @@ const TOKEN_STOP_WORDS = new Set([
 const ACTION_GROUPS: Array<[string, RegExp]> = [
   ['launch', /\blaunch(?:es|ed|ing)?\b|\breleas(?:e|es|ed|ing)\b|\bunveil(?:s|ed|ing)?\b|\bintroduc(?:e|es|ed|ing)\b|\bannounc(?:e|es|ed|ing)\b|发布|推出|亮相|上线|公布|宣布/i],
   ['acquire', /\bacquir(?:e|es|ed|ing)\b|\bmerg(?:e|es|ed|ing)\b|\bbuy(?:s|ing)?\b|收购|并购|合并/i],
-  ['funding', /\bfund(?:ing|ed)?\b|\brais(?:e|es|ed|ing)\b|\binvest(?:s|ed|ing|ment)\b|融资|募资|投资/i],
+  ['funding', /\bfund(?:ing|ed)?\b|\bfinanc(?:e|es|ed|ing)\b|\bfinancing\b|\brais(?:e|es|ed|ing)\b|\binvest(?:s|ed|ing|ment)\b|融资|募资|投资/i],
   ['earnings', /\bearnings?\b|\brevenue\b|\bprofit\b|\bguidance\b|财报|营收|利润|业绩|指引/i],
   ['appoint', /\bappoint(?:s|ed|ing)?\b|\bresign(?:s|ed|ing)?\b|\bsteps? down\b|任命|辞职|离任/i],
   ['investigate', /\binvestigat(?:e|es|ed|ing|ion)\b|\blawsuit\b|\bsues?\b|\bprobe\b|调查|起诉|诉讼|审查/i],
   ['security', /\bhack(?:s|ed|ing)?\b|\bbreach\b|\bcyberattack\b|\bvulnerability\b|黑客|泄露|网络攻击|漏洞/i],
   ['rates', /\brate (?:cut|hike)\b|\bcuts? rates?\b|\braises? rates?\b|降息|加息|利率决定/i],
-  ['agreement', /\bagreement\b|\bdeal\b|\bpartner(?:s|ed|ship)?\b|\bceasefire\b|协议|合作|停火/i],
+  ['agreement', /\bagreement\b|\bdeal\b|\bpartner(?:s|ed|ship)?\b|\bceasefire\b|协议|合作|联合|停火/i],
   ['restriction', /\bban(?:s|ned|ning)?\b|\bsanction(?:s|ed)?\b|\bexport control\b|禁令|制裁|出口管制/i],
   ['attack', /\battack(?:s|ed|ing)?\b|\bstrike(?:s)?\b|\binvad(?:e|es|ed|ing)\b|袭击|空袭|入侵/i],
   ['policy', /\bregulat(?:e|es|ed|ing|ion)\b|\bpolicy\b|\brule\b|监管|政策|新规/i],
-  ['build', /\bbuild(?:s|ing)?\b|\bopen(?:s|ed|ing)?\b|\bexpand(?:s|ed|ing)?\b|建设|开设|扩建|扩张/i],
+  ['build', /\bbuild(?:s|ing)?\b|\bopen(?:s|ed|ing)?\b|\bexpan(?:d(?:s|ed|ing)?|sion)\b|建设|开设|设立|建立|扩建|扩张/i],
+  ['stake-change', /\badds?\b.{0,36}\bstake\b|\bincreases?\b.{0,24}\bstake\b|增持|减持/i],
+  ['reduce', /\bcuts?\b|\breduc(?:e|es|ed|ing)\b|\blower(?:s|ed|ing)?\b|下调|削减|降低/i],
+  ['support', /\bsupport(?:s|ed|ing)?\b|\bhelp(?:s|ed|ing)?\b|支持|帮助/i],
+  ['negotiate', /\bnegotiat(?:e|es|ed|ing|ion|ions)\b|\btalks?\b|谈判|会谈|和谈/i],
+  ['death', /\bfound dead\b|\bdies?\b|\bdeath\b|去世|死亡|身亡/i],
+  ['rank-change', /\brankings?\b|\brises?\b|\badvances?\b|排名|上升|前进/i],
+  ['misuse', /\bmisus(?:e|es|ed|ing)\b|\btransform(?:s|ed|ing)?\b.{0,48}\bexplicit\b|滥用|露骨图像/i],
+  ['explain', /\bdetails?\b|\bexplain(?:s|ed|ing)?\b|说明|介绍|详解/i],
+  ['rescue', /\brescu(?:e|es|ed|ing)\b|\bsearch(?:es|ed|ing)? for survivors\b|救援|搜寻幸存者/i],
+  ['implement', /\bimplement(?:s|ed|ing|ation)?\b|\brolls? out\b|实施|推进|启动/i],
+  ['fraud-charge', /\bcharges?\b.{0,80}\bfraud|\bdefraud(?:s|ed|ing)?\b|指控.{0,40}欺诈|诈骗/i],
 ]
 
 const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
@@ -215,6 +251,18 @@ const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
   ['shipping-route', /shipping|vessels?|strait|canal|航运|船只|海峡|运河/i],
   ['oil-price', /oil prices?|brent|wti|原油|油价|布兰特/i],
   ['earthquake', /earthquake|magnitude|地震|震级/i],
+  ['memory-capacity', /\b(?:hbm|ai)\s+memory\b|memory capacity|内存产能|存储产能|HBM/i],
+  ['equity-stake', /\b(?:equity|shareholding|stake)\b|股份|持股/i],
+  ['ev-target', /electric vehicle sales targets?|\bEV\b.{0,20}targets?|电动车销售目标/i],
+  ['fraud-case', /fraud|scam|boiler room|欺诈|骗局|诈骗/i],
+  ['university-ranking', /university rankings?|shanghai rankings?|大学排名/i],
+  ['image-abuse', /explicit imagery|explicit image|childhood photo|露骨图像|儿童照片|童年照片/i],
+  ['watermark', /watermarks?|水印/i],
+  ['student-support', /student parents?|caregivers?|childcare|学生父母|学生家长|托儿/i],
+  ['mba-program', /evening mba|mba program|晚间MBA|MBA课程/i],
+  ['creative-program', /digital creativity lab|digital arts|数字创意实验室|数字艺术/i],
+  ['executive-governance', /executive departures?|talent exodus|ipo governance|高管离职|上市治理/i],
+  ['vaccine-health', /vaccines?|autism|covid-?19|疫苗|自闭症|新冠/i],
 ]
 
 const INDICATOR_OBJECTS = new Set(['cpi', 'ppi', 'pce', 'interest-rate', 'bond-yield', 'earnings-results', 'oil-price'])
@@ -248,7 +296,9 @@ export function extractEntities(text: string) {
   const named = text.match(/\b(?:[A-Z][A-Za-z0-9.-]{2,}|[A-Z]{2,})(?:\s+(?:[A-Z][A-Za-z0-9.-]{2,}|[A-Z]{2,})){0,2}\b/g) ?? []
   for (const value of named) {
     const normalized = value.toLocaleLowerCase().replace(/[.]/g, '').trim()
-    if (!GENERIC_ENTITY_WORDS.has(normalized)) entities.add(normalized)
+    const aliasesKnownEntity = ENTITY_ALIASES.some(([, pattern]) => pattern.test(value))
+    const containsVerbOrConnector = /\b(?:with|partners?|adds?|launch(?:es|ed)?|reports?|announces?|exclusive|details?)\b/i.test(value)
+    if (!aliasesKnownEntity && !containsVerbOrConnector && !GENERIC_NAMED_ENTITY_TERMS.test(value) && !GENERIC_ENTITY_WORDS.has(normalized)) entities.add(normalized)
   }
   return [...entities]
 }
@@ -355,6 +405,121 @@ export function extractDates(text: string) {
   const english = text.match(/\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:,?\s+20\d{2})?/gi) ?? []
   const chinese = text.match(/(?:20\d{2}年)?\d{1,2}月\d{1,2}日/g) ?? []
   return [...new Set([...iso, ...english, ...chinese].map((value) => value.toLocaleLowerCase().trim()))]
+}
+
+const LOCATION_ALIASES: Array<[string, RegExp]> = [
+  ['china', /\bchina\b|中国/i], ['united-states', /\bunited states\b|\bU\.?S\.?\b|美国/i],
+  ['europe', /\beurope\b|欧洲/i], ['middle-east', /\bmiddle east\b|中东/i],
+  ['indonesia', /\bindonesia\b|印度尼西亚|印尼/i], ['south-korea', /\bsouth korea\b|韩国/i],
+  ['north-korea', /\bnorth korea\b|朝鲜/i], ['israel', /\bisrael\b|以色列/i],
+  ['lebanon', /\blebanon\b|黎巴嫩/i], ['iran', /\biran\b|伊朗/i], ['oman', /\boman\b|阿曼/i],
+  ['pakistan', /\bpakistan\b|巴基斯坦/i], ['united-kingdom', /\bunited kingdom\b|\bUK\b|英国/i],
+]
+
+export type EventFingerprint = {
+  domain: DomainId
+  entities: string[]
+  actions: string[]
+  objects: string[]
+  dates: string[]
+  locations: string[]
+  numbers: string[]
+}
+
+export function extractLocations(text: string) {
+  return LOCATION_ALIASES.filter(([, pattern]) => pattern.test(text)).map(([location]) => location)
+}
+
+export function fingerprintText(text: string, domain: DomainId): EventFingerprint {
+  const clean = stripHtml(text)
+  return {
+    domain,
+    entities: extractEntities(clean),
+    actions: [...fingerprintActions(clean, extractEventObjects(clean))],
+    objects: [...extractEventObjects(clean)],
+    dates: extractDates(clean),
+    locations: extractLocations(clean),
+    numbers: extractKeyNumbers(clean),
+  }
+}
+
+export function eventFingerprint(event: NewsEvent): EventFingerprint {
+  // Titles are the stable event anchor. Search snippets and page bodies may contain
+  // recommendation widgets or unrelated posts, so they cannot define identity.
+  return fingerprintText(event.articles.map((article) => {
+    const genericTitle = /^(?:press release(?: details)?|news|article|homepage|untitled|exclusive)$/i.test(stripHtml(article.title))
+    return genericTitle ? `${article.title} ${cleanEventMaterial(article.title, article.description, article.domain)}` : article.title
+  }).join(' '), event.domain)
+}
+
+function overlaps(left: string[], right: string[]) {
+  return left.some((value) => right.includes(value))
+}
+
+export function fingerprintMatches(reference: EventFingerprint, claim: EventFingerprint) {
+  if (reference.domain !== claim.domain) return false
+  const conflictingObject = reference.objects.length > 0 && claim.objects.length > 0
+    && !overlaps(reference.objects, claim.objects)
+  const conflictingAction = reference.actions.length > 0 && claim.actions.length > 0
+    && !overlaps(reference.actions, claim.actions)
+  const conflictingIndicator = reference.objects.some((object) => INDICATOR_OBJECTS.has(object))
+    && claim.objects.some((object) => INDICATOR_OBJECTS.has(object))
+    && !overlaps(reference.objects.filter((object) => INDICATOR_OBJECTS.has(object)), claim.objects.filter((object) => INDICATOR_OBJECTS.has(object)))
+  if (conflictingIndicator || (conflictingObject && conflictingAction)) return false
+  return overlaps(reference.entities, claim.entities)
+    || overlaps(reference.objects, claim.objects)
+    || (overlaps(reference.actions, claim.actions) && overlaps(reference.locations, claim.locations))
+}
+
+export function fingerprintConflicts(reference: EventFingerprint, claim: EventFingerprint) {
+  if (reference.domain !== claim.domain) return true
+  const indicatorConflict = reference.objects.some((object) => INDICATOR_OBJECTS.has(object))
+    && claim.objects.some((object) => INDICATOR_OBJECTS.has(object))
+    && !overlaps(reference.objects, claim.objects)
+  const objectConflict = reference.objects.length > 0 && claim.objects.length > 0 && !overlaps(reference.objects, claim.objects)
+  const actionConflict = reference.actions.length > 0 && claim.actions.length > 0 && !overlaps(reference.actions, claim.actions)
+  const unrelatedEntities = reference.entities.length > 0 && claim.entities.length > 0 && !overlaps(reference.entities, claim.entities)
+  return indicatorConflict || (objectConflict && (actionConflict || unrelatedEntities))
+}
+
+function materialSentences(value: string) {
+  return stripHtml(value)
+    .replace(/\b(?:copyright|all rights reserved|privacy policy|terms of use)\b[^。！？!?]*/gi, ' ')
+    .replace(/(?:版权所有|保留所有权利|隐私政策|使用条款)[^。！？!?]*/g, ' ')
+    .split(/(?<=[。！？!?])\s+|[\r\n]+|(?<=\.)\s+(?=[A-Z\p{Script=Han}])/u)
+    .map((sentence) => sentence.replace(/^[\s|>\-–—•·]+|[\s|>\-–—•·]+$/g, '').replace(/\s+/g, ' ').trim())
+    .filter((sentence) => sentence.length >= 12 && !/^(?:home|menu|search|sign in|subscribe|read more|share|related|advertisement)\b/i.test(sentence))
+}
+
+export function cleanEventMaterial(title: string, value: string, domain: DomainId) {
+  const cleanTitle = stripHtml(title)
+  const reference = fingerprintText(cleanTitle, domain)
+  const genericTitle = /^(?:press release(?: details)?|news|article|homepage|untitled|exclusive)$/i.test(cleanTitle)
+  const titleTokens = textTokens(cleanTitle)
+  const sentences = materialSentences(value)
+  const retained = sentences.filter((sentence) => {
+    const claim = fingerprintText(sentence, domain)
+    const objectConflict = reference.objects.length > 0 && claim.objects.length > 0 && !overlaps(reference.objects, claim.objects)
+    const indicatorConflict = reference.objects.some((object) => INDICATOR_OBJECTS.has(object))
+      && claim.objects.some((object) => INDICATOR_OBJECTS.has(object))
+      && !overlaps(reference.objects, claim.objects)
+    if (objectConflict || indicatorConflict) return false
+    const tokenOverlap = [...textTokens(sentence)].filter((token) => titleTokens.has(token)).length
+    const referenceHasSignals = !genericTitle && reference.entities.length + reference.actions.length + reference.objects.length > 0
+    return !referenceHasSignals || fingerprintMatches(reference, claim)
+      || overlaps(reference.actions, claim.actions) || tokenOverlap >= 2
+  })
+  return [...new Set(retained)].join(' ').trim()
+}
+
+export function hasHtmlArtifact(value: string) {
+  return /<\/?[a-z][^>]*>|&(?:#\d+|#x[\da-f]+|[a-z][a-z0-9]+);|\b(?:javascript:void|document\.cookie)\b/i.test(value)
+}
+
+export function hasMeaninglessEnglishFragment(value: string) {
+  const text = stripHtml(value)
+  return /(?:\b[a-z]{2,}\b[\s,;:'"()\-]*){7,}/.test(text)
+    || /\b(?:fri|mon|tue|wed|thu|sat|sun),?\s+\d{1,2}\/\d{1,2}\/\d{4}\s+-/i.test(text)
 }
 
 function sharedDistinctiveTerms(a: Candidate, b: Candidate) {
@@ -595,7 +760,7 @@ async function fetchSource(
   const feed = await parser.parseURL(source.url)
   return feed.items.flatMap((item) => {
     const title = stripHtml(item.title ?? '')
-    const description = stripHtml(item.content ?? item.contentSnippet ?? item.summary ?? '')
+    const description = cleanEventMaterial(title, item.content ?? item.contentSnippet ?? item.summary ?? '', config.id)
     const url = cleanUrl(item.link ?? item.guid ?? '')
     const rawDate = item.isoDate ?? item.pubDate ?? ''
     const parsedDate = rawDate ? new Date(rawDate) : now
@@ -648,7 +813,7 @@ export function assessSearchHit(
   phase: SearchPhase = 'base',
 ): { candidate: Candidate | null; decision: CandidateDecision } {
   const title = stripHtml(hit.title)
-  const description = stripHtml(hit.snippet)
+  const description = cleanEventMaterial(title, hit.snippet, config.id)
   const url = cleanUrl(hit.url)
   const text = `${title} ${description}`
   const source = sourceForSearchResult(url, hit.publisher)
@@ -928,7 +1093,7 @@ export function createEvent(domain: DomainId, members: Candidate[]): NewsEvent {
   const publishedTimes = articles.map((article) => new Date(article.publishedAt).getTime()).filter(Number.isFinite)
   const publishedAt = new Date(Math.min(...publishedTimes)).toISOString()
   const latestUpdateAt = new Date(Math.max(...publishedTimes)).toISOString()
-  const entities = [...new Set(articles.flatMap((article) => extractEntities(`${article.title} ${article.description}`)))]
+  const entities = [...new Set(articles.flatMap((article) => extractEntities(article.title)))]
   const topicTags = [...new Set(articles.flatMap((article) => article.tags))].slice(0, 6)
   const evidence = buildEvidence(articles)
   const syndication = diagnoseSyndication(articles)
@@ -1096,131 +1261,85 @@ const PLACEHOLDER_SUMMARY_PATTERNS = [
   /这里仅保留(?:原文可以直接支持的)?(?:定性事实|定性结论)/u,
   /具体细节以来源(?:页面|材料|原文)为准/u,
   /未获来源明确确认的细节不作推断/u,
+  /现有来源材料明确记录了?这一具体动作/u,
+  /(?:来源|原文)(?:已|明确)?(?:确认|记录|支持)(?:了)?(?:上述|这一|该)(?:动作|事件|说法)/u,
 ]
 
-const CONTENT_ACTION_PATTERN = /发布|推出|宣布|公布|披露|启动|设立|建立|联合|合作|推进|采取|帮助|投资|融资|募资|筹集|扩产|扩建|增持|收购|任命|离任|离职|指控|起诉|调查|下调|上调|削减|提高|降低|发生|造成|袭击|遇袭|提议|签署|达成|实施|改革|排名|上升|下降|启用|支持|采用|开放|关闭|暂停|恢复|去世|获批|拒绝|卷入|launch|release|unveil|announce|establish|partner|fund|raise|invest|expand|add|acquire|appoint|charge|cut|increase|decrease|attack|propose|sign|implement|open|close|resume|die|kill/iu
+const ENTITY_LABELS: Record<string, string> = {
+  openai: 'OpenAI', nvidia: 'NVIDIA', google: 'Google', anthropic: 'Anthropic', microsoft: '微软', meta: 'Meta',
+  apple: '苹果', amazon: '亚马逊', amd: 'AMD', intel: '英特尔', tsmc: '台积电',
+  'federal-reserve': '美联储', sec: '美国证交会', bls: '美国劳工统计局',
+  'united-nations': '联合国', china: '中国', 'united-states': '美国', 'european-union': '欧盟',
+  oecd: 'OECD', unesco: 'UNESCO', 'international-baccalaureate': 'IB', 'world-bank': '世界银行', imf: 'IMF',
+  'sk-hynix': 'SK海力士', 'berkshire-hathaway': '伯克希尔', alphabet: 'Alphabet', grok: 'Grok',
+  'mit-sloan': 'MIT斯隆管理学院', israel: '以色列', iran: '伊朗', oman: '阿曼', indonesia: '印度尼西亚',
+  'south-korea': '韩国', 'north-korea': '朝鲜', uae: '阿联酋',
+}
 
-const CONTENT_ACTORS: Array<[RegExp, string]> = [
-  [/\bsk hynix\b|sk海力士/i, 'SK海力士'],
-  [/\bnvidia\b|英伟达/i, 'NVIDIA'],
-  [/\bopenai\b/i, 'OpenAI'],
-  [/\banthropic\b/i, 'Anthropic'],
-  [/\bclaude\b/i, 'Claude'],
-  [/\bberkshire(?: hathaway)?\b|伯克希尔/i, '伯克希尔'],
-  [/\balphabet\b/i, 'Alphabet'],
-  [/\bu\.?s\.? securities and exchange commission\b|\bu\.?s\.? sec\b|\bsec\b|美国证交会|美国证券交易委员会/i, '美国证交会'],
-  [/\bbureau of labor statistics\b|\bbls\b|美国劳工统计局/i, '美国劳工统计局'],
-  [/\bfederal reserve\b|\bthe fed\b|美联储/i, '美联储'],
-  [/\bunesco\b|联合国教科文组织/i, 'UNESCO'],
-  [/\boecd\b|经济合作与发展组织/i, 'OECD'],
-  [/\bpisa\b/i, 'PISA'],
-  [/\binternational baccalaureate\b|国际文凭|\bIB\b/i, 'IB'],
-  [/\bsouth korea\b|韩国/i, '韩国'],
-  [/\bnorth korea\b|朝鲜/i, '朝鲜'],
-  [/\bisrael\b|以色列/i, '以色列'],
-  [/\bindonesia\b|印尼|印度尼西亚/i, '印度尼西亚'],
-  [/\buae\b|阿联酋/i, '阿联酋'],
-  [/\biran\b|伊朗/i, '伊朗'],
-  [/\boman\b|阿曼/i, '阿曼'],
-  [/\bmit sloan\b|MIT斯隆/i, 'MIT斯隆管理学院'],
-  [/\bgrok\b/i, 'Grok'],
-]
+const ACTION_LABELS: Record<string, string> = {
+  launch: '发布', acquire: '收购', funding: '筹集资金', earnings: '公布业绩', appoint: '调整管理层',
+  investigate: '启动调查', security: '应对安全事件', rates: '调整利率', agreement: '达成合作',
+  restriction: '实施限制', attack: '发动袭击', policy: '实施新规', build: '扩建', 'stake-change': '增持',
+  reduce: '下调', support: '推出支持措施', negotiate: '推进谈判', death: '确认去世', 'rank-change': '公布排名变化',
+  misuse: '卷入滥用争议', explain: '公布细节', rescue: '开展救援', implement: '启动实施', 'fraud-charge': '指控欺诈',
+  'data-release': '发布数据', occur: '发生',
+}
 
-const CONTENT_OBJECTS: Array<[RegExp, string]> = [
-  [/ai compute infrastructure financing platform/i, 'AI算力基础设施融资平台'],
-  [/ai memory expansion|memory capacity|hbm capacity/i, 'AI内存产能'],
-  [/alphabet stake|Alphabet股份/i, 'Alphabet股份'],
-  [/producer price index|\bppi\b|生产者价格指数/i, '生产者价格指数'],
-  [/consumer price index|\bcpi\b|消费者价格指数/i, '消费者价格指数'],
-  [/electric vehicle sales targets?|电动车销售目标/i, '电动车销售目标'],
-  [/pre-ipo (?:investment )?scam|预IPO.*骗局/i, '预IPO投资骗局'],
-  [/university rankings?|shanghai rankings?|大学排名/i, '世界大学排名'],
-  [/earthquake|地震/i, '地震救援'],
-  [/airstrikes?|空袭/i, '空袭行动'],
-  [/watermarks?|水印/i, '模型水印机制'],
-  [/explicit imagery|露骨图像|图像.*滥用/i, '图像滥用问题'],
-  [/evening mba|晚间MBA/i, '晚间MBA课程'],
-  [/student parents?|学生父母/i, '学生父母支持计划'],
-  [/digital creativity lab|数字创意实验室/i, '数字创意实验室项目'],
-  [/ai\s*(?:technology\s*)?cent(?:er|re)|AI\s*(?:技术)?中心/i, 'AI中心'],
-  [/end war|peace talks?|终战|会谈|和谈/i, '终战会谈'],
-  [/hormuz|strait|霍尔木兹|霍爾木茲|海峡|海峽|通航/i, '海峡通航安排'],
-  [/ipo|governance|上市|治理/i, '上市治理'],
-  [/studio|工作室/i, '工作室'],
-  [/chair|董事长|主席|管理职位/i, '管理职位'],
-  [/ai literacy|AI素养/i, 'AI素养教育'],
-  [/assessment|评估|测评/i, '教育评估'],
-  [/curriculum|课程改革/i, '课程改革'],
-  [/financing|funding|capital|融资|资金/i, '资金'],
-  [/factory|fab|capacity|expansion|产能|工厂|扩产/i, '产能建设'],
-  [/earnings|revenue|profit|财报|营收|利润/i, '经营业绩'],
-  [/platform|平台/i, '新平台'],
-  [/chip|gpu|芯片/i, '芯片产品'],
-  [/model|模型/i, '模型产品'],
-  [/interest rate|利率/i, '利率政策'],
-  [/agreement|deal|协议/i, '合作协议'],
-  [/security breach|cyberattack|网络安全/i, '网络安全事件'],
-]
+const OBJECT_LABELS: Record<string, string> = {
+  cpi: '消费者价格指数', ppi: '生产者价格指数', pce: '个人消费支出价格指数', 'interest-rate': '利率政策',
+  'bond-yield': '债券收益率', 'earnings-results': '经营业绩', 'product-release': '新产品',
+  'acquisition-target': '并购交易', 'funding-round': '融资安排', 'factory-capacity': '产能建设',
+  'data-center': '数据中心', 'ai-center': 'AI中心', 'course-curriculum': '课程改革', assessment: '教育评估',
+  'ai-literacy': 'AI素养教育', 'education-policy': '教育政策', 'sanctions-controls': '制裁与出口管制',
+  'military-strike': '军事行动', 'ceasefire-talks': '停火谈判', 'shipping-route': '航运安排', 'oil-price': '油价变化',
+  earthquake: '地震救援', 'memory-capacity': 'AI内存产能', 'equity-stake': '持股', 'ev-target': '电动车销售目标',
+  'fraud-case': '投资欺诈案件', 'university-ranking': '世界大学排名', 'image-abuse': '图像滥用问题',
+  watermark: '模型水印机制', 'student-support': '学生父母支持计划', 'mba-program': 'MBA课程',
+  'creative-program': '数字创意项目', 'executive-governance': '上市前治理', 'vaccine-health': '疫苗与健康议题',
+}
+
+function articleMaterial(article: Candidate) {
+  return `${article.title} ${cleanEventMaterial(article.title, article.description, article.domain)} ${cleanEventMaterial(article.title, article.fullText ?? '', article.domain)} ${article.publishedAt.slice(0, 10)}`.trim()
+}
 
 function normalizedMaterial(event: NewsEvent) {
-  return event.articles.map((article) => `${article.title} ${article.description} ${article.fullText ?? ''}`).join(' ')
+  return event.articles.map(articleMaterial).join(' ')
+}
+
+function displayEntity(entity: string) {
+  return ENTITY_LABELS[entity] ?? entity.replace(/\b\w/g, (letter) => letter.toLocaleUpperCase())
 }
 
 function contentActor(text: string, event: NewsEvent, includeEventMaterial = true) {
-  const material = includeEventMaterial ? `${text} ${normalizedMaterial(event)}` : text
-  const known = CONTENT_ACTORS.find(([pattern]) => pattern.test(material))?.[1]
-  if (known) return known
-  const entity = extractEntities(text)[0] ?? (includeEventMaterial ? event.entities[0] : undefined)
-  if (entity) return entity.replace(/\b\w/g, (letter) => letter.toLocaleUpperCase())
-  const englishLead = text.match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+(?=launch|release|unveil|announce|partner|fund|raise|invest|expand|add|acquire|appoint|charge|cut|increase|decrease|attack|propose|sign|open|close|resume|report)/i)?.[1]
+  const material = includeEventMaterial ? `${text} ${event.articles.map((article) => article.title).join(' ')}` : text
+  const entity = extractEntities(material)[0]
+  if (entity) return displayEntity(entity)
+  const englishLead = stripHtml(text).match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+/)?.[1]
   if (englishLead) return englishLead
-  const chineseLead = text.match(/^([\p{Script=Han}A-Za-z0-9·.-]{2,18})(?=发布|推出|宣布|启动|设立|联合|投资|融资|扩产|增持|收购|指控|下调|发生|袭击|提议|签署|实施)/u)?.[1]
-  const embeddedChineseActor = text.match(/([\p{Script=Han}A-Za-z0-9·.-]{2,18})(?:正|已|将)?(?=采取|帮助|推出|发布|宣布|启动|设立|联合|投资|扩产|增持|收购|指控|提议|实施)/u)?.[1]
-  return chineseLead ?? embeddedChineseActor ?? ''
+  return stripHtml(text).match(/^([\p{Script=Han}A-Za-z0-9·.-]{2,20})(?:正|已|将)?(?=发布|推出|宣布|公布|启动|设立|建立|联合|合作|投资|融资|扩产|增持|收购|指控|调查|下调|发生|袭击|提议|签署|实施|推进|去世)/u)?.[1] ?? ''
 }
 
 function contentAction(text: string) {
-  const rules: Array<[RegExp, string]> = [
-    [/partners? with|teams? up|联合|合作/i, '联合推进'],
-    [/expand|expansion|扩产|扩建/i, '扩建'],
-    [/adds?.+stake|增持/i, '增持'],
-    [/charges?|指控/i, '指控'],
-    [/cuts?|下调|削减/i, '拟下调'],
-    [/launch|release|unveil|introduce|发布|推出|上线/i, '发布'],
-    [/establish|opens?|启用|设立|建立/i, '设立'],
-    [/rais(?:e|es|ed)|funding|financing|融资|募资/i, '筹集'],
-    [/invest|投资/i, '扩大投资'],
-    [/acquir|merg|收购|并购/i, '收购'],
-    [/earnings|revenue|profit|公布.*(?:业绩|营收|利润)|财报/i, '公布'],
-    [/appoint|任命/i, '任命'],
-    [/resign|steps? down|辞职|离任/i, '宣布离任'],
-    [/attack|airstrike|袭击|空袭/i, '发动'],
-    [/earthquake|search(?:es|ed)? for survivors?|地震|搜寻幸存者/i, '开展'],
-    [/proposes?|提议/i, '提议'],
-    [/signs?|agreement|deal|签署|达成/i, '达成'],
-    [/rankings?|rise|advance|排名|上升/i, '公布'],
-    [/found dead|dies?|去世/i, '确认'],
-    [/used?.+explicit imagery|图像.*滥用/i, '卷入'],
-    [/watermarks?.+work|水印/i, '公布'],
-    [/security breach|cyberattack|网络攻击|泄露/i, '发生'],
-    [/regulat|policy|rule|政策|监管|改革/i, '实施'],
-  ]
-  return rules.find(([pattern]) => pattern.test(text))?.[1] ?? ''
+  const objectSet = extractEventObjects(text)
+  const actions = fingerprintActions(text, objectSet)
+  if (objectSet.has('funding-round') && actions.has('agreement')) return '联合设立'
+  if ((objectSet.has('memory-capacity') || objectSet.has('factory-capacity')) && actions.has('build')) return '扩建'
+  const priority = ['fraud-charge', 'attack', 'rescue', 'negotiate', 'stake-change', 'reduce', 'misuse', 'death', 'rank-change', 'support', 'implement', 'funding', 'build', 'launch', 'explain']
+  const action = priority.find((value) => actions.has(value)) ?? [...actions][0]
+  return ACTION_LABELS[action] ?? ''
 }
 
 function contentObject(text: string, event: NewsEvent) {
-  const known = CONTENT_OBJECTS.find(([pattern]) => pattern.test(text))?.[1]
-  if (known) return known
-  const object = [...extractEventObjects(text)][0]
-  const labels: Record<string, string> = {
-    'funding-round': '融资安排', 'factory-capacity': '产能建设', 'product-release': '新产品',
-    'earnings-results': '经营业绩', 'interest-rate': '利率政策', 'course-curriculum': '课程改革',
-    assessment: '教育评估', 'ai-literacy': 'AI素养教育', 'education-policy': '教育政策',
-    'military-strike': '军事行动', 'ceasefire-talks': '停火谈判', 'shipping-route': '航运安排',
-    'oil-price': '油价变化', earthquake: '地震救援', 'data-center': '数据中心', 'ai-center': 'AI中心',
+  const objects = extractEventObjects(text)
+  if (objects.has('funding-round') && (objects.has('data-center') || /ai compute infrastructure/i.test(text))) return 'AI算力基础设施融资平台'
+  const priority = ['memory-capacity', 'equity-stake', 'cpi', 'ppi', 'pce', 'ev-target', 'fraud-case', 'university-ranking', 'earthquake', 'military-strike', 'shipping-route', 'ceasefire-talks', 'image-abuse', 'watermark', 'student-support', 'mba-program', 'creative-program', 'executive-governance', 'funding-round', 'factory-capacity', 'data-center', 'ai-center', 'product-release']
+  const object = priority.find((value) => objects.has(value)) ?? [...objects][0]
+  if (object === 'equity-stake') {
+    const entities = extractEntities(text)
+    if (entities[1]) return `${displayEntity(entities[1])}股份`
   }
-  if (object && labels[object]) return labels[object]
-  return event.topicTags.find((tag) => tag.length >= 2 && !/^(?:AI|科技|产业|市场|国际新闻|高等教育|学习)$/.test(tag)) ?? event.topicTags[0] ?? ''
+  if (object && OBJECT_LABELS[object]) return OBJECT_LABELS[object]
+  return event.topicTags.find((tag) => tag.length >= 2 && !/^(?:AI|科技|产业|市场|国际新闻|高等教育|学习)$/.test(tag)) ?? ''
 }
 
 function candidateSpecificity(candidate: Candidate) {
@@ -1239,32 +1358,6 @@ function bestSpecificCandidate(event: NewsEvent) {
     || right.score - left.score || left.url.localeCompare(right.url))[0] ?? event.primaryArticle
 }
 
-function specificTitleOverride(text: string) {
-  const rules: Array<[RegExp, string]> = [
-    [/nvidia[\s\S]*partners? with[\s\S]*ai compute infrastructure financing/i, 'NVIDIA联合多家金融机构设立AI算力基础设施融资平台'],
-    [/sk hynix[\s\S]*ai memory expansion/i, 'SK海力士扩建AI内存产能'],
-    [/berkshire[\s\S]*alphabet stake/i, '伯克希尔增持Alphabet股份'],
-    [/producer price index|\bppi\b/i, '美国劳工统计局发布生产者价格指数数据'],
-    [/consumer price index|\bcpi\b/i, '美国劳工统计局发布消费者价格指数数据'],
-    [/sec charges[\s\S]*pre-ipo[\s\S]*scam/i, '美国证交会指控预IPO投资骗局相关机构欺诈散户'],
-    [/electric vehicle sales targets?[\s\S]*cut/i, '英国拟下调电动车销售目标'],
-    [/indonesia[\s\S]*earthquake|earthquake[\s\S]*indonesia/i, '印度尼西亚开展地震救援并搜寻幸存者'],
-    [/(?:israeli|israel)[\s\S]*(?:air)?strikes?[\s\S]*lebanon|lebanon[\s\S]*(?:israeli|israel)[\s\S]*(?:air)?strikes?/i, '以色列空袭黎巴嫩南部造成伤亡'],
-    [/uae[\s\S]*tankers?[\s\S]*attacked[\s\S]*hormuz|attack[\s\S]*adnoc tankers?[\s\S]*hormuz/i, '两艘阿联酋油轮在霍尔木兹海峡遇袭'],
-    [/伊朗[\s\S]*阿曼[\s\S]*(?:海峽|海峡)[\s\S]*談判|(?:霍爾木茲|霍尔木兹)[\s\S]*(?:通航|談判|谈判)/u, '伊朗与阿曼推进霍尔木兹海峡通航谈判'],
-    [/south korea proposes?[\s\S]*end war[\s\S]*north/i, '韩国提议与朝鲜举行正式终战会谈'],
-    [/shanghai rankings?[\s\S]*france[\s\S]*china/i, '世界大学排名显示法国高校保持稳定、中国高校继续上升'],
-    [/former cambridge professor[\s\S]*found dead/i, '前剑桥大学教授Jason Arday去世'],
-    [/grok[\s\S]*(?:explicit imagery|childhood photo)/i, 'Grok卷入将儿童照片生成露骨图像的滥用指控'],
-    [/anthropic[\s\S]*claude[\s\S]*watermarks?/i, 'Anthropic公布Claude新水印机制细节'],
-    [/colleges?[\s\S]*supporting student parents?/i, '美国高校推出学生父母支持计划'],
-    [/mit sloan[\s\S]*evening mba/i, 'MIT斯隆管理学院推出晚间MBA课程'],
-    [/unesco[\s\S]*digital creativity lab[\s\S]*pakistan/i, 'UNESCO在巴基斯坦推进数字创意实验室项目'],
-    [/openai[\s\S]*(?:talent exodus|executive departures?)[\s\S]*ipo/i, 'OpenAI高管离职引发上市前治理担忧'],
-  ]
-  return rules.find(([pattern]) => pattern.test(text))?.[1] ?? ''
-}
-
 export function isPlaceholderTitle(value: string) {
   const text = stripHtml(value).trim()
   return !text || PLACEHOLDER_TITLE_PATTERNS.some((pattern) => pattern.test(text))
@@ -1279,46 +1372,138 @@ export function hasConcreteActorAndAction(value: string, event: NewsEvent) {
   const text = stripHtml(value)
   if (isPlaceholderTitle(text)) return false
   const hasObjectOrResult = extractEventObjects(text).size > 0
-    || CONTENT_OBJECTS.some(([pattern]) => pattern.test(text))
     || /造成|导致|引发|获得|获批|拒绝|去世|死亡|受损|增长|下降|上升|持平|扩大|收缩|survivors?|concern|growth|decline|dead|damage/iu.test(text)
   return Boolean(contentActor(text, event, false))
-    && (CONTENT_ACTION_PATTERN.test(text) || Boolean(contentAction(text)))
+    && Boolean(contentAction(text))
     && hasObjectOrResult
 }
 
-export function hasInformativeSummary(value: string, event: NewsEvent) {
+export function claimMatchesEvent(value: string, event: NewsEvent) {
   const text = stripHtml(value)
-  if (text.length < 18 || isPlaceholderSummary(text)) return false
-  const eventObjects = extractEventObjects(normalizedMaterial(event))
-  const summaryObjects = extractEventObjects(text)
-  const objectAligned = !eventObjects.size || [...summaryObjects].some((object) => eventObjects.has(object))
-    || CONTENT_OBJECTS.some(([pattern]) => pattern.test(text))
-    || event.topicTags.some((tag) => tag.length >= 2 && text.toLocaleLowerCase().includes(tag.toLocaleLowerCase()))
-  return objectAligned && (CONTENT_ACTION_PATTERN.test(text) || Boolean(contentAction(text)))
-    && Boolean(contentActor(text, event, false) || event.entities.some((entity) => text.toLocaleLowerCase().includes(entity)))
+  if (!text) return false
+  return fingerprintMatches(eventFingerprint(event), fingerprintText(text, event.domain))
 }
 
-export type EventSpecificContent = { title: string; summary: string; keyFacts: string[]; sourceUrl: string }
+export function articleSupportsClaim(article: Candidate, claim: string) {
+  const cleanClaim = stripHtml(claim)
+  if (!cleanClaim || isPlaceholderSummary(cleanClaim)) return false
+  const material = articleMaterial(article)
+  const claimFingerprint = fingerprintText(cleanClaim, article.domain)
+  const materialFingerprint = fingerprintText(material, article.domain)
+  const claimNumbers = extractKeyNumbers(cleanClaim)
+  if (claimNumbers.length && !keyNumbersCompatible(claimNumbers, extractKeyNumbers(material))) return false
+  const objectsAligned = !claimFingerprint.objects.length || overlaps(claimFingerprint.objects, materialFingerprint.objects)
+  const actionsAligned = !claimFingerprint.actions.length || overlaps(claimFingerprint.actions, materialFingerprint.actions)
+  const entitiesAligned = !claimFingerprint.entities.length || overlaps(claimFingerprint.entities, materialFingerprint.entities)
+  const tokenOverlap = overlapCoefficient(textTokens(cleanClaim), textTokens(material))
+  const alignedSignalCount = Number(overlaps(claimFingerprint.entities, materialFingerprint.entities))
+    + Number(overlaps(claimFingerprint.actions, materialFingerprint.actions))
+    + Number(overlaps(claimFingerprint.objects, materialFingerprint.objects))
+  return objectsAligned && actionsAligned && entitiesAligned
+    && (tokenOverlap >= 0.16 || claimNumbers.length > 0 || alignedSignalCount >= 2)
+}
+
+export function supportingUrlsForClaim(event: NewsEvent, claim: string) {
+  if (!claimMatchesEvent(claim, event)) return []
+  return event.articles.filter((article) => articleSupportsClaim(article, claim)).map((article) => article.url)
+}
+
+function addsFingerprintDetail(title: string, summary: string, domain: DomainId) {
+  const titleFingerprint = fingerprintText(title, domain)
+  const summaryFingerprint = fingerprintText(summary, domain)
+  return summaryFingerprint.numbers.some((value) => !titleFingerprint.numbers.includes(value))
+    || summaryFingerprint.dates.some((value) => !titleFingerprint.dates.includes(value))
+    || summaryFingerprint.locations.some((value) => !titleFingerprint.locations.includes(value))
+    || summaryFingerprint.entities.some((value) => !titleFingerprint.entities.includes(value))
+    || summaryFingerprint.actions.some((value) => !titleFingerprint.actions.includes(value))
+    || summaryFingerprint.objects.some((value) => !titleFingerprint.objects.includes(value))
+}
+
+export function summaryAddsNewInformation(title: string, summary: string, event: NewsEvent) {
+  const cleanTitle = stripHtml(title)
+  const cleanSummary = stripHtml(summary)
+  if (cleanSummary.length < 32 || isPlaceholderSummary(cleanSummary) || hasHtmlArtifact(summary) || hasMeaninglessEnglishFragment(cleanSummary)) return false
+  if (!claimMatchesEvent(cleanSummary, event) || !supportingUrlsForClaim(event, cleanSummary).length) return false
+  const normalizedTitle = normalizeTitle(cleanTitle)
+  const normalizedSummary = normalizeTitle(cleanSummary)
+  const residual = normalizedSummary.replace(normalizedTitle, '')
+  const novelTokens = [...textTokens(cleanSummary)].filter((token) => !textTokens(cleanTitle).has(token))
+  return residual.length >= 10 && novelTokens.length >= 2
+    && (addsFingerprintDetail(cleanTitle, cleanSummary, event.domain)
+      || /时间|地点|位于|用于|旨在|面向|覆盖|涉及|导致|造成|结果|计划|目标|同比|环比|参与方|受影响|期间|目前|其中/u.test(cleanSummary))
+}
+
+export function hasInformativeSummary(value: string, event: NewsEvent, title = '') {
+  const text = stripHtml(value)
+  if (text.length < 32 || isPlaceholderSummary(text) || hasHtmlArtifact(value) || hasMeaninglessEnglishFragment(text)) return false
+  if (!claimMatchesEvent(text, event) || !supportingUrlsForClaim(event, text).length) return false
+  return title ? summaryAddsNewInformation(title, text, event) : Boolean(contentAction(text) && contentActor(text, event, false))
+}
+
+function rawNumberLabels(value: string) {
+  return [...new Set(value.match(/(?:[$€£¥￥]\s*)?\d[\d,.]*(?:\.\d+)?\s*(?:%|percent|percentage points?|basis points?|bps|trillion|billion|million|tn|bn|mn|亿元|亿美元|万亿元|万吨|gw|mw)?/gi)
+    ?.map((number) => number.replace(/\s+/g, ' ').trim()).filter((number) => /[%$€£¥￥]|\b(?:trillion|billion|million|tn|bn|mn|亿元|亿美元|万亿元|万吨|gw|mw)\b/i.test(number)) ?? [])]
+}
+
+function structuredChineseSummary(title: string, candidate: Candidate, event: NewsEvent) {
+  const material = articleMaterial(candidate)
+  const actor = contentActor(material, event)
+  const objects = [...extractEventObjects(material)]
+  const object = objects[0] ?? ''
+  const secondaryEntities = [...new Set(extractEntities(material).map(displayEntity))]
+    .filter((entity) => entity !== actor && !/^(?:Press Release Details|Exclusive)$/i.test(entity)).slice(0, 4)
+  const numbers = rawNumberLabels(material).filter((number) => !title.includes(number)).slice(0, 2)
+  const locations = extractLocations(material).map((location) => ENTITY_LABELS[location] ?? LOCATION_ALIASES.find(([id]) => id === location)?.[0] ?? location)
+  const dates = extractDates(material).filter((date) => !title.toLocaleLowerCase().includes(date)).slice(0, 2)
+  const details: string[] = []
+  if (secondaryEntities.length) details.push(`参与或受影响的主体还包括${secondaryEntities.join('、')}`)
+  if (numbers.length) {
+    const prefix = object === 'funding-round' ? '计划涉及的资金规模为'
+      : object === 'factory-capacity' || object === 'memory-capacity' ? '相关扩建规模为'
+        : object === 'equity-stake' ? '相关持仓变动为'
+          : '事件中的关键数值为'
+    details.push(`${prefix}${numbers.join('、')}`)
+  }
+  if (locations.length) details.push(`事件涉及${[...new Set(locations)].join('、')}`)
+  if (dates.length) details.push(`相关时间为${dates.join('、')}`)
+  const result = details.slice(0, 2).join('；')
+  if (!result) return ''
+  const summary = `${actor || '相关主体'}此次行动聚焦${contentObject(material, event) || '该事项'}；${result}。`
+  return summary.length >= 32 ? shorten(summary, 160) : ''
+}
+
+export type EventSpecificContent = {
+  title: string
+  summary: string
+  keyFacts: string[]
+  sourceUrl: string
+  factSources: Array<{ factIndex: number; urls: string[] }>
+}
 
 export function buildEventSpecificContent(event: NewsEvent): EventSpecificContent {
   const candidate = bestSpecificCandidate(event)
   const rawTitle = stripHtml(candidate.title)
-  const candidateText = `${rawTitle} ${stripHtml(candidate.description)} ${stripHtml(candidate.fullText ?? '')}`
-  let title = specificTitleOverride(candidateText) || rawTitle
-  if (!containsEnoughChinese(rawTitle) || isPlaceholderTitle(rawTitle) || !hasConcreteActorAndAction(rawTitle, event)) {
-    title = specificTitleOverride(candidateText) || [contentActor(candidateText, event), contentAction(candidateText), contentObject(candidateText, event)].filter(Boolean).join('')
+  const candidateText = articleMaterial(candidate)
+  let title = rawTitle
+  if (!containsEnoughChinese(rawTitle) || rawTitle.length > 58 || isPlaceholderTitle(rawTitle) || !hasConcreteActorAndAction(rawTitle, event)) {
+    title = [contentActor(candidateText, event), contentAction(candidateText), contentObject(candidateText, event)].filter(Boolean).join('')
   }
   title = shorten(title.replace(/\s+/g, ' ').trim(), 58)
 
-  const materialSentences = event.articles
-    .flatMap((article) => [article.description, article.fullText ?? ''])
-    .flatMap((value) => stripHtml(value).split(/(?<=[。！？!?])/u))
-    .map((value) => value.trim())
-    .filter((value) => containsEnoughChinese(value) && !isPlaceholderSummary(value) && hasConcreteActorAndAction(value, event))
-  const supportedFacts = [...new Set(materialSentences)].slice(0, 2).map((value) => shorten(value, 170))
-  if (!supportedFacts.length && title) supportedFacts.push(`${title.replace(/[。；]$/u, '')}；现有来源材料明确记录了这一具体动作。`)
-  const summary = shorten(supportedFacts.join(''), 260)
-  return { title, summary, keyFacts: supportedFacts.slice(0, 2), sourceUrl: candidate.url }
+  const supported = event.articles.flatMap((article) => materialSentences(`${article.description} ${article.fullText ?? ''}`)
+    .filter((sentence) => containsEnoughChinese(sentence) && supportingUrlsForClaim(event, sentence).includes(article.url))
+    .map((sentence) => ({ sentence: shorten(sentence, 160), url: article.url })))
+  const informative = supported.filter((item) => summaryAddsNewInformation(title, item.sentence, event))
+  const structured = structuredChineseSummary(title, candidate, event)
+  const facts = informative.length ? informative.slice(0, 2) : structured ? [{ sentence: structured, url: candidate.url }] : []
+  const summary = facts.map((item) => item.sentence).join('').slice(0, 260)
+  return {
+    title,
+    summary,
+    keyFacts: facts.map((item) => item.sentence),
+    sourceUrl: candidate.url,
+    factSources: facts.map((item, factIndex) => ({ factIndex, urls: [item.url] })),
+  }
 }
 
 function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): BriefingStory {
@@ -1337,14 +1522,14 @@ function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): Bri
     summary: specific.summary,
     keyFacts: facts,
     whyItMatters: `这条信息可能影响${config.fallback.affectedParties.slice(0, 2).join('与')}，但仍需结合后续数据判断真实影响。`,
-    background: config.fallback.background,
+    background: `围绕“${title}”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。`,
     impactChain: ['事件或政策信号出现', '相关主体调整资源与行为', '影响逐步传导至行业、市场或个人决策'],
     affectedParties: config.fallback.affectedParties,
     uncertainties: `当前只依据 RSS 标题与摘要整理；${sourceDescription} 未获来源明确确认的细节不作推断。`,
     glossary: [],
     trend: {
       nearTerm: '如果后续出现官方补充信息或其他可靠来源的交叉验证，短期判断可能随证据变化。',
-      mediumTerm: `若执行结果和后续数据持续印证，${config.fallback.outlook}`,
+      mediumTerm: `若执行结果和后续数据持续印证，“${title}”的影响才可能从一次事件发展为更稳定的中期变化。`,
       signalsToWatch: ['官方文件或数据', '相关参与方行动', '行业与市场的持续反应'],
     },
     url: candidate.url,
@@ -1364,7 +1549,9 @@ function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): Bri
       discoveryMethod: article.discoveryMethod,
       materialLevel: article.materialLevel,
     })),
-    factSources: facts.map((_, factIndex) => ({ factIndex, urls: [specific.sourceUrl] })),
+    factSources: specific.factSources.length
+      ? specific.factSources
+      : facts.map((_, factIndex) => ({ factIndex, urls: [specific.sourceUrl] })),
     publishedAt: event.publishedAt,
     evidence: event.evidence,
     tags: event.topicTags,

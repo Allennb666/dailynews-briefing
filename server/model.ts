@@ -11,16 +11,25 @@ import {
   buildCandidatePool,
   buildEventSpecificContent,
   buildRulesBriefing,
+  claimMatchesEvent,
+  cleanEventMaterial,
+  eventFingerprint,
+  fingerprintConflicts,
+  fingerprintText,
   extractActions,
   extractDates,
   extractEntities,
   extractEventObjects,
   extractKeyNumbers,
   hasConcreteActorAndAction,
+  hasHtmlArtifact,
   hasInformativeSummary,
+  hasMeaninglessEnglishFragment,
   isPlaceholderSummary,
   isPlaceholderTitle,
   keyNumbersCompatible,
+  supportingUrlsForClaim,
+  summaryAddsNewInformation,
 } from './pipeline.js'
 
 type ProviderConfig = {
@@ -183,7 +192,7 @@ function modelInput(events: NewsEvent[], materialLimit = 5_000, previousTitles: 
     articles: event.articles.map((article, index) => ({
       sourceId: articleSourceId(event, index),
       title: article.title,
-      material: (article.fullText || article.description).slice(0, materialLimit),
+      material: cleanEventMaterial(article.title, article.fullText || article.description, article.domain).slice(0, materialLimit),
       discoveryMethod: article.discoveryMethod,
       materialLevel: article.materialLevel,
       source: article.source.name,
@@ -229,7 +238,7 @@ function normalizedNumberTokens(value: string) {
 }
 
 function articleSupportsNumbers(article: NewsEvent['articles'][number], tokens: string[], sentence = tokens.join(' ')) {
-  const material = `${article.title} ${article.description} ${article.fullText ?? ''}`
+  const material = `${article.title} ${cleanEventMaterial(article.title, article.description, article.domain)} ${cleanEventMaterial(article.title, article.fullText ?? '', article.domain)} ${article.publishedAt.slice(0, 10)}`
   const materialClaims = extractKeyNumbers(material)
   const tokenClaims = extractKeyNumbers(sentence)
   if (tokenClaims.length && (!materialClaims.length || !tokenClaims.every((claim) => keyNumbersCompatible([claim], materialClaims)))) return false
@@ -270,7 +279,11 @@ export function numericFactWhitelist(event: NewsEvent): NumericFactWhitelistItem
   const facts = new Map<string, NumericFactWhitelistItem>()
   event.articles.forEach((article, index) => {
     const sourceId = articleSourceId(event, index)
-    const sentences = [...factSentences(article.title), ...factSentences(article.description), ...factSentences(article.fullText ?? '')]
+    const sentences = [
+      ...factSentences(article.title),
+      ...factSentences(cleanEventMaterial(article.title, article.description, article.domain)),
+      ...factSentences(cleanEventMaterial(article.title, article.fullText ?? '', article.domain)),
+    ]
     for (const fact of sentences) {
       const key = fact.normalize('NFKC').replace(/\s+/g, ' ').trim()
       const existing = facts.get(key)
@@ -371,7 +384,7 @@ export function sanitizeModelFacts(event: NewsEvent, facts: string[], incomingSo
     const specific = buildEventSpecificContent(event)
     return {
       keyFacts: specific.keyFacts,
-      factSources: specific.keyFacts.map((_, factIndex) => ({ factIndex, urls: [specific.sourceUrl] })),
+      factSources: specific.factSources,
     }
   }
   return { keyFacts, factSources }
@@ -585,20 +598,19 @@ function hanRatio(value: string) {
 
 export function repairStoryContentFields(story: BriefingStory, baseline: BriefingStory, event: NewsEvent): BriefingStory {
   const specific = buildEventSpecificContent(event)
-  const originalTitleWasPlaceholder = isPlaceholderTitle(story.title)
-  const originalTitleMatchedEventShape = hasConcreteActorAndAction(story.title, event)
-  const probableWrongEventDraft = !originalTitleWasPlaceholder && !originalTitleMatchedEventShape
   const fallbackTitle = !isPlaceholderTitle(baseline.title) && hasConcreteActorAndAction(baseline.title, event)
     ? baseline.title
     : specific.title
-  const title = isPlaceholderTitle(story.title) || !hasConcreteActorAndAction(story.title, event) || hanRatio(story.title) < 0.18
+  const title = isPlaceholderTitle(story.title) || !hasConcreteActorAndAction(story.title, event)
+    || !claimMatchesEvent(story.title, event) || hasHtmlArtifact(story.title) || hasMeaninglessEnglishFragment(story.title)
+    || hanRatio(story.title) < 0.18
     ? fallbackTitle
     : story.title
-  const titleGroundedSummary = `${title.replace(/[。；]$/u, '')}；现有来源材料明确记录了这一具体动作。`
-  const fallbackSummary = !isPlaceholderSummary(baseline.summary) && hasInformativeSummary(baseline.summary, event)
+  const fallbackSummary = !isPlaceholderSummary(baseline.summary) && summaryAddsNewInformation(title, baseline.summary, event)
     ? baseline.summary
-    : hasInformativeSummary(titleGroundedSummary, event) ? titleGroundedSummary : specific.summary
-  const summary = isPlaceholderSummary(story.summary) || !hasInformativeSummary(story.summary, event) || hanRatio(story.summary) < 0.32
+    : specific.summary
+  const summary = isPlaceholderSummary(story.summary) || !summaryAddsNewInformation(title, story.summary, event)
+    || hasHtmlArtifact(story.summary) || hasMeaninglessEnglishFragment(story.summary) || hanRatio(story.summary) < 0.32
     ? fallbackSummary
     : story.summary
 
@@ -606,9 +618,11 @@ export function repairStoryContentFields(story: BriefingStory, baseline: Briefin
   const retainedSources: BriefingStory['factSources'] = []
   const allowedUrls = new Set(event.articles.map((article) => article.url))
   story.keyFacts.forEach((fact, originalIndex) => {
-    if (!fact.trim() || isPlaceholderSummary(fact)) return
+    if (!fact.trim() || isPlaceholderSummary(fact) || hasHtmlArtifact(fact) || hasMeaninglessEnglishFragment(fact) || !claimMatchesEvent(fact, event)) return
     const urls = story.factSources.find((link) => link.factIndex === originalIndex)?.urls ?? []
     if (!urls.length || urls.some((url) => !allowedUrls.has(url))) return
+    const supportedUrls = new Set(supportingUrlsForClaim(event, fact))
+    if (!urls.some((url) => supportedUrls.has(url))) return
     const numberTokens = normalizedNumberTokens(fact)
     if (numberTokens.length) {
       const linkedArticles = event.articles.filter((article) => urls.includes(article.url))
@@ -621,24 +635,82 @@ export function repairStoryContentFields(story: BriefingStory, baseline: Briefin
   const keyFacts = retainedFacts.length ? retainedFacts : specific.keyFacts
   const factSources = retainedFacts.length
     ? retainedSources
-    : specific.keyFacts.map((_, factIndex) => ({ factIndex, urls: [specific.sourceUrl] }))
+    : specific.factSources
   const prediction = `${story.trend.nearTerm} ${story.trend.mediumTerm}`
   const trend = CONDITIONAL_PREDICTION.test(prediction) && story.trend.signalsToWatch.length >= 2 ? story.trend : baseline.trend
+  const reference = eventFingerprint(event)
+  const alignedAnalysis = (value: string, fallback: string, minimumHan = 0.32) => {
+    const clean = value.trim()
+    if (!clean || hanRatio(clean) < minimumHan || hasHtmlArtifact(clean) || hasMeaninglessEnglishFragment(clean)) return fallback
+    return fingerprintConflicts(reference, fingerprintText(clean, event.domain)) ? fallback : clean
+  }
+  const alignedArray = (values: string[], fallback: string[]) => values.length
+    && values.every((value) => !fingerprintConflicts(reference, fingerprintText(value, event.domain)) && !hasHtmlArtifact(value) && !hasMeaninglessEnglishFragment(value))
+    ? values
+    : fallback
   return {
     ...story,
     title,
     summary,
     keyFacts,
     factSources,
-    whyItMatters: !probableWrongEventDraft && hanRatio(story.whyItMatters) >= 0.32 ? story.whyItMatters : baseline.whyItMatters,
-    background: !probableWrongEventDraft && hanRatio(story.background) >= 0.32 ? story.background : baseline.background,
-    impactChain: probableWrongEventDraft ? baseline.impactChain : story.impactChain,
-    affectedParties: probableWrongEventDraft ? baseline.affectedParties : story.affectedParties,
-    uncertainties: !probableWrongEventDraft && hanRatio(story.uncertainties) >= 0.25 ? story.uncertainties : baseline.uncertainties,
-    glossary: probableWrongEventDraft ? baseline.glossary : story.glossary,
-    trend: probableWrongEventDraft ? baseline.trend : trend,
-    tags: probableWrongEventDraft ? baseline.tags : story.tags,
+    whyItMatters: alignedAnalysis(story.whyItMatters, baseline.whyItMatters),
+    background: alignedAnalysis(story.background, baseline.background),
+    impactChain: alignedArray(story.impactChain, baseline.impactChain),
+    affectedParties: alignedArray(story.affectedParties, baseline.affectedParties),
+    uncertainties: alignedAnalysis(story.uncertainties, baseline.uncertainties, 0.25),
+    glossary: story.glossary.every((item) => !fingerprintConflicts(reference, fingerprintText(`${item.term} ${item.definition}`, event.domain)))
+      ? story.glossary : baseline.glossary,
+    trend: fingerprintConflicts(reference, fingerprintText(`${trend.nearTerm} ${trend.mediumTerm} ${trend.signalsToWatch.join(' ')}`, event.domain))
+      ? baseline.trend : trend,
+    tags: alignedArray(story.tags, baseline.tags),
   }
+}
+
+export type ContentQualityMetrics = NonNullable<DailyBriefing['pipeline']['contentQuality']>
+
+function storyTextFields(story: BriefingStory) {
+  return [
+    story.title, story.summary, ...story.keyFacts, story.whyItMatters, story.background,
+    ...story.impactChain, ...story.affectedParties, story.uncertainties,
+    ...story.glossary.flatMap((item) => [item.term, item.definition]),
+    story.trend.nearTerm, story.trend.mediumTerm, ...story.trend.signalsToWatch, ...story.tags,
+  ]
+}
+
+export function contentQualityMetrics(briefing: DailyBriefing, events: NewsEvent[]): ContentQualityMetrics {
+  const byId = new Map(events.map((event) => [event.id, event]))
+  const metrics: ContentQualityMetrics = {
+    repeatedSummaryCount: 0,
+    noNewFactSummaryCount: 0,
+    titleSummaryMismatchCount: 0,
+    crossEventSourceCount: 0,
+    htmlArtifactCount: 0,
+    englishFragmentCount: 0,
+  }
+  for (const story of briefing.stories) {
+    const event = byId.get(story.id)
+    const normalizedTitle = story.title.toLocaleLowerCase().normalize('NFKC').replace(/[\p{P}\p{S}\s]+/gu, '')
+    const normalizedSummary = story.summary.toLocaleLowerCase().normalize('NFKC').replace(/[\p{P}\p{S}\s]+/gu, '')
+    if (normalizedSummary.startsWith(normalizedTitle) || (normalizedTitle.length > 12 && normalizedSummary.includes(normalizedTitle))) {
+      metrics.repeatedSummaryCount += 1
+    }
+    if (event) {
+      if (!summaryAddsNewInformation(story.title, story.summary, event)) metrics.noNewFactSummaryCount += 1
+      if (!claimMatchesEvent(story.title, event) || !claimMatchesEvent(story.summary, event)) metrics.titleSummaryMismatchCount += 1
+      story.keyFacts.forEach((fact, factIndex) => {
+        const linked = story.factSources.find((item) => item.factIndex === factIndex)?.urls ?? []
+        const supported = new Set(supportingUrlsForClaim(event, fact))
+        if (!linked.length || !linked.some((url) => supported.has(url))) metrics.crossEventSourceCount += 1
+      })
+    } else {
+      metrics.titleSummaryMismatchCount += 1
+    }
+    const fields = storyTextFields(story)
+    metrics.htmlArtifactCount += fields.filter(hasHtmlArtifact).length
+    metrics.englishFragmentCount += fields.filter(hasMeaninglessEnglishFragment).length
+  }
+  return metrics
 }
 
 export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
@@ -659,7 +731,21 @@ export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
     if (isPlaceholderTitle(story.title)) errors.push(`${story.id} 使用占位模板标题`)
     if (isPlaceholderSummary(story.summary)) errors.push(`${story.id} 使用占位模板摘要`)
     if (event && !hasConcreteActorAndAction(story.title, event)) errors.push(`${story.id} 标题未说明具体主体与动作`)
-    if (event && !hasInformativeSummary(story.summary, event)) errors.push(`${story.id} 摘要没有来源支持的具体变化`)
+    if (event && !hasInformativeSummary(story.summary, event, story.title)) errors.push(`${story.id} 摘要没有标题之外的来源支持信息`)
+    if (event && (!claimMatchesEvent(story.title, event) || !claimMatchesEvent(story.summary, event))) errors.push(`${story.id} 标题与摘要不属于同一事件`)
+    if (event) {
+      const reference = eventFingerprint(event)
+      const analyticalFields = [
+        story.whyItMatters, story.background, ...story.impactChain, ...story.affectedParties, story.uncertainties,
+        ...story.glossary.flatMap((item) => [item.term, item.definition]),
+        story.trend.nearTerm, story.trend.mediumTerm, ...story.trend.signalsToWatch,
+      ]
+      if (analyticalFields.some((value) => fingerprintConflicts(reference, fingerprintText(value, event.domain)))) {
+        errors.push(`${story.id} 分析字段混入其他事件`)
+      }
+    }
+    if (storyTextFields(story).some(hasHtmlArtifact)) errors.push(`${story.id} 含有 HTML 或乱码残片`)
+    if (storyTextFields(story).some(hasMeaninglessEnglishFragment)) errors.push(`${story.id} 含有无意义英文残句`)
     if (story.keyFacts.some((fact) => isPlaceholderSummary(fact))) errors.push(`${story.id} 关键事实包含占位文案`)
     const allowedUrls = new Set(event?.articles.map((article) => article.url) ?? [])
     story.keyFacts.forEach((fact, factIndex) => {
@@ -667,6 +753,11 @@ export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
       const numberTokens = normalizedNumberTokens(fact)
       if (!links.length || links.some((url) => !allowedUrls.has(url))) {
         errors.push(`${story.id} 的${numberTokens.length ? '数字事实' : '关键事实'} ${factIndex} 未关联候选来源`)
+        return
+      }
+      const supportedUrls = new Set(event ? supportingUrlsForClaim(event, fact) : [])
+      if (!links.some((url) => supportedUrls.has(url))) {
+        errors.push(`${story.id} 的关键事实 ${factIndex} 与关联来源不是同一事件`)
         return
       }
       if (numberTokens.length) {
@@ -689,6 +780,13 @@ export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
   const first = briefing.stories[0]
   if (first?.source.reliability === 'other' && first.evidence.level === 'single-source') errors.push('第一名不能是 other + single-source')
   if ([...entityCounts.values()].some((count) => count > 2)) errors.push('同一公司或狭窄子话题超过 2 条')
+  const contentMetrics = contentQualityMetrics(briefing, events)
+  if (contentMetrics.repeatedSummaryCount) errors.push(`摘要重复标题 ${contentMetrics.repeatedSummaryCount} 条`)
+  if (contentMetrics.noNewFactSummaryCount) errors.push(`摘要无新增事实 ${contentMetrics.noNewFactSummaryCount} 条`)
+  if (contentMetrics.titleSummaryMismatchCount) errors.push(`标题摘要错配 ${contentMetrics.titleSummaryMismatchCount} 条`)
+  if (contentMetrics.crossEventSourceCount) errors.push(`跨事件来源 ${contentMetrics.crossEventSourceCount} 条`)
+  if (contentMetrics.htmlArtifactCount) errors.push(`HTML 残片 ${contentMetrics.htmlArtifactCount} 处`)
+  if (contentMetrics.englishFragmentCount) errors.push(`英文残句 ${contentMetrics.englishFragmentCount} 处`)
   return [...new Set(errors)]
 }
 
@@ -745,7 +843,7 @@ function finalPrompt(collection: CollectionResult, events: NewsEvent[]) {
 固定槽位：${JSON.stringify(modelInput(events, 5_000, collection.previousTitles ?? [], true))}`
 }
 
-function pipelineMetrics(briefing: DailyBriefing, retries: number) {
+function pipelineMetrics(briefing: DailyBriefing, retries: number, events: NewsEvent[]) {
   const counts = new Map<string, number>()
   for (const story of briefing.stories) counts.set(story.source.name, (counts.get(story.source.name) ?? 0) + 1)
   return {
@@ -758,6 +856,7 @@ function pipelineMetrics(briefing: DailyBriefing, retries: number) {
     primarySourceCount: briefing.stories.filter((story) => story.evidence.primarySourcePresent).length,
     maxSourceConcentration: Math.max(0, ...counts.values()),
     qwenRetries: retries,
+    contentQuality: contentQualityMetrics(briefing, events),
   }
 }
 
@@ -783,7 +882,7 @@ export async function finalizeBriefing(
   if (!model) return {
     ...fallback,
     pipeline: {
-      ...pipelineMetrics(fallback, 0),
+      ...pipelineMetrics(fallback, 0, slotEvents),
       qualityStatus: 'degraded' as const,
       warnings: [...fallback.pipeline.warnings, '未配置 Qwen；这是 RSS/规则降级稿，不作为正常深度简报发布'],
     },
@@ -813,7 +912,7 @@ export async function finalizeBriefing(
           return {
             ...locallyRepaired,
             pipeline: {
-              ...pipelineMetrics(locallyRepaired, Math.max(0, modelCalls - 1)),
+              ...pipelineMetrics(locallyRepaired, Math.max(0, modelCalls - 1), slotEvents),
               qualityStatus: 'passed' as const,
               warnings: [...locallyRepaired.pipeline.warnings, '程序已逐字段修复未通过事实或语言门禁的内容，保留其余合格字段'],
             },
@@ -824,7 +923,7 @@ export async function finalizeBriefing(
         return {
           ...merged,
           pipeline: {
-            ...pipelineMetrics(merged, Math.max(0, modelCalls - 1)),
+            ...pipelineMetrics(merged, Math.max(0, modelCalls - 1), slotEvents),
             qualityStatus: 'passed' as const,
             warnings: merged.pipeline.warnings,
           },
@@ -837,7 +936,7 @@ export async function finalizeBriefing(
           ...fallback,
           mode: 'qwen' as const,
           pipeline: {
-            ...pipelineMetrics(fallback, Math.max(0, modelCalls - 1)),
+            ...pipelineMetrics(fallback, Math.max(0, modelCalls - 1), slotEvents),
             qualityStatus: 'passed' as const,
             warnings: [...fallback.pipeline.warnings, `Qwen 内容未通过门禁，程序已按固定槽位逐条回退：${lastErrors.join('；')}`],
           },
@@ -853,7 +952,7 @@ export async function finalizeBriefing(
   return {
     ...fallback,
     pipeline: {
-      ...pipelineMetrics(fallback, Math.max(0, modelCalls - 1)),
+      ...pipelineMetrics(fallback, Math.max(0, modelCalls - 1), slotEvents),
       qualityStatus: 'degraded' as const,
       warnings: [...fallback.pipeline.warnings, `Qwen 最终稿与本地逐条回退仍未通过：${lastErrors.join('；')}；已生成明确标记的规则降级稿`],
     },
