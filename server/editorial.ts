@@ -1,4 +1,4 @@
-import type { DailyBriefing, DailyDigest, DomainId } from '../shared/briefing.js'
+import type { BriefingStory, DailyBriefing, DailyDigest, DomainId } from '../shared/briefing.js'
 import {
   cleanUrl,
   createEvent,
@@ -63,18 +63,54 @@ export function deduplicateAcrossDomains(
   return result
 }
 
-export function validateCrossDomainUniqueness(briefings: DailyBriefing[]) {
-  const errors: string[] = []
+export type CrossDomainDuplicate = {
+  winner: { domain: DomainId; story: BriefingStory; event?: NewsEvent }
+  loser: { domain: DomainId; story: BriefingStory; event?: NewsEvent }
+}
+
+function editorialAnglesAreDistinct(left: BriefingStory, right: BriefingStory) {
+  const title = titleSimilarity(left.title, right.title)
+  const summary = titleSimilarity(left.summary, right.summary)
+  const facts = titleSimilarity(left.keyFacts.join(' '), right.keyFacts.join(' '))
+  return title < 0.5 && summary < 0.42 && facts < 0.42
+}
+
+export function findCrossDomainDuplicates(
+  briefings: DailyBriefing[],
+  selections: Array<{ domain: DomainId; events: NewsEvent[] }> = [],
+) {
+  const eventByDomainAndId = new Map(selections.flatMap((selection) => selection.events.map((event) => [`${selection.domain}:${event.id}`, event] as const)))
+  const conflicts: CrossDomainDuplicate[] = []
   const stories = briefings.flatMap((briefing) => briefing.stories.map((story) => ({ domain: briefing.domain, story })))
   for (let index = 0; index < stories.length; index += 1) {
     for (let other = index + 1; other < stories.length; other += 1) {
       if (stories[index].domain === stories[other].domain) continue
-      if (titleSimilarity(stories[index].story.title, stories[other].story.title) >= 0.7) {
-        errors.push(`${stories[index].story.id} 与 ${stories[other].story.id} 跨领域重复`)
-      }
+      const left = { ...stories[index], event: eventByDomainAndId.get(`${stories[index].domain}:${stories[index].story.id}`) }
+      const right = { ...stories[other], event: eventByDomainAndId.get(`${stories[other].domain}:${stories[other].story.id}`) }
+      const sameEvent = left.event && right.event ? crossDomainEventMatch(left.event, right.event) : false
+      const titleDuplicate = titleSimilarity(left.story.title, right.story.title) >= 0.7
+      if (!sameEvent && !titleDuplicate) continue
+      if (sameEvent && editorialAnglesAreDistinct(left.story, right.story)) continue
+      const ranked = [left, right].sort((a, b) => {
+        const fit = (b.event ? eventDomainFit(b.event, b.domain) : 0) - (a.event ? eventDomainFit(a.event, a.domain) : 0)
+        if (fit) return fit
+        const priority = (b.event?.primaryArticle.score ?? 0) + (b.event ? evidenceBoost(b.event) : 0)
+          - (a.event?.primaryArticle.score ?? 0) - (a.event ? evidenceBoost(a.event) : 0)
+        if (priority) return priority
+        return DOMAIN_ORDER.indexOf(a.domain) - DOMAIN_ORDER.indexOf(b.domain) || a.story.rank - b.story.rank
+      })
+      conflicts.push({ winner: ranked[0], loser: ranked[1] })
     }
   }
-  return errors
+  return conflicts
+}
+
+export function validateCrossDomainUniqueness(
+  briefings: DailyBriefing[],
+  selections: Array<{ domain: DomainId; events: NewsEvent[] }> = [],
+) {
+  return findCrossDomainDuplicates(briefings, selections).map((conflict) =>
+    `${conflict.winner.story.id} 与 ${conflict.loser.story.id} 跨领域重复`)
 }
 
 export function buildDailyDigest(

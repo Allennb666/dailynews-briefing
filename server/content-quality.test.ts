@@ -23,6 +23,7 @@ import {
 
 const fixturePath = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/content-quality-v1.json')
 const replayFixturePath = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/content-replay-2026-08-16.json')
+const publishedFixturePath = resolve(dirname(fileURLToPath(import.meta.url)), '../public/data/briefings/daily-latest.json')
 
 type ContentFixture = {
   nvidiaFinancing: { title: string; description: string; secondaryTitle: string }
@@ -327,4 +328,19 @@ test('8月16日缓存离线回放产出20条具体标题摘要，且六项内容
     assert.ok(story.summary.length >= 40 && story.summary.length <= 160, story.id)
     assert.ok(story.keyFacts.length >= 1 && story.keyFacts.every((fact) => fact.length >= 12), story.id)
   }
+})
+
+test('8月16日 Pages 的20条标题与摘要保持黄金样本原文，不被稳定性修复改写', async () => {
+  const replay = JSON.parse(await readFile(replayFixturePath, 'utf8')) as {
+    stories: Array<{ id: string; title: string; summary: string }>
+  }
+  const published = JSON.parse(await readFile(publishedFixturePath, 'utf8')) as {
+    date: string
+    briefings: Array<{ stories: Array<{ id: string; title: string; summary: string }> }>
+  }
+  assert.equal(published.date, '2026-08-16')
+  assert.deepEqual(
+    published.briefings.flatMap((briefing) => briefing.stories).map(({ id, title, summary }) => ({ id, title, summary })),
+    replay.stories.map(({ id, title, summary }) => ({ id, title, summary })),
+  )
 })

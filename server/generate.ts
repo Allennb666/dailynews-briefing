@@ -11,6 +11,7 @@ import { createEditorialModelFromEnvironment, finalizeBriefing, preselectEvents 
 import { collectCandidates, type NewsEvent } from './pipeline.js'
 import { createSearchRuntimeFromEnvironment, type SearchRuntime } from './search.js'
 import { DOMAIN_CONFIGS, DOMAIN_ORDER } from './sources.js'
+import { resolveCrossDomainDuplicatesWithBackups } from './stability.js'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -162,7 +163,7 @@ async function main() {
     ]
     await materializeEvents(materialOrder, articleReader)
 
-    const briefings: DailyBriefing[] = []
+    let briefings: DailyBriefing[] = []
     for (const collection of collections) {
       const selection = selections.find((item) => item.domain === collection.domain)!
       console.log(`[DailyNews] 正在最终编辑：${DOMAIN_CONFIGS[collection.domain].title}`)
@@ -181,7 +182,12 @@ async function main() {
       if (latest.pipeline.warnings.length) console.warn(`[DailyNews] ${latest.domainTitle} 提醒：${latest.pipeline.warnings.join('；')}`)
     }
 
-    const crossDomainErrors = validateCrossDomainUniqueness(briefings)
+    const stabilized = resolveCrossDomainDuplicatesWithBackups(briefings, collections, selections, startedAt)
+    briefings = stabilized.briefings
+    if (stabilized.replacements.length) {
+      console.warn(`[DailyNews] 跨领域重复已自动换入 ${stabilized.replacements.length} 个备用事件：${stabilized.replacements.map((item) => `${item.removedEventId}→${item.addedEventId}`).join('，')}`)
+    }
+    const crossDomainErrors = validateCrossDomainUniqueness(briefings, selections)
     const degraded = briefings.some((briefing) => briefing.pipeline.qualityStatus !== 'passed')
     const lines = summaryLines(briefings, searchRuntime, articleReader)
     diagnostics.captureFinal(briefings, [

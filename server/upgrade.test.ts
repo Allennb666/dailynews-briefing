@@ -8,7 +8,14 @@ import type { DailyBriefing, DomainId, SourceReliability } from '../shared/brief
 import { deduplicateAcrossDomains, validateCrossDomainUniqueness } from './editorial.js'
 import { ArticleReader } from './material.js'
 import type { EditorialModel, ModelBriefing } from './model.js'
-import { finalizeBriefing, validateBriefing } from './model.js'
+import {
+  analysisFieldHasSevereConflict,
+  finalizeBriefing,
+  preselectEvents,
+  stabilizeBriefingWithBackups,
+  validateBriefing,
+  validateBriefingStory,
+} from './model.js'
 import { FileSearchResultCache } from './search-cache.js'
 import {
   buildEvidence,
@@ -27,8 +34,10 @@ import {
   type SearchHit,
   type SearchResultCache,
 } from './search.js'
+import { resolveCrossDomainDuplicatesWithBackups } from './stability.js'
 
 const wave4FixturePath = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/wave4-real-regressions.json')
+const stabilityFixturePath = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/stability-2026-08-17.json')
 
 async function wave4ModelRegression() {
   const fixture = JSON.parse(await readFile(wave4FixturePath, 'utf8')) as {
@@ -85,6 +94,33 @@ function fixtureEvents(count = 7, domain: DomainId = 'ai-tech') {
     title: subjects[index] ?? `Unique subject ${index} builds facility`,
     description: `${subjects[index] ?? `Unique subject ${index} builds facility`}. ${(subjects[index] ?? `Unique subject ${index}`).split(' ')[0]} will begin implementation on 2026-08-${String(10 + index).padStart(2, '0')} for its named customers.`,
     tags: [`主题-${index}`],
+  })]))
+}
+
+function stabilityEvents(domain: DomainId, marketVariant = false) {
+  const aiStories = [
+    ['NVIDIA推出企业级AI服务器平台', 'NVIDIA于2026年8月17日推出企业级AI服务器平台，首批面向需要部署推理服务的企业客户。'],
+    ['OpenAI上线企业编程智能体', 'OpenAI于2026年8月17日上线企业编程智能体，帮助软件团队处理协作开发和代码审查任务。'],
+    ['SK海力士扩建HBM内存产能', 'SK海力士于2026年8月17日宣布扩建HBM内存产能，以增加面向AI服务器客户的供给。'],
+    ['Anthropic发布Claude水印工具', 'Anthropic于2026年8月17日发布Claude水印工具，用于识别模型生成内容并支持企业治理。'],
+    ['微软扩建欧洲数据中心', '微软于2026年8月17日宣布扩建欧洲数据中心，为企业云服务和人工智能应用增加算力。'],
+    ['AMD推出新款数据中心芯片', 'AMD于2026年8月17日推出新款数据中心芯片，面向企业推理和服务器部署场景。'],
+    ['英特尔启动先进封装生产线', '英特尔于2026年8月17日启动先进封装生产线，为数据中心芯片提供新增制造能力。'],
+  ]
+  const marketStories = [
+    aiStories[0],
+    ['美联储维持基准利率不变', '美联储于2026年8月17日维持基准利率不变，并表示将继续观察通胀和就业数据。'],
+    ['美国劳工统计局公布消费者价格指数', '美国劳工统计局于2026年8月17日公布消费者价格指数，报告说明当月通胀指标的变化。'],
+    ['美国政府公布原油运输计划', '美国政府于2026年8月17日公布原油运输计划，以应对主要航道的能源供应风险。'],
+    ['伯克希尔增持Alphabet股份', '伯克希尔于2026年8月17日披露增持Alphabet股份，调整大型科技公司持仓配置。'],
+    ['美国证监会起诉预IPO投资骗局', '美国证监会于2026年8月17日起诉一宗预IPO投资骗局，指控相关机构欺诈散户投资者。'],
+    ['美国财政部公布债券收益率数据', '美国财政部于2026年8月17日公布债券收益率数据，为市场判断融资成本提供最新指标。'],
+  ]
+  return (marketVariant ? marketStories : aiStories).map(([title, description], index) => createEvent(domain, [candidate(`stable-${domain}-${index}`, domain, {
+    sourceId: `stable-${domain}-source-${index}`,
+    title,
+    description,
+    score: 120 - index,
   })]))
 }
 
@@ -375,6 +411,119 @@ test('固定槽位不会因单条数字错误替换事件', async () => {
   assert.equal(model.calls, 1)
   assert.equal(briefing.stories[0].id, events[0].id)
   assert.ok(!briefing.stories.some((story) => story.id === events[5].id))
+})
+
+test('8月17日回归：预选保留合法 ID 并用规则补足，不废弃整份结果', async () => {
+  const events = fixtureEvents(10)
+  const model = new SequenceModel([{
+    selections: [
+      { id: events[2].id, reason: '高价值合法事件' },
+      { id: 'illegal-event-id', reason: '模型幻觉 ID' },
+      { id: events[0].id, reason: '第二个合法事件' },
+    ],
+  }])
+  const result = await preselectEvents(collection(events), model)
+  assert.equal(model.calls, 1)
+  assert.equal(result.usedModel, true)
+  assert.equal(result.events.length, 10)
+  assert.deepEqual(result.events.slice(0, 2).map((event) => event.id), [events[2].id, events[0].id])
+  assert.equal(result.events.some((event) => event.id === 'illegal-event-id'), false)
+  assert.match(result.warnings.join(' '), /忽略 1 个非法 ID.*规则补足/)
+})
+
+test('8月17日诊断夹具固定真实错误、门禁误报和32次生产预算', async () => {
+  const fixture = JSON.parse(await readFile(stabilityFixturePath, 'utf8')) as {
+    runId: number
+    diagnosticArtifactId: number
+    searchCalls: number
+    domains: Record<string, { realGateFindings: number; analysisFalsePositives: number; selectedIds: string[]; backupIds: string[] }>
+    crossDomainDuplicate: string[]
+    expected: { productionSearchBudget: number }
+  }
+  const domains = Object.values(fixture.domains)
+  assert.equal(fixture.runId, 31980121053)
+  assert.equal(fixture.diagnosticArtifactId, 9272177382)
+  assert.equal(domains.reduce((sum, item) => sum + item.analysisFalsePositives, 0), 5)
+  assert.equal(domains.reduce((sum, item) => sum + item.realGateFindings, 0) + Number(fixture.crossDomainDuplicate.length === 2), 21)
+  assert.equal(domains.every((item) => item.selectedIds.length === 5 && item.backupIds.length >= 4), true)
+  assert.equal(domains.every((item) => item.backupIds.every((id) => !item.selectedIds.includes(id))), true)
+  assert.equal(fixture.searchCalls, fixture.expected.productionSearchBudget)
+  assert.equal(fixture.searchCalls, 32)
+})
+
+test('8月17日回归：四个领域的单条坏稿都会换入最高优先级备用事件并保持通过', () => {
+  for (const domain of ['ai-tech', 'markets', 'world', 'learning'] as const) {
+    const events = stabilityEvents(domain, domain === 'markets')
+    const domainCollection = collection(events, domain)
+    const baseline = buildRulesBriefing(domainCollection, new Date('2026-08-17T00:00:00Z'), events.slice(0, 5).map((event) => event.id))
+    const badId = baseline.stories[0].id
+    const broken: DailyBriefing = {
+      ...baseline,
+      mode: 'qwen',
+      stories: baseline.stories.map((story) => story.id === badId ? {
+        ...story,
+        title: '来源发布相关更新',
+        summary: '来源材料发布了与当前主题相关的新信息。',
+      } : story),
+    }
+    const stabilized = stabilizeBriefingWithBackups(domainCollection, broken, events, new Date('2026-08-17T00:00:00Z'))
+    assert.equal(stabilized.errors.length, 0, `${domain}: ${stabilized.errors.join('；')}`)
+    assert.equal(stabilized.replacements.length, 1, domain)
+    assert.equal(stabilized.replacements[0].removedEventId, badId, domain)
+    assert.ok(events.slice(5).some((event) => event.id === stabilized.replacements[0].addedEventId), domain)
+    if (domain === 'ai-tech') assert.equal(stabilized.replacements[0].addedEventId, events[5].id)
+    assert.equal(stabilized.briefing.pipeline.qualityStatus, 'passed', domain)
+    assert.equal(stabilized.briefing.stories.some((story) => story.id === badId), false, domain)
+  }
+})
+
+test('8月17日回归：合理跨领域因果分析放行，冲突事实和无来源数字仍拦截', () => {
+  const event = createEvent('ai-tech', [candidate('nvidia-chain', 'ai-tech', {
+    title: 'NVIDIA launches an AI server platform',
+    description: 'NVIDIA launched an AI server platform for enterprise inference customers on 2026-08-17.',
+    sourceId: 'nvidia.com',
+    reliability: 'primary',
+  })])
+  assert.equal(analysisFieldHasSevereConflict('如果利率继续上升，企业融资成本可能增加，并影响AI服务器的部署节奏。', event), false)
+  assert.equal(analysisFieldHasSevereConflict('OpenAI宣布推出一款面向儿童的新疫苗。', event), true)
+  assert.equal(analysisFieldHasSevereConflict('如果需求延续，该平台可能带来999亿美元收入。', event), true)
+
+  const briefing = buildRulesBriefing(collection([event, ...fixtureEvents(4)]), new Date('2026-08-17T00:00:00Z'), [event.id, ...fixtureEvents(4).map((item) => item.id)])
+  const story = briefing.stories.find((item) => item.id === event.id)!
+  const causalStory = { ...story, whyItMatters: '如果利率继续上升，企业融资成本可能增加，并影响AI服务器的部署节奏。' }
+  assert.equal(validateBriefingStory(causalStory, event).some((error) => error.includes('分析字段')), false)
+})
+
+test('8月17日回归：跨领域重复自动保留高匹配领域并在另一领域换备用', () => {
+  const ai = stabilityEvents('ai-tech')
+  const markets = stabilityEvents('markets', true)
+  markets[0] = createEvent('markets', [{ ...ai[0].primaryArticle, domain: 'markets' }])
+
+  const aiCollection = collection(ai, 'ai-tech')
+  const marketCollection = collection(markets, 'markets')
+  const aiRules = buildRulesBriefing(aiCollection, new Date('2026-08-17T00:00:00Z'), ai.slice(0, 5).map((event) => event.id))
+  const marketRules = buildRulesBriefing(marketCollection, new Date('2026-08-17T00:00:00Z'), markets.slice(0, 5).map((event) => event.id))
+  const aiBriefing = { ...aiRules, pipeline: { ...aiRules.pipeline, qualityStatus: 'passed' as const } }
+  const marketBriefing = { ...marketRules, pipeline: { ...marketRules.pipeline, qualityStatus: 'passed' as const } }
+  const selections = [{ domain: 'ai-tech' as const, events: ai }, { domain: 'markets' as const, events: markets }]
+  const resolved = resolveCrossDomainDuplicatesWithBackups(
+    [aiBriefing, marketBriefing],
+    [aiCollection, marketCollection],
+    selections,
+    new Date('2026-08-17T00:00:00Z'),
+  )
+  assert.equal(resolved.errors.length, 0, resolved.errors.join('；'))
+  assert.ok(resolved.replacements.some((item) => item.reason === 'cross-domain-duplicate'))
+  assert.equal(resolved.briefings.every((briefing) => briefing.pipeline.qualityStatus === 'passed'), true)
+})
+
+test('可靠 single-source 事件不会仅因未达到多源确认而被门禁拒绝', async () => {
+  const events = fixtureEvents(7)
+  assert.equal(events.every((event) => event.evidence.level === 'single-source'), true)
+  const model = new SequenceModel([validModelBriefing(events)])
+  const briefing = await finalizeBriefing(collection(events), events, model, new Date('2026-08-17T00:00:00Z'))
+  assert.equal(briefing.pipeline.qualityStatus, 'passed', briefing.pipeline.warnings.join('；'))
+  assert.equal(validateBriefing(briefing, events).some((error) => /single-source|confirmed|corroborated/.test(error)), false)
 })
 
 test('Qwen 两次失败后明确降级，不伪装成正常简报', async () => {

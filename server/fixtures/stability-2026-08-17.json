@@ -1,0 +1,47 @@
+{
+  "runId": 31980121053,
+  "diagnosticArtifactId": 9272177382,
+  "searchCalls": 32,
+  "domains": {
+    "ai-tech": {
+      "preselectionMode": "rules-after-illegal-id",
+      "realGateFindings": 5,
+      "analysisFalsePositives": 0,
+      "badStoryIds": ["5963450f4652", "6babdb960302", "049f3f634743", "a3e60b51a9cd"],
+      "selectedIds": ["5963450f4652", "7d19b90030c9", "6babdb960302", "049f3f634743", "a3e60b51a9cd"],
+      "backupIds": ["04543e3b8cb6", "5bdf5b34b0e5", "91984ffc70e0", "c484babea252"]
+    },
+    "markets": {
+      "realGateFindings": 4,
+      "analysisFalsePositives": 2,
+      "badStoryIds": ["1141dae9320d", "8dea5550734e", "0ac2a4546a74"],
+      "analysisFalsePositiveIds": ["1141dae9320d", "fa194d1031b8"],
+      "selectedIds": ["1141dae9320d", "8dea5550734e", "0ac2a4546a74", "b7e4db6530ba", "fa194d1031b8"],
+      "backupIds": ["03a29f0e1d12", "149220203d88", "44eb90f3b08e", "4d0303d1cb5e", "685b5b79dc75"]
+    },
+    "world": {
+      "realGateFindings": 5,
+      "analysisFalsePositives": 1,
+      "badStoryIds": ["129bc874684b", "1bbe0960fff0"],
+      "analysisFalsePositiveIds": ["a2a529560f31"],
+      "selectedIds": ["a2a529560f31", "129bc874684b", "fb5b1d23d289", "7c256a207d86", "1bbe0960fff0"],
+      "backupIds": ["59177e01a691", "60e1cfe9e2d9", "7571e4b9f511", "eb28943d6280"]
+    },
+    "learning": {
+      "realGateFindings": 6,
+      "analysisFalsePositives": 2,
+      "badStoryIds": ["c94f518ba17b", "01cb093f09a0", "0018c5ce95d1"],
+      "analysisFalsePositiveIds": ["ba02b25b1134", "fe25c9cce38e"],
+      "selectedIds": ["ba02b25b1134", "c94f518ba17b", "01cb093f09a0", "fe25c9cce38e", "0018c5ce95d1"],
+      "backupIds": ["66b872df7954", "7472558161fb", "8226e56807c1", "f053aeb560af", "f2af7007955b"]
+    }
+  },
+  "crossDomainDuplicate": ["7d19b90030c9", "fe25c9cce38e"],
+  "expected": {
+    "validPreselectionIdsAreRetained": true,
+    "badSlotsUseUnusedBackups": true,
+    "analysisFalsePositivesDoNotBlock": true,
+    "crossDomainDuplicateUsesBackup": true,
+    "productionSearchBudget": 32
+  }
+}
