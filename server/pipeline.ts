@@ -385,7 +385,7 @@ export function isNonArticlePage(title: string, rawUrl: string, description = ''
   }
   const normalizedTitle = title.toLocaleLowerCase().normalize('NFKC').replace(/[\p{P}\p{S}]+/gu, ' ').replace(/\s+/g, ' ').trim()
   const newsArchiveTitle = /^(?:news\s+)?archives?$|新闻归档/i.test(normalizedTitle)
-  const genericTitle = /^(?:news|latest news|press releases?|index|category|tag|blog)(?:\s*[|·-].*)?$|新闻中心|资讯中心|文章列表/i.test(normalizedTitle)
+  const genericTitle = /^(?:news|latest news(?:\s+\d+)?(?:\s+un news)?|press releases?|index|category|tag|blog)(?:\s*[|·-].*)?$|新闻中心|资讯中心|文章列表/i.test(normalizedTitle)
   const listingPath = /(?:^|\/)(?:archive|archives|index|category|categories|tag|tags)(?:\/|$)/i.test(pathname)
     || /\/(?:news|press-releases?|blog)$/i.test(pathname)
   return newsArchiveTitle || genericTitle || (listingPath && !hasSpecificEventInformation(title, description))
@@ -476,6 +476,7 @@ const LOCATION_ALIASES: Array<[string, RegExp]> = [
   ['black-sea', /\bblack sea\b|黑海/i], ['strait-of-hormuz', /\bstrait of hormuz\b|霍尔木兹海峡/i],
   ['egypt', /\begypt\b|埃及/i], ['uae', /\bUAE\b|united arab emirates|阿联酋/i],
   ['russia', /\brussia\b|俄罗斯/i], ['ukraine', /\bukraine\b|乌克兰/i],
+  ['armenia', /\barmenia\b|亚美尼亚/i],
 ]
 
 export type EventFingerprint = {
@@ -576,7 +577,7 @@ export function cleanEventMaterial(title: string, value: string, domain: DomainI
 }
 
 export function hasHtmlArtifact(value: string) {
-  return /<\/?[a-z][^>]*>|&(?:#\d+|#x[\da-f]+|[a-z][a-z0-9]+);|\b(?:javascript:void|document\.cookie)\b/i.test(value)
+  return /<\/?[a-z][^>]*>|&(?:#\d+|#x[\da-f]+|[a-z][a-z0-9]+);|(?:^|\s)#{2,}\s|\b(?:javascript:void|document\.cookie)\b/i.test(value)
 }
 
 export function hasMeaninglessEnglishFragment(value: string) {
@@ -1402,6 +1403,7 @@ function containsEnoughChinese(text: string) {
 }
 
 const PLACEHOLDER_TITLE_PATTERNS = [
+  /^press release(?: details?)?$/i,
   /(?:来源|公司|机构|[\w.-]+\.com|[\w.-]+\.org|[\w.-]+\.gov|[\w.-]+\.edu|blog|news|cnbc|bbc|dw|techcrunch).{0,24}(?:发布|披露|提供).{0,18}(?:相关)?(?:更新|信息)$/iu,
   /^.{2,40}(?:发布|披露|提供)(?:了)?(?:与)?(?:当前)?[^：:，。]{1,24}(?:相关)?(?:更新|信息)$/u,
   /(?:发布|披露|提供)(?:了)?(?:与)?(?:当前)?(?:主题|事件|领域).{0,12}(?:相关)?(?:更新|信息)$/u,
@@ -1428,6 +1430,7 @@ const ENTITY_LABELS: Record<string, string> = {
   'mit-sloan': 'MIT斯隆管理学院', israel: '以色列', iran: '伊朗', oman: '阿曼', indonesia: '印度尼西亚',
   japan: '日本', 'south-korea': '韩国', 'north-korea': '朝鲜', uae: '阿联酋', russia: '俄罗斯', ukraine: '乌克兰', groq: 'Groq',
   france: '法国',
+  armenia: '亚美尼亚',
   'hugging-face': 'Hugging Face',
   'research-team': '研究团队', 'education-department': '教育部门', hackers: '黑客', university: '大学',
   taliban: '塔利班', 'strait-of-hormuz': '霍尔木兹海峡船舶通行量',
@@ -1500,15 +1503,17 @@ function contentActor(text: string, event: NewsEvent, includeEventMaterial = tru
   if (extractEventObjects(text).has('shipping-route') && /\bstrait of hormuz\b|霍尔木兹海峡/i.test(text)) return '霍尔木兹海峡船舶通行量'
   if (extractActions(material).has('join') && /\bjapan(?:ese)?\b|日本/i.test(material)) return '日本'
   if (extractActions(material).has('research-find')) return '研究团队'
+  const actorText = stripHtml(text).replace(/^Press Release Details?\s*/i, '')
+  const actionLead = actorText.match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+(?:launches?|announces?|appoints?|acquires?|builds?|opens?|funds?|partners?|helps?|warns?|threatens?|releases?|introduces?|expands?)\b/i)?.[1]
+  if (actionLead && !/^(?:what|how|why|when|where|who|latest|new)$/i.test(actionLead)) return actionLead
+  const entity = firstAliasedEntity(material)
+  if (entity) return displayEntity(entity)
   if (event.primaryArticle.source.type === 'official') {
     const sourceEntity = extractEntities(event.primaryArticle.source.name)[0]
     if (sourceEntity) return displayEntity(sourceEntity)
   }
-  const entity = firstAliasedEntity(material)
-  if (entity) return displayEntity(entity)
-  const actorText = stripHtml(text).replace(/^Press Release Details?\s*/i, '')
   const englishLead = actorText.match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+/)?.[1]
-  if (englishLead) return englishLead
+  if (englishLead && !/^(?:what|how|why|when|where|who|latest|new)(?:\s|$)/i.test(englishLead)) return englishLead
   return stripHtml(text).match(/^([\p{Script=Han}A-Za-z0-9·.-]{2,20})(?:正|已|将)?(?=发布|推出|宣布|公布|启动|设立|建立|联合|合作|投资|融资|扩产|增持|收购|指控|调查|下调|发生|袭击|警告|警示|威胁|提议|签署|实施|推进|去世)/u)?.[1] ?? ''
 }
 
@@ -1532,6 +1537,7 @@ function contentAction(text: string) {
 
 function contentObject(text: string, event: NewsEvent) {
   const objects = extractEventObjects(text)
+  if ((objects.has('data-center') || objects.has('factory-capacity')) && /\bai factory\b/i.test(text) && /\barmenia\b|亚美尼亚/i.test(text)) return '亚美尼亚AI工厂'
   const executive = text.match(/appoints?\s+([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){1,3})\s+as\s+Chief Revenue Officer/i)
   if (objects.has('executive-appointment') && executive) return `${executive[1]}为首席营收官`
   if (objects.has('fraud-case') && /pre[- ]?ipo/i.test(text)) return 'Pre-IPO投资骗局'
@@ -1678,13 +1684,15 @@ function materialSpecificDetails(value: string) {
   if (/strands agents?/i.test(value) && /lerobot/i.test(value)) details.push('流程连接Strands Agents与LeRobot')
   if (/record,?\s*train,?\s*and deploy/i.test(value)) details.push('流程覆盖数据记录、训练与部署')
   if (/storage buckets?/i.test(value)) details.push('数据可写入Hugging Face存储桶')
+  if (/famil(?:y|ies).{0,48}(?:trapp|besieg|surround)|(?:trapp|besieg|surround).{0,48}famil(?:y|ies)/i.test(value)
+    && /settlers?/i.test(value)) details.push('受影响家庭此前被定居者围困数日')
   return [...new Set(details)]
 }
 
 function structuredChineseSummary(title: string, candidate: Candidate, event: NewsEvent) {
   const material = articleMaterial(candidate)
   const anchor = articleEventAnchor(candidate)
-  const actor = contentActor(anchor, event)
+  const actor = contentActor(candidate.title, event) || contentActor(anchor, event)
   const objects = [...extractEventObjects(material)]
   const object = objects[0] ?? ''
   const secondaryEntities = [...new Set(extractEntities(material)
@@ -1731,7 +1739,7 @@ function structuredChineseSummary(title: string, candidate: Candidate, event: Ne
   if (!substantiveDetailCount && !sourceAddsDetail) return ''
   const result = details.slice(0, 2).join('；')
   if (!result) return ''
-  const action = contentAction(anchor) || contentAction(candidate.title) || contentAction(material)
+  const action = (isPlaceholderTitle(candidate.title) ? '' : contentAction(candidate.title)) || contentAction(anchor) || contentAction(material)
   const objectLabel = contentObject(anchor, event) || contentObject(candidate.title, event) || contentObject(material, event)
   const eventClause = actor && action && objectLabel
     ? action === '发现' ? `${actor}针对${objectLabel}的研究发现了成效变化`
@@ -1756,9 +1764,10 @@ export function buildEventSpecificContent(event: NewsEvent): EventSpecificConten
   const candidateAnchor = articleEventAnchor(candidate)
   let title = rawTitle
   if (!containsEnoughChinese(rawTitle) || rawTitle.length > 58 || isPlaceholderTitle(rawTitle) || !hasConcreteActorAndAction(rawTitle, event)) {
-    const action = contentAction(candidateAnchor) || contentAction(candidate.title) || contentAction(candidateText)
+    const action = (isPlaceholderTitle(candidate.title) ? '' : contentAction(candidate.title)) || contentAction(candidateAnchor) || contentAction(candidateText)
     const objectLabel = contentObject(candidateAnchor, event) || contentObject(candidate.title, event) || contentObject(candidateText, event)
-    title = [contentActor(candidateAnchor, event), action, objectLabel].filter(Boolean).join('')
+    const actor = contentActor(candidate.title, event) || contentActor(candidateAnchor, event)
+    title = [actor, action, objectLabel].filter(Boolean).join('')
   }
   if (extractActions(candidateAnchor).has('research-find') && extractEventObjects(candidateAnchor).has('learning-method')
     && /math|review mistakes?|mastery learning|数学|纠错|错题/i.test(candidateAnchor)) {
@@ -1771,7 +1780,7 @@ export function buildEventSpecificContent(event: NewsEvent): EventSpecificConten
     .map((sentence) => ({ sentence: shorten(sentence, 160), url: article.url })))
   const informative = supported.filter((item) => summaryAddsNewInformation(title, item.sentence, event))
   const structured = structuredChineseSummary(title, candidate, event)
-  const facts = informative.length ? informative.slice(0, 2) : structured ? [{ sentence: structured, url: candidate.url }] : []
+  const facts = informative.length ? informative.slice(0, 1) : structured ? [{ sentence: structured, url: candidate.url }] : []
   const summary = facts.map((item) => item.sentence).join('').slice(0, 260)
   return {
     title,

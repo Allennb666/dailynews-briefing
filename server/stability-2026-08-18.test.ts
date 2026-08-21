@@ -45,6 +45,15 @@ type ArtifactFixture = {
       humanitarianAccess: { title: string; description: string }
       franceRanking: { title: string }
     }
+    publishedFalsePasses: {
+      aiFactory: string
+      archiveTitle: string
+      archiveUrl: string
+      courseTitle: string
+      classroomTitle: string
+      truncatedMarketSummary: string
+      brokenEducationSummary: string
+    }
     learningSecurity: { title: string; source: string }
     publishedGateMisses: Array<{ domain: DomainId; title: string; source: string; url?: string; expected: 'reject' | 'publishable' | 'insufficient-material' }>
     learningBackups: Array<{ title: string; description: string }>
@@ -278,6 +287,39 @@ test('最新真实回放：AI、国际与教育备用事件均可成稿，重复
   const ranking = candidate('ranking-domain', 'learning', latest.franceRanking.title, latest.franceRanking.title, 'lemonde.fr')
   ranking.source = source('lemonde.fr', 'tier-1')
   assert.equal(assessEventForPreselection(createEvent('learning', [ranking]), 'learning').accepted, true)
+})
+
+test('成功发布后的人工复核：归档页、残缺摘要和伪具体规则稿不再通过', async () => {
+  const data = await fixture()
+  const misses = data.replay.publishedFalsePasses
+
+  const archive = candidate('published-archive', 'world', misses.archiveTitle, 'UN News page includes Iran, Ukraine and several unrelated latest stories.', 'news.un.org')
+  archive.url = misses.archiveUrl
+  archive.source = source('news.un.org', 'primary')
+  assert.equal(assessEventForPreselection(createEvent('world', [archive]), 'world').accepted, false)
+
+  const factory = candidate('published-factory', 'ai-tech', misses.aiFactory, misses.aiFactory, 'blogs.nvidia.com')
+  factory.source = source('blogs.nvidia.com', 'primary')
+  const factoryEvent = createEvent('ai-tech', [factory])
+  const factoryStory = buildRuleStory(factoryEvent)
+  assert.match(factoryStory.title, /Firebird.*发布.*亚美尼亚AI工厂/)
+  assert.doesNotMatch(factoryStory.title, /NVIDIA接触产能建设/)
+
+  const course = candidate('published-course', 'learning', misses.courseTitle, misses.courseTitle, 'blog.coursera.org')
+  course.source = source('blog.coursera.org', 'primary')
+  const courseEvent = createEvent('learning', [course])
+  const courseStory = buildRuleStory(courseEvent)
+  assert.match(courseStory.title, /^Google/)
+  assert.notEqual(validateBriefingStory(courseStory, courseEvent).length, 0, '仅有标题的课程材料不能用泛化摘要凑数')
+
+  const classroom = candidate('published-classroom', 'learning', misses.classroomTitle, misses.classroomTitle, 'edsurge.com')
+  classroom.source = source('edsurge.com', 'tier-1')
+  const classroomEvent = createEvent('learning', [classroom])
+  assert.notEqual(validateBriefingStory(buildRuleStory(classroomEvent), classroomEvent).length, 0)
+
+  const valid = buildRuleStory(factoryEvent)
+  assert.ok(validateBriefingStory({ ...valid, summary: misses.truncatedMarketSummary }, factoryEvent).some((error) => error.includes('摘要') || error.includes('HTML')))
+  assert.ok(validateBriefingStory({ ...valid, summary: misses.brokenEducationSummary }, factoryEvent).some((error) => error.includes('残缺量词')))
 })
 
 test('真实缓存回放：教育英文事件均能生成具体中文备用稿并独立通过门禁', async () => {

@@ -634,7 +634,7 @@ function hanRatio(value: string) {
   return (meaningful.match(/[\p{Script=Han}]/gu) ?? []).length / meaningful.length
 }
 
-const BROKEN_QUANTIFIER = /(?:减少|增加|达到|高达|造成约?|约|近|超过)\s*(?:万?人|亿?欧元|亿美元|亿元|万亿元|经济损失)(?=[，。；]|$)|(?<![\d数十百千])(?:万|亿)(?:美元|欧元|元)(?![\d])/u
+const BROKEN_QUANTIFIER = /(?:减少|增加|达到|高达|造成约?|约|近|超过)\s*(?:万?(?:人|名)|亿?欧元|亿美元|亿元|万亿元|经济损失)(?=[，。；]|$)|(?<![\d数十百千])(?:万|亿)(?:美元|欧元|元)(?![\d])|[，；]\s*[。！？]/u
 
 const CONDITIONAL_ANALYSIS = /如果|若|可能|或将|有望|取决于|需(?:要)?观察|在.+(?:情况下|前提下)|影响|传导|风险|机会|承压|受益/
 const CONCRETE_FACT_ASSERTION = /宣布|发布|推出|收购|融资|扩建|下调|上调|袭击|死亡|签署|批准|实施|发生|公布|启动|停止|关闭|裁员|invest|launch|announce|acquire|attack|kill|approve|implement/i
@@ -695,6 +695,7 @@ export function repairStoryContentFields(story: BriefingStory, baseline: Briefin
     ? baseline.summary
     : specific.summary
   const summary = isPlaceholderSummary(story.summary) || !summaryAddsNewInformation(title, story.summary, event)
+    || story.summary.length > 220 || !/[。！？.!?]$/u.test(story.summary.trim())
     || hasHtmlArtifact(story.summary) || hasMeaninglessEnglishFragment(story.summary) || BROKEN_QUANTIFIER.test(story.summary) || hanRatio(story.summary) < 0.32
     ? fallbackSummary
     : story.summary
@@ -804,6 +805,7 @@ export function validateBriefingStory(story: BriefingStory, event?: NewsEvent) {
   if (isPlaceholderSummary(story.summary)) errors.push(`${story.id} 使用占位模板摘要`)
   if (event && !hasConcreteActorAndAction(story.title, event)) errors.push(`${story.id} 标题未说明具体主体与动作`)
   if (event && !hasInformativeSummary(story.summary, event, story.title)) errors.push(`${story.id} 摘要没有标题之外的来源支持信息`)
+  if (story.summary.length > 220 || !/[。！？.!?]$/u.test(story.summary.trim())) errors.push(`${story.id} 摘要过长或句子不完整`)
   if (event && (!claimMatchesEvent(story.title, event) || !claimMatchesEvent(story.summary, event))) errors.push(`${story.id} 标题与摘要不属于同一事件`)
   if (event) {
     const analyticalFields = [
