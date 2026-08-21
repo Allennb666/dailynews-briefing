@@ -1,5 +1,5 @@
 import { DOMAIN_CONFIGS } from './sources.js'
-import { cleanEventMaterial, cleanUrl, compareCandidates, stripHtml, type Candidate, type NewsEvent } from './pipeline.js'
+import { cleanEventMaterial, cleanUrl, compareCandidates, isImplausiblyFuture, stripHtml, type Candidate, type NewsEvent } from './pipeline.js'
 
 function boundedInteger(value: string | undefined, fallback: number, maximum: number) {
   const parsed = Number.parseInt(value ?? '', 10)
@@ -180,8 +180,8 @@ export async function recoverMissingCandidateDates(
     let recoveredAny = false
     for (const candidate of group.copies) {
       const ageDays = (now.getTime() - recoveredTime) / 86_400_000
-      if (!Number.isFinite(recoveredTime) || ageDays > DOMAIN_CONFIGS[candidate.domain].sourceWindowDays || ageDays < -1) {
-        const status = ageDays < -1 ? 'future-dated' : 'expired'
+      if (!Number.isFinite(recoveredTime) || ageDays > DOMAIN_CONFIGS[candidate.domain].sourceWindowDays || isImplausiblyFuture(recoveredTime, now)) {
+        const status = isImplausiblyFuture(recoveredTime, now) ? 'future-dated' : 'expired'
         rejected.add(`${candidate.domain}:${candidate.id}`)
         reader.dateRecoveryRecords.push({
           url: group.url,

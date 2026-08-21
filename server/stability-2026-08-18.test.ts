@@ -8,6 +8,7 @@ import { findCrossDomainDuplicates, validateCrossDomainUniqueness } from './edit
 import { stabilizeBriefingWithBackups, validateBriefing, validateBriefingStory } from './model.js'
 import {
   assessEventForPreselection,
+  assessSearchHit,
   buildCandidatePool,
   buildRuleStory,
   buildRulesBriefing,
@@ -19,6 +20,7 @@ import {
   type CollectionResult,
   type NewsEvent,
 } from './pipeline.js'
+import { DOMAIN_CONFIGS } from './sources.js'
 
 const fixturePath = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/stability-2026-08-18.json')
 
@@ -263,6 +265,16 @@ test('成功回放人工复核发现的伪通过稿会被拒绝或重写为来�
   const event = eventsFor('learning')[0]
   const broken = { ...buildRuleStory(event), summary: '该项目预计今年秋季将减少 万人，并造成约 经济损失。' }
   assert.ok(validateBriefingStory(broken, event).some((error) => error.includes('残缺量词')))
+
+  const future = assessSearchHit(DOMAIN_CONFIGS['ai-tech'], {
+    title: 'ChatGPT Ads expands across Europe',
+    url: 'https://openai.com/index/chatgpt-ads-expands-across-europe',
+    snippet: 'ChatGPT Ads expands to additional European markets.',
+    publishedAt: '2026-08-18T22:00:00.000Z',
+    publisher: 'OpenAI',
+  }, 'site:openai.com AI product announcement', new Date('2026-08-17T23:30:00.000Z'))
+  assert.equal(future.candidate, null)
+  assert.equal(future.decision.reason, 'future-dated')
 })
 
 test('真实误聚类：霍尔木兹油轮与黑海粮食供应拆成两个事件', async () => {

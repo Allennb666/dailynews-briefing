@@ -90,6 +90,12 @@ const parser = new Parser({
   },
 })
 
+const MAX_FUTURE_SKEW_MS = 6 * 60 * 60 * 1_000
+
+export function isImplausiblyFuture(publishedTime: number, now: Date) {
+  return Number.isFinite(publishedTime) && publishedTime > now.getTime() + MAX_FUTURE_SKEW_MS
+}
+
 export function stripHtml(value = '') {
   return value
     .replace(/<!--[\s\S]*?-->/g, ' ')
@@ -851,7 +857,7 @@ async function fetchSource(
     const rejectedReason = !title || !url ? 'missing-title-or-url'
       : isNonArticlePage(title, url, description) ? 'non-article-page'
         : ageDays > config.sourceWindowDays ? 'expired'
-        : ageDays < -1 ? 'future-dated'
+        : isImplausiblyFuture(new Date(publishedAt).getTime(), now) ? 'future-dated'
           : !source.focused && !isRelevant(config, text) ? 'irrelevant'
             : null
     if (rejectedReason) {
@@ -922,7 +928,7 @@ export function assessSearchHit(
       candidate: null,
       decision: { ...baseDecision, accepted: false, reason: 'expired', publishedAt, dateConfidence },
     }
-    if (ageDays < -1) return {
+    if (isImplausiblyFuture(parsedTime, now)) return {
       candidate: null,
       decision: { ...baseDecision, accepted: false, reason: 'future-dated', publishedAt, dateConfidence },
     }
@@ -1287,7 +1293,7 @@ export function eventDomainFit(event: NewsEvent, domain: DomainId) {
   return best + evidence + featureDepth + (domain === 'learning' ? learningPersonalRelevance(text).score : 0)
 }
 
-const LOW_NEWS_VALUE_PATTERN = /\b(?:how to|tips? for|life hacks?|out[- ]of[- ]office|celebrity tribute|fashion|recipe|horoscope|viral video|odd news|job details?|job posting|vacanc(?:y|ies)|careers? opportunity)\b|生活技巧|职场技巧|自动回复|招聘信息|职位详情|猎奇|明星八卦|奇闻/i
+const LOW_NEWS_VALUE_PATTERN = /\b(?:how to|how (?:businesses|enterprises|companies|organizations) (?:use|put|adopt|deploy)|from assistance to execution|tips? for|life hacks?|out[- ]of[- ]office|celebrity tribute|fashion|recipe|horoscope|viral video|odd news|job details?|job posting|vacanc(?:y|ies)|careers? opportunity)\b|生活技巧|职场技巧|自动回复|招聘信息|职位详情|猎奇|明星八卦|奇闻/i
 const MARKET_CORE_SIGNAL = /\b(?:stock markets?|stocks?|equities|shares?|bonds?|treasur(?:y|ies)|yields?|inflation|\bCPI\b|\bPPI\b|\bPCE\b|interest rates?|rate cuts?|rate hikes?|earnings?|revenue|profit|guidance|\bIPO\b|acquisition|merger|funding round|financing|investors?|oil prices?|\bBrent\b|\bWTI\b|federal reserve|\bFed\b|securities and exchange commission|\bSEC\b|financial regulation|tariffs?|economic growth|\bGDP\b)\b|股市|股票|债券|国债|收益率|通胀|消费者价格指数|生产者价格指数|利率|降息|加息|财报|营收|利润|业绩|指引|上市|并购|融资|投资者|油价|原油|美联储|证交会|金融监管|关税|经济增长|国内生产总值/i
 const MARKET_CORE_OBJECTS = new Set([
   ...INDICATOR_OBJECTS,

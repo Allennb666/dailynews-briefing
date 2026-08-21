@@ -946,13 +946,16 @@ export function stabilizeBriefingWithBackups(
     if (forced.has(event.id) || !assessEventForPreselection(event, collection.domain).accepted) return []
     const original = originalById.get(event.id)
     const originalValid = Boolean(original && !validateBriefingStory(original, event).length)
-    const story = originalValid ? original! : buildRuleStory(event, original?.rank ?? 99)
+    const baseline = buildRuleStory(event, original?.rank ?? 99)
+    const story = originalValid ? original!
+      : original ? repairStoryContentFields(original, baseline, event)
+        : baseline
     if (validateBriefingStory(story, event).length) return []
     return [{
       event,
       story,
       originalRank: original?.rank ?? null,
-      preservesQwenStory: originalValid,
+      preservesQwenStory: Boolean(original),
       priority: backupPriority(event, collection.domain, index),
     }]
   }).sort((left, right) => {

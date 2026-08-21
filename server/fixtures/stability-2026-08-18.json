@@ -83,6 +83,12 @@
         "title": "Universitas Gadjah Mada, Indosat and NVIDIA Open Indonesia’s First University AI Center to Develop Local AI Talent",
         "source": "blogs.nvidia.com",
         "expected": "publishable"
+      },
+      {
+        "domain": "ai-tech",
+        "title": "From assistance to execution: How enterprises put AI to work",
+        "source": "openai.com",
+        "expected": "reject"
       }
     ],
     "learningBackups": [
