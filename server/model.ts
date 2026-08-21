@@ -95,7 +95,7 @@ class QwenEditorialModel implements EditorialModel {
   constructor(private readonly provider: ProviderConfig, private readonly fetchImpl: typeof fetch = fetch) {}
 
   async complete(prompt: string, maxTokens: number) {
-    const response = await this.fetchImpl(`${this.provider.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+    const request = () => this.fetchImpl(`${this.provider.baseUrl.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${this.provider.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -110,6 +110,21 @@ class QwenEditorialModel implements EditorialModel {
       }),
       signal: AbortSignal.timeout(120_000),
     })
+    let response: Response | null = null
+    let networkError: unknown = null
+    for (let attempt = 0; attempt < 3 && !response; attempt += 1) {
+      try {
+        response = await request()
+      } catch (error) {
+        networkError = error
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1_000 * (attempt + 1)))
+      }
+    }
+    if (!response) {
+      const cause = networkError instanceof Error && networkError.cause instanceof Error
+        ? `（${networkError.cause.name}: ${networkError.cause.message}）` : ''
+      throw new Error(`Qwen 网络连接失败${cause}`)
+    }
     if (!response.ok) {
       const detail = await response.text()
       throw new Error(`Qwen 返回 ${response.status}: ${detail.slice(0, 180)}`)

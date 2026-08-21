@@ -23,6 +23,7 @@ jobs:
       DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
       QWEN_MODEL: ${{ vars.QWEN_MODEL || 'qwen3.5-27b' }}
       QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1' }}
+      NODE_OPTIONS: --dns-result-order=ipv4first
       NEWS_SEARCH_PROVIDER: tavily
       TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
       DAILY_SEARCH_LIMIT: ${{ vars.DAILY_SEARCH_LIMIT || '32' }}

@@ -10,6 +10,7 @@ import { ArticleReader } from './material.js'
 import type { EditorialModel, ModelBriefing } from './model.js'
 import {
   analysisFieldHasSevereConflict,
+  createEditorialModelFromEnvironment,
   finalizeBriefing,
   preselectEvents,
   stabilizeBriefingWithBackups,
@@ -552,6 +553,35 @@ test('Qwen 两次失败后明确降级，不伪装成正常简报', async () => 
   assert.equal(briefing.mode, 'rules')
   assert.equal(briefing.pipeline.qualityStatus, 'degraded')
   assert.match(briefing.pipeline.warnings.join(' '), /降级稿/)
+})
+
+test('Qwen 只对无响应的网络连接做短重试，正常响应仍只调用一次', async () => {
+  const previous = {
+    provider: process.env.AI_PROVIDER,
+    key: process.env.DASHSCOPE_API_KEY,
+    baseUrl: process.env.QWEN_BASE_URL,
+  }
+  process.env.AI_PROVIDER = 'qwen'
+  process.env.DASHSCOPE_API_KEY = 'test-only-key'
+  process.env.QWEN_BASE_URL = 'https://dashscope.test/v1'
+  let calls = 0
+  const fetchImpl = (async () => {
+    calls += 1
+    if (calls < 3) throw new TypeError('fetch failed', { cause: new Error('temporary connect error') })
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"ok":true}' } }] }), { status: 200 })
+  }) as typeof fetch
+  try {
+    const model = createEditorialModelFromEnvironment(fetchImpl)!
+    assert.deepEqual(await model.complete('test', 20), { ok: true })
+    assert.equal(calls, 3)
+  } finally {
+    if (previous.provider == null) delete process.env.AI_PROVIDER
+    else process.env.AI_PROVIDER = previous.provider
+    if (previous.key == null) delete process.env.DASHSCOPE_API_KEY
+    else process.env.DASHSCOPE_API_KEY = previous.key
+    if (previous.baseUrl == null) delete process.env.QWEN_BASE_URL
+    else process.env.QWEN_BASE_URL = previous.baseUrl
+  }
 })
 
 test('门禁检查中文完整性和数字事实来源关联', () => {
