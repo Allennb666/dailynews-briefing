@@ -11,259 +11,72 @@
     "to": "2026-08-17T23:30:00.000Z"
   },
   "mode": "qwen",
-  "overview": "从 12 个有效来源获取 26 条候选，文章去重后保留 5 条，聚合为 5 个事件，并选出 5 条重点。",
-  "keyTakeaway": "SEC通过新规与执法行动强化加密资产及信贷市场监管，而宏观数据平稳与即将发布的财报将主导短期市场波动，投资者需警惕政策落地细节与企业盈利指引的偏差。",
-  "logic": "监管层通过规则制定（加密资产）与事后追责（Tricolor欺诈）双管齐下，意在修复市场信任并引导资本合规流动。宏观层面，PPI持平暗示通胀压力暂时稳定，但下周密集的央行决议与PMI数据将重新测试市场对经济韧性的判断。企业端，科技巨头财报将成为验证AI投资回报与消费趋势的关键锚点。",
-  "newKnowledge": "SEC提出的“Regulation Crypto Assets”试图在联邦证券法框架下为特定加密资产投资合同提供定制化发行制度，以解决长期存在的资本形成障碍。此外，Tricolor案中揭露的“双重质押”次级车贷模式，揭示了私人信贷市场中抵押品管理的潜在系统性风险。",
-  "outlook": "短期内，加密资产市场可能因新规提案产生波动，待细则明确后有望获得更清晰的融资路径。中期看，若企业财报显示AI资本开支持续高企且盈利兑现，将支撑科技股估值；反之，若PMI数据疲软或央行释放紧缩信号，可能引发流动性担忧。",
+  "overview": "从 12 个有效来源获取 22 条候选，文章去重后保留 5 条，聚合为 5 个事件，并选出 5 条重点。",
+  "keyTakeaway": "监管层持续高压打击非法融资活动，而通胀数据与科技巨头财报将成为下周市场定价核心变量。投资者需警惕政策信号错位引发的资产重估风险。",
+  "logic": "PPI数据修正机制显示历史数据存在回溯调整可能，影响通胀趋势判断；SEC执法案例表明监管正从传统金融向私募及社群化投资渗透；央行决策窗口临近，市场对降息路径分歧加剧，企业资本开支指引将验证经济韧性。",
+  "newKnowledge": "公司基本面改善不一定带来股价上涨；当估值已经反映高预期时，市场会要求更强的盈利兑现。",
+  "outlook": "关注后续数据、公司指引、资金价格与成交反应，验证市场是否形成持续重估。",
   "trendRadar": [
     {
-      "theme": "加密资产监管",
+      "theme": "通胀数据修正效应",
       "direction": "↑",
-      "reason": "SEC推出专门法规框架，提升行业合规确定性"
+      "reason": "近期相关信息密度上升，需继续用后续数据验证。"
     },
     {
-      "theme": "私人信贷风险",
-      "direction": "↓",
-      "reason": "Tricolor欺诈案暴露抵押品管理漏洞，引发市场警惕"
+      "theme": "监管执法强度",
+      "direction": "↑↑",
+      "reason": "SEC单周两起重大欺诈指控显示对非公开市场及社群化投资的穿透式监管升级"
     },
     {
-      "theme": "通胀预期",
-      "direction": "→",
-      "reason": "7月PPI持平，但下周CPI与PMI数据将决定后续走势"
+      "theme": "科技股盈利分化",
+      "direction": "高波动",
+      "reason": "AI投资回报周期拉长，部分企业资本开支增速放缓可能引发估值重构"
     }
   ],
   "watchNext": [
-    "SEC关于加密资产新规的公众评论期反馈及最终定稿时间",
-    "欧洲央行行长拉加德在利率决议后的讲话措辞",
-    "Alphabet与特斯拉财报中的AI资本开支指引",
-    "后续公开信号"
+    "官方后续材料",
+    "可量化的数据变化",
+    "其他可靠来源的交叉验证"
   ],
   "stories": [
     {
-      "id": "19d753bbf1d4",
-      "eventId": "19d753bbf1d4",
-      "rank": 1,
-      "title": "SEC提议出台加密资产新规以构建合规融资框架",
-      "summary": "美国证券交易委员会（SEC）宣布提议名为“Regulation Crypto Assets”的新规，旨在为涉及加密资产的投资合同建立清晰框架。该举措意在消除国内加密资产市场的资本形成障碍，同时保留联邦证券法核心的投资者保护机制。",
-      "keyFacts": [
-        "SEC提议的新规标题为“Regulation Crypto Assets”,针对特定加密资产投资合同。",
-        "SEC主席Paul S.表示,新规旨在为加密资产创业者和市场参与者提供明确的联邦证券法融资路径。"
-      ],
-      "whyItMatters": "此举标志着监管机构从单纯执法转向制度建设，试图在创新与保护之间寻找平衡。明确的规则有助于降低合规成本，吸引传统资本进入加密领域，但也可能提高中小项目的准入门槛。",
-      "background": "长期以来，加密资产市场面临监管不确定性，导致资本形成受阻。此前SEC多采取个案执法，缺乏统一标准。此次提案是在国会寻求建立持久监管框架的背景下推出的，旨在填补现有法律空白。",
-      "impactChain": [
-        "SEC发布新规提案",
-        "加密项目方调整融资策略以符合新框架",
-        "机构投资者评估合规性后增加配置",
-        "市场流动性结构发生重构"
-      ],
-      "affectedParties": [
-        "加密资产初创企业与发行人",
-        "参与加密市场的机构投资者",
-        "依赖加密融资的科技创业者"
-      ],
-      "uncertainties": "新规的具体实施细则、豁免条款范围以及最终生效时间尚不明确，需等待公众评论期结束及后续立法程序。",
-      "glossary": [
-        {
-          "term": "Regulation Crypto Assets",
-          "definition": "SEC提议的针对特定加密资产投资合同的监管框架名称。"
-        },
-        {
-          "term": "投资合同",
-          "definition": "根据Howey测试被认定为证券的加密资产安排。"
-        }
-      ],
-      "trend": {
-        "nearTerm": "如果公众评论期反馈积极且无重大法律挑战，可能加速推进至最终规则制定阶段",
-        "mediumTerm": "若新规成功实施并被市场广泛接受，可能显著提升加密资产市场的机构参与度与融资效率",
-        "signalsToWatch": [
-          "SEC收到的公众评论数量与主要反对意见",
-          "国会相关立法进展对新规的影响",
-          "U.S. SEC的后续正式信息",
-          "独立可靠来源的交叉验证"
-        ]
-      },
-      "url": "https://www.sec.gov/newsroom/press-releases/2026-76-sec-proposes-new-regulation-crypto-assets",
-      "source": {
-        "name": "U.S. SEC",
-        "type": "official",
-        "reliability": "primary"
-      },
-      "sources": [
-        {
-          "name": "U.S. SEC",
-          "type": "official",
-          "reliability": "primary"
-        }
-      ],
-      "evidenceSources": [
-        {
-          "name": "U.S. SEC",
-          "type": "official",
-          "reliability": "primary",
-          "title": "SEC Proposes New Regulation Crypto Assets",
-          "publishedAt": "2026-08-18T17:15:48.000Z",
-          "url": "https://www.sec.gov/newsroom/press-releases/2026-76-sec-proposes-new-regulation-crypto-assets",
-          "discoveryMethod": "rss",
-          "materialLevel": "full-text"
-        }
-      ],
-      "factSources": [
-        {
-          "factIndex": 0,
-          "urls": [
-            "https://www.sec.gov/newsroom/press-releases/2026-76-sec-proposes-new-regulation-crypto-assets"
-          ]
-        },
-        {
-          "factIndex": 1,
-          "urls": [
-            "https://www.sec.gov/newsroom/press-releases/2026-76-sec-proposes-new-regulation-crypto-assets"
-          ]
-        }
-      ],
-      "publishedAt": "2026-08-18T17:15:48.000Z",
-      "evidence": {
-        "level": "single-source",
-        "sourceCount": 1,
-        "independentSourceCount": 0,
-        "primarySourcePresent": true
-      },
-      "tags": [
-        "监管",
-        "加密资产",
-        "SEC"
-      ]
-    },
-    {
-      "id": "e9dc089ec41f",
-      "eventId": "e9dc089ec41f",
-      "rank": 2,
-      "title": "SEC指控Tricolor前高管欺诈致19亿美元次级车贷崩盘",
-      "summary": "SEC指控Tricolor Holdings前CEO Daniel Chu等三人涉嫌多年欺诈，通过双重质押数亿美元次级车贷误导投资者。该公司在2020年至2025年破产期间筹集超19亿美元，但隐瞒了严重的流动性危机。",
-      "keyFacts": [
-        "美国证交会围绕投资欺诈案件联合设立；参与或受影响的主体还包括美国、Sec Charges Former、Subprime Auto Lender、Tricolor The Securities；事件中的关键数值为$1.9 Billion、$1.9 billion。"
-      ],
-      "whyItMatters": "此案揭示了私人信贷市场中抵押品管理的严重缺陷，特别是“双重质押”行为对投资者信心的打击。它可能促使监管层加强对非银行金融机构的审查，并影响次级贷款市场的融资成本。",
-      "background": "Tricolor是一家位于德克萨斯州的次级汽车贷款公司。自2020年以来，其通过ABS发行大量资金，但在内部已知面临流动性困难的情况下，仍向投资者虚假陈述财务状况。2025年，纽约南区检察官已对相关高管提起刑事指控。",
-      "impactChain": [
-        "SEC提起民事欺诈诉讼",
-        "投资者损失确认与追偿启动",
-        "次级车贷市场融资渠道收紧",
-        "私人信贷行业加强抵押品审计"
-      ],
-      "affectedParties": [
-        "持有Tricolor ABS的投资者",
-        "次级汽车贷款行业的其他借款人",
-        "参与ABS发行的承销商与评级机构"
-      ],
-      "uncertainties": "案件审理结果、投资者最终能追回的资金比例以及是否会有更多类似案例浮出水面尚不确定。",
-      "glossary": [
-        {
-          "term": "双重质押",
-          "definition": "将同一笔资产作为抵押品多次出售给不同投资者的欺诈行为。"
-        },
-        {
-          "term": "资产支持证券 (ABS)",
-          "definition": "以特定资产池（如车贷）产生的现金流为支撑发行的证券。"
-        }
-      ],
-      "trend": {
-        "nearTerm": "如果法院认定欺诈事实成立，可能导致相关高管面临监禁及巨额罚款，并引发集体诉讼潮",
-        "mediumTerm": "若监管层据此扩大对私人信贷市场的审查，可能推高次级贷款融资成本并抑制相关市场规模",
-        "signalsToWatch": [
-          "法院对SEC诉状的初步裁决",
-          "其他次级贷款机构的抵押品审计报告变化",
-          "U.S. SEC的后续正式信息",
-          "独立可靠来源的交叉验证"
-        ]
-      },
-      "url": "https://www.sec.gov/newsroom/press-releases/2026-77-sec-charges-former-executives-fraud-connection-19-billion-collapse-subprime-auto-lender-tricolor",
-      "source": {
-        "name": "U.S. SEC",
-        "type": "official",
-        "reliability": "primary"
-      },
-      "sources": [
-        {
-          "name": "U.S. SEC",
-          "type": "official",
-          "reliability": "primary"
-        }
-      ],
-      "evidenceSources": [
-        {
-          "name": "U.S. SEC",
-          "type": "official",
-          "reliability": "primary",
-          "title": "SEC Charges Former Executives With Fraud in Connection With $1.9 Billion Collapse of Subprime Auto Lender Tricolor",
-          "publishedAt": "2026-08-18T19:55:10.000Z",
-          "url": "https://www.sec.gov/newsroom/press-releases/2026-77-sec-charges-former-executives-fraud-connection-19-billion-collapse-subprime-auto-lender-tricolor",
-          "discoveryMethod": "rss",
-          "materialLevel": "full-text"
-        }
-      ],
-      "factSources": [
-        {
-          "factIndex": 0,
-          "urls": [
-            "https://www.sec.gov/newsroom/press-releases/2026-77-sec-charges-former-executives-fraud-connection-19-billion-collapse-subprime-auto-lender-tricolor"
-          ]
-        }
-      ],
-      "publishedAt": "2026-08-18T19:55:10.000Z",
-      "evidence": {
-        "level": "single-source",
-        "sourceCount": 1,
-        "independentSourceCount": 0,
-        "primarySourcePresent": true
-      },
-      "tags": [
-        "监管",
-        "欺诈",
-        "私人信贷"
-      ]
-    },
-    {
       "id": "03a29f0e1d12",
       "eventId": "03a29f0e1d12",
-      "rank": 3,
-      "title": "美国7月生产者价格指数持平显示通胀压力暂稳",
-      "summary": "美国劳工统计局围绕生产者价格指数发布；参与或受影响的主体还包括美国、Producer Price Index、The Producer Price、Index；事件涉及美国。",
+      "rank": 1,
+      "title": "美国劳工统计局发布生产者价格指数",
+      "summary": "美国劳工统计局（BLS）于2026年8月13日发布7月PPI初步结果，同时宣布因收到迟报与受访者更正，已对3月至6月数据进行修订。报告强调季节调整指数未来五年内可能因每年1月发布的季节性因子重算而变动。",
       "keyFacts": [
         "美国劳工统计局围绕生产者价格指数发布；参与或受影响的主体还包括美国、Producer Price Index、The Producer Price、Index；事件涉及美国。"
       ],
-      "whyItMatters": "PPI是CPI的先行指标，其持平意味着企业层面的成本压力未显著上升，有助于缓解市场对通胀反弹的担忧。这为美联储在制定利率政策时提供了更多灵活性，但也需结合后续CPI数据综合判断。",
-      "background": "生产者价格指数衡量的是制造商和批发商收到的商品价格变化。在通胀高企时期，PPI的波动往往预示着未来消费者价格的走向。此前市场普遍关注能源与供应链因素对PPI的影响。",
+      "whyItMatters": "数据修订直接影响市场对中期通胀路径的研判，尤其当能源与食品价格波动剧烈时，历史数据的回溯调整可能触发货币政策预期重估。",
+      "background": "PPI衡量批发层面价格变动，是CPI的重要先行指标。其统计口径排除即食餐饮服务，且‘最终需求商品’仅限个人消费与私人资本投资部分。贸易指数反映批发与零售环节价差变化，分销服务涵盖运输、仓储及商品交易。",
       "impactChain": [
-        "PPI数据公布持平",
-        "市场通胀预期短期回落",
-        "美债收益率波动收窄",
-        "美联储加息/降息预期重新定价"
+        "事件或政策信号出现",
+        "相关主体调整资源与行为",
+        "影响逐步传导至行业、市场或个人决策"
       ],
       "affectedParties": [
-        "依赖原材料进口的制造企业",
-        "固定收益投资者",
-        "货币市场交易者"
+        "债券投资者",
+        "跨国制造企业",
+        "大宗商品交易商"
       ],
-      "uncertainties": "单月数据可能受季节性因素干扰，需观察后续月份趋势及核心PPI表现以确认通胀是否真正受控。",
+      "uncertainties": "PPI具体数值未在材料中披露，仅确认数据修订事实；季节因子重算的具体幅度未知。",
       "glossary": [
         {
-          "term": "生产者价格指数 (PPI)",
-          "definition": "衡量生产者在生产过程中收到的商品价格变化的指标。"
+          "term": "季节调整指数",
+          "definition": "剔除季节性因素后的价格指数，用于更准确反映经济趋势"
         },
         {
-          "term": "最终需求",
-          "definition": "指直接面向消费者或最终用户的商品和服务的价格指数。"
+          "term": "最终需求商品",
+          "definition": "PPI统计中仅包含个人消费与私人资本投资部分的成品"
         }
       ],
       "trend": {
-        "nearTerm": "如果后续CPI数据也显示温和，可能强化市场对美联储暂停加息或开启降息的预期",
-        "mediumTerm": "若PPI连续多月持平或下降，可能推动企业定价策略调整，进而影响整体通胀中枢",
+        "nearTerm": "如果后续月份PPI继续显示能源价格反弹，可能强化市场对美联储维持高利率的预期",
+        "mediumTerm": "若季节因子重算导致历史通胀率系统性下调，可能缓解长期通胀担忧并支持宽松政策转向",
         "signalsToWatch": [
-          "CPI数据的同比与环比变化",
-          "核心PPI（剔除能源与食品）的走势",
+          "CPI报告中数据是否同步修订",
+          "BLS次年1月发布的季节因子调整幅度",
           "bls.gov的后续正式信息",
           "独立可靠来源的交叉验证"
         ]
@@ -290,7 +103,7 @@
           "publishedAt": "2026-08-13T12:38:39.000Z",
           "url": "https://www.bls.gov/news.release/archives/ppi_08132026.htm",
           "discoveryMethod": "official-search",
-          "materialLevel": "snippet-only"
+          "materialLevel": "full-text"
         }
       ],
       "factSources": [
@@ -309,46 +122,140 @@
         "primarySourcePresent": true
       },
       "tags": [
-        "宏观",
         "通胀",
-        "BLS"
+        "数据修订",
+        "货币政策"
+      ]
+    },
+    {
+      "id": "b7e4db6530ba",
+      "eventId": "b7e4db6530ba",
+      "rank": 2,
+      "title": "SEC指控纽约男子及其控制实体通过Pre-IPO骗局诈骗散户万美元",
+      "summary": "美国证券交易委员会（SEC）于2026年8月14日指控纽约居民Andrew Spaventa及其控制的三家实体，在未注册证券发行中欺诈零售投资者，涉案金额达万美元。该案件涉及所谓‘Pre-IPO投资机会’的虚假宣传。",
+      "keyFacts": [
+        "SEC指控Andrew Spaventa及三家关联实体实施欺诈",
+        "涉案金额为万美元,受害者为零售投资者"
+      ],
+      "whyItMatters": "此案标志监管层对‘锅炉房’式私募欺诈的打击升级，尤其针对利用Pre-IPO概念吸引散户的非公开市场行为，可能引发同类基金合规审查潮。",
+      "background": "‘锅炉房’指通过电话推销诱导投资者购买高风险或未注册证券的非法操作模式。SEC近年加强对私募股权、SPAC及Pre-IPO项目的监管，要求信息披露透明化。",
+      "impactChain": [
+        "事件或政策信号出现",
+        "相关主体调整资源与行为",
+        "影响逐步传导至行业、市场或个人决策"
+      ],
+      "affectedParties": [
+        "私募股权基金",
+        "零售投资者",
+        "证券承销商"
+      ],
+      "uncertainties": "具体欺诈手段细节未披露；是否已有资金追回尚不明确。",
+      "glossary": [
+        {
+          "term": "Pre-IPO投资",
+          "definition": "在企业首次公开募股前进行的股权投资，通常面向合格投资者"
+        },
+        {
+          "term": "锅炉房",
+          "definition": "通过电话密集推销未注册证券的非法销售场所"
+        }
+      ],
+      "trend": {
+        "nearTerm": "如果SEC扩大对此类案件的调查范围，可能引发更多类似指控并推动行业自律规范出台",
+        "mediumTerm": "若法院判决确立高额赔偿先例，可能显著抑制非正规Pre-IPO融资活动",
+        "signalsToWatch": [
+          "SEC是否发布针对Pre-IPO项目的专项警示",
+          "相关被告是否申请破产以规避赔偿",
+          "U.S. SEC的后续正式信息",
+          "独立可靠来源的交叉验证"
+        ]
+      },
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo",
+      "source": {
+        "name": "U.S. SEC",
+        "type": "official",
+        "reliability": "primary"
+      },
+      "sources": [
+        {
+          "name": "U.S. SEC",
+          "type": "official",
+          "reliability": "primary"
+        }
+      ],
+      "evidenceSources": [
+        {
+          "name": "U.S. SEC",
+          "type": "official",
+          "reliability": "primary",
+          "title": "SEC Charges Boiler Room Operator and Three Entities with Defrauding Retail Investors in $74 Million Pre-IPO Investment Scam",
+          "publishedAt": "2026-08-14T20:16:34.000Z",
+          "url": "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo",
+          "discoveryMethod": "rss",
+          "materialLevel": "snippet-only"
+        }
+      ],
+      "factSources": [
+        {
+          "factIndex": 0,
+          "urls": [
+            "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo"
+          ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo"
+          ]
+        }
+      ],
+      "publishedAt": "2026-08-14T20:16:34.000Z",
+      "evidence": {
+        "level": "single-source",
+        "sourceCount": 1,
+        "independentSourceCount": 0,
+        "primarySourcePresent": true
+      },
+      "tags": [
+        "证券欺诈",
+        "监管执法",
+        "私募市场"
       ]
     },
     {
       "id": "f20c0967c243",
       "eventId": "f20c0967c243",
-      "rank": 4,
+      "rank": 3,
       "title": "美联储对Regions Bank前员工采取执法行动",
-      "summary": "美联储董事会宣布对Regions Bank的一名前员工采取执法行动。虽然具体违规细节未在摘要中披露，但该行动表明监管机构持续加强对银行从业人员合规行为的监督。",
+      "summary": "美联储董事会于2026年8月13日宣布对Regions Bank一名前员工采取执法行动，但材料未披露具体违规内容、处罚措施或涉事人员身份。",
       "keyFacts": [
-        "美联储对Regions Bank的前员工采取了执法行动。"
+        "美联储围绕金融监管事项采取执法行动；参与或受影响的主体还包括Regions Bank Federal、Reserve Board、Regions Bank；相关时间为2026-08-13。"
       ],
-      "whyItMatters": "此类执法行动通常涉及违反银行法规、风险管理失职或利益冲突等问题。它提醒银行业必须强化内部控制与员工培训，否则将面临监管处罚与声誉风险。",
-      "background": "美联储作为主要银行监管机构，有权对违反联邦储备法案或相关监管要求的银行及其员工采取执法措施。Regions Bank是美国主要的区域性银行之一，其合规状况备受关注。",
+      "whyItMatters": "尽管细节缺失，此类行动通常涉及银行内部风控失效或员工违规行为，可能影响市场对区域银行治理能力的信心。",
+      "background": "美联储作为银行监管机构，有权对违反审慎经营规则的员工或机构采取民事处罚、禁令或资格限制等措施。Regions Bank是美国东南部主要区域性银行之一。",
       "impactChain": [
-        "美联储发布执法公告",
-        "Regions Bank内部启动调查与整改",
-        "同业加强合规自查",
-        "投资者评估银行治理风险"
+        "事件或政策信号出现",
+        "相关主体调整资源与行为",
+        "影响逐步传导至行业、市场或个人决策"
       ],
       "affectedParties": [
-        "Regions Bank及其股东",
-        "涉事前员工",
-        "区域性银行从业者"
+        "Regions Bank",
+        "区域银行同业",
+        "储户"
       ],
-      "uncertainties": "具体的违规行为性质、处罚力度以及对银行运营的实际影响尚未完全公开。",
+      "uncertainties": "违规性质、处罚力度及是否牵连其他人员均无信息；事件是否与近期银行业动荡有关联未知。",
       "glossary": [
         {
           "term": "执法行动",
-          "definition": "监管机构对违反法律法规的个人或机构采取的正式惩罚或纠正措施。"
+          "definition": "监管机构对违反法律法规主体采取的正式惩戒措施"
         }
       ],
       "trend": {
-        "nearTerm": "如果后续披露更多违规细节，可能引发市场对区域性银行合规文化的进一步审视",
-        "mediumTerm": "若此类案件频发，可能促使银行加大合规投入，推高运营成本",
+        "nearTerm": "如果后续披露显示系统性内控缺陷，可能引发对该行及其他区域银行的额外审查",
+        "mediumTerm": "若此类个案频发形成趋势，可能促使监管层加强区域银行员工行为准则",
         "signalsToWatch": [
-          "美联储后续发布的详细处罚决定书",
-          "Regions Bank股价及信用评级变动",
+          "美联储是否发布详细处罚公告",
+          "Regions Bank股价异常波动",
           "Federal Reserve的后续正式信息",
           "独立可靠来源的交叉验证"
         ]
@@ -394,52 +301,140 @@
         "primarySourcePresent": true
       },
       "tags": [
-        "监管",
-        "银行业",
-        "美联储"
+        "银行监管",
+        "执法行动",
+        "区域金融"
+      ]
+    },
+    {
+      "id": "8a93365ae16c",
+      "eventId": "8a93365ae16c",
+      "rank": 4,
+      "title": "SEC指控新泽西三人组针对正统犹太社区实施万美元亲和性投资欺诈",
+      "summary": "美国证券交易委员会（SEC）于2026年8月13日指控三名新泽西州Toms River居民，通过针对正统犹太社区的‘亲和性投资欺诈’，从87名以上投资者处募集约万美元。",
+      "keyFacts": [
+        "三名被告被控实施针对特定宗教社群的投资欺诈"
+      ],
+      "whyItMatters": "此案凸显监管层对利用社群信任进行定向欺诈的关注，可能推动针对少数族裔或宗教群体的投资保护机制完善。",
+      "background": "‘亲和性欺诈’指利用受害者对特定社群（如宗教、族裔）的信任实施诈骗。SEC近年来多次揭露针对华人、犹太人社群的非法集资案。",
+      "impactChain": [
+        "事件或政策信号出现",
+        "相关主体调整资源与行为",
+        "影响逐步传导至行业、市场或个人决策"
+      ],
+      "affectedParties": [
+        "正统犹太社区成员",
+        "社群领袖",
+        "地方执法机构"
+      ],
+      "uncertainties": "资金流向、是否涉及跨境转移及是否有同伙未被起诉均不明。",
+      "glossary": [
+        {
+          "term": "亲和性欺诈",
+          "definition": "利用受害者对特定社群归属感的信任实施的金融诈骗"
+        },
+        {
+          "term": "正统犹太教",
+          "definition": "严格遵守传统律法的犹太教派别，常形成紧密社群网络"
+        }
+      ],
+      "trend": {
+        "nearTerm": "如果调查发现更多类似案件，可能促使SEC设立专项打击小组",
+        "mediumTerm": "若立法加强社群投资信息披露要求，可能减少此类欺诈发生频率",
+        "signalsToWatch": [
+          "SEC是否发布针对亲和性欺诈的投资者教育指南",
+          "相关社区组织是否建立预警机制",
+          "U.S. SEC的后续正式信息",
+          "独立可靠来源的交叉验证"
+        ]
+      },
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-74-sec-charges-toms-river-trio-connection-alleged-47-million-fraud-targeting-orthodox-jewish",
+      "source": {
+        "name": "U.S. SEC",
+        "type": "official",
+        "reliability": "primary"
+      },
+      "sources": [
+        {
+          "name": "U.S. SEC",
+          "type": "official",
+          "reliability": "primary"
+        }
+      ],
+      "evidenceSources": [
+        {
+          "name": "U.S. SEC",
+          "type": "official",
+          "reliability": "primary",
+          "title": "SEC Charges Toms River Trio in Connection with Alleged $47 Million Fraud Targeting Orthodox Jewish Communities",
+          "publishedAt": "2026-08-13T20:32:19.000Z",
+          "url": "https://www.sec.gov/newsroom/press-releases/2026-74-sec-charges-toms-river-trio-connection-alleged-47-million-fraud-targeting-orthodox-jewish",
+          "discoveryMethod": "rss",
+          "materialLevel": "snippet-only"
+        }
+      ],
+      "factSources": [
+        {
+          "factIndex": 0,
+          "urls": [
+            "https://www.sec.gov/newsroom/press-releases/2026-74-sec-charges-toms-river-trio-connection-alleged-47-million-fraud-targeting-orthodox-jewish"
+          ]
+        }
+      ],
+      "publishedAt": "2026-08-13T20:32:19.000Z",
+      "evidence": {
+        "level": "single-source",
+        "sourceCount": 1,
+        "independentSourceCount": 0,
+        "primarySourcePresent": true
+      },
+      "tags": [
+        "投资欺诈",
+        "社群安全",
+        "监管执法"
       ]
     },
     {
       "id": "c77136091fe9",
       "eventId": "c77136091fe9",
       "rank": 5,
-      "title": "一周前瞻：欧洲央行利率决议来袭；Alphabet、特斯拉、英特尔财报登场；全球PMI初值揭晓",
-      "summary": "下周全球市场将迎来密集窗口：欧洲央行公布利率决议，市场关注9月降息信号；Alphabet、特斯拉、英特尔等科技巨头发布财报；全球主要经济体披露7月PMI初值。这些数据将共同指引三季度经济与政策走向。",
+      "title": "下周市场聚焦欧洲央行利率决议、科技巨头财报及全球PMI初值",
+      "summary": "2026年8月下旬将迎来关键宏观窗口：欧洲央行公布7月利率决议并关注9月降息信号；Alphabet、特斯拉、英特尔等科技龙头披露Q2财报；美国、欧元区、日本集中发布7月PMI初值，检验三季度经济开局。",
       "keyFacts": [
-        "周四欧洲央行将公布利率决议,市场重点关注行长拉加德关于9月降息的信号。",
-        "Alphabet、特斯拉、英特尔等科技巨头将在下周陆续公布第二季度财报。"
+        "欧洲央行将于周四公布利率决议,市场关注拉加德关于9月降息的表态",
+        "Alphabet、特斯拉、英特尔等公司将在盘后发布第二季度财报",
+        "周五全球主要经济体将公布7月制造业与服务业PMI初值"
       ],
-      "whyItMatters": "央行政策动向直接决定全球流动性环境，而科技巨头的财报则是检验AI投资周期与消费韧性的试金石。PMI数据则提供宏观经济景气的即时快照，三者叠加将引发市场剧烈波动。",
-      "background": "当前全球处于通胀与增长博弈的关键期。欧洲央行在连续降息后面临是否继续宽松的选择；美股财报季正值AI热潮与地缘政治不确定性交织之际；PMI作为先行指标，对预测季度GDP至关重要。",
+      "whyItMatters": "央行政策信号、企业盈利质量与经济景气度数据三者叠加，将决定下半年全球资产配置方向，尤其影响科技股估值与汇率走势。",
+      "background": "欧洲央行自起进入降息周期，市场对其9月是否继续宽松高度敏感；PMI初值是领先经济指标，反映企业订单与生产活跃度；科技巨头财报则体现AI投资回报与消费需求韧性。",
       "impactChain": [
-        "欧央行决议与讲话",
-        "欧元与欧债收益率波动",
-        "科技股财报指引修正",
-        "全球PMI数据重塑增长预期"
+        "事件或政策信号出现",
+        "相关主体调整资源与行为",
+        "影响逐步传导至行业、市场或个人决策"
       ],
       "affectedParties": [
-        "外汇与债券市场交易者",
+        "外汇交易者",
         "科技股投资者",
-        "跨国企业战略规划部门"
+        "跨国供应链管理者"
       ],
-      "uncertainties": "拉加德讲话的具体措辞、科技巨头资本开支的实际增速以及PMI数据是否超预期均存在变数。",
+      "uncertainties": "欧洲央行具体利率决策尚未公布；各公司财报指引存在不确定性；PMI数据可能受季节性因素干扰。",
       "glossary": [
         {
           "term": "PMI初值",
-          "definition": "采购经理人指数的初步估算值，反映制造业或服务活动的景气程度。"
+          "definition": "采购经理人指数初步数据，反映制造业与服务业景气程度"
         },
         {
-          "term": "降息信号",
-          "definition": "央行官员通过讲话暗示未来可能降低利率的政策倾向。"
+          "term": "资本开支",
+          "definition": "企业在设备、技术或基础设施上的长期投资支出"
         }
       ],
       "trend": {
-        "nearTerm": "如果欧央行释放明确降息信号且科技财报强劲，可能推动风险资产上涨，美元相对走弱",
-        "mediumTerm": "若PMI显示全球经济放缓迹象，可能迫使更多央行转向宽松，改变全球利率曲线形态",
+        "nearTerm": "如果欧洲央行释放明确降息信号，欧元可能贬值，美债收益率下行压力增大",
+        "mediumTerm": "若科技巨头AI资本开支增速放缓，半导体与云计算板块估值可能面临回调",
         "signalsToWatch": [
-          "拉加德新闻发布会上的关键措辞",
-          "Alphabet与特斯拉的资本开支指引",
-          "美国与欧元区PMI初值是否低于",
+          "拉加德新闻发布会措辞变化",
+          "Alphabet云业务营收增长率",
+          "美国7月非农就业数据",
           "tradingkey.com的后续正式信息"
         ]
       },
@@ -480,6 +475,12 @@
           "urls": [
             "https://www.tradingkey.com/zh-hans/analysis/stocks/us-stock/262037452-week-ahead-ecb-rate-decision-earnings-alphabet-tesla-intel-tradingkey"
           ]
+        },
+        {
+          "factIndex": 2,
+          "urls": [
+            "https://www.tradingkey.com/zh-hans/analysis/stocks/us-stock/262037452-week-ahead-ecb-rate-decision-earnings-alphabet-tesla-intel-tradingkey"
+          ]
         }
       ],
       "publishedAt": "2026-08-17T08:00:00.000Z",
@@ -490,18 +491,18 @@
         "primarySourcePresent": false
       },
       "tags": [
-        "宏观",
-        "公司",
-        "监管"
+        "央行决策",
+        "财报季",
+        "宏观经济"
       ]
     }
   ],
   "pipeline": {
-    "fetched": 26,
+    "fetched": 22,
     "afterDedup": 5,
     "afterClustering": 5,
     "sourceCount": 12,
-    "rssCandidates": 14,
+    "rssCandidates": 10,
     "searchCandidates": 12,
     "searchCalls": 0,
     "confirmedCount": 0,
@@ -512,7 +513,7 @@
     "maxSourceConcentration": 2,
     "qualityStatus": "passed",
     "warnings": [],
-    "articleFetchSuccess": 13,
+    "articleFetchSuccess": 12,
     "qwenRetries": 0,
     "contentQuality": {
       "repeatedSummaryCount": 0,
