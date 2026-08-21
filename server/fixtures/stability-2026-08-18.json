@@ -8,6 +8,43 @@
     "searchCalls": 32,
     "cacheHits": 0
   },
+  "replay": {
+    "runId": 32504825390,
+    "diagnosticArtifactId": 9455018002,
+    "searchCalls": 0,
+    "qualityStatus": {
+      "ai-tech": "passed",
+      "markets": "degraded",
+      "world": "passed",
+      "learning": "degraded"
+    },
+    "marketRejected": {
+      "title": "'I used food banks while my ex owed thousands in child maintenance'",
+      "source": "bbc-business"
+    },
+    "marketBackup": {
+      "title": "Federal Reserve Board issues enforcement action with former employee of Regions Bank",
+      "source": "fed"
+    },
+    "learningBackups": [
+      {
+        "title": "Slow math: Kids may learn more when AI makes them review mistakes",
+        "description": "A study found that students learned more through mastery learning when they reviewed mistakes."
+      },
+      {
+        "title": "Once globally preeminent, U.S. universities are sliding into decline",
+        "description": "American universities are declining as research investment and international competitiveness weaken."
+      },
+      {
+        "title": "The Trailblazing School on the Frontier of Artificial Intelligence",
+        "description": "A school uses artificial intelligence in classroom teaching and student projects."
+      },
+      {
+        "title": "Japan Officially Joins Europe’s Flagship Research Program - Inside Higher Ed",
+        "description": "Japan officially joined Horizon Europe, the European Union research program, under a new agreement."
+      }
+    ]
+  },
   "realFailures": {
     "ai-tech": {
       "selectedIds": ["cd13d12fd947", "82045b23ffcc", "44ad25a4dec0", "2e2e79f6439e", "dfa27d278f87"],

@@ -5,10 +5,11 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import type { DailyBriefing, DomainId, SourceReliability } from '../shared/briefing.js'
 import { findCrossDomainDuplicates, validateCrossDomainUniqueness } from './editorial.js'
-import { stabilizeBriefingWithBackups, validateBriefing } from './model.js'
+import { stabilizeBriefingWithBackups, validateBriefing, validateBriefingStory } from './model.js'
 import {
   assessEventForPreselection,
   buildCandidatePool,
+  buildRuleStory,
   buildRulesBriefing,
   clusterCandidates,
   createEvent,
@@ -23,6 +24,15 @@ const fixturePath = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/s
 
 type ArtifactFixture = {
   source: { runId: number; diagnosticArtifactId: number; status: string; published: boolean; searchCalls: number }
+  replay: {
+    runId: number
+    diagnosticArtifactId: number
+    searchCalls: number
+    qualityStatus: Record<DomainId, string>
+    marketRejected: { title: string; source: string }
+    marketBackup: { title: string; source: string }
+    learningBackups: Array<{ title: string; description: string }>
+  }
   cases: {
     irrelevantMarket: { id: string; title: string; source: string; url: string }
     falseMergedWorld: { oldEventId: string; articles: Array<{ title: string; source: string; url: string; publishedAt: string }> }
@@ -158,6 +168,49 @@ test('真实候选：BBC休假自动回复在Qwen预选前被领域与新闻价�
   const event = createEvent('markets', [hit])
   assert.equal(assessEventForPreselection(event).accepted, false)
   assert.equal(buildCandidatePool(collection('markets', [event])).some((candidateEvent) => candidateEvent.id === event.id), false)
+})
+
+test('真实缓存回放：家庭生活故事退出市场池，美联储监管事件可作为备用', async () => {
+  const data = await fixture()
+  assert.equal(data.replay.runId, 32504825390)
+  assert.equal(data.replay.diagnosticArtifactId, 9455018002)
+  assert.equal(data.replay.searchCalls, 0)
+  assert.equal(data.replay.qualityStatus.markets, 'degraded')
+  assert.equal(data.replay.qualityStatus.learning, 'degraded')
+
+  const rejected = createEvent('markets', [candidate(
+    'replay-market-life',
+    'markets',
+    data.replay.marketRejected.title,
+    'A parent describes child maintenance, food banks and family support.',
+    data.replay.marketRejected.source,
+  )])
+  const backup = createEvent('markets', [candidate(
+    'replay-market-fed',
+    'markets',
+    data.replay.marketBackup.title,
+    'The Federal Reserve issued an enforcement action involving a former bank employee.',
+    data.replay.marketBackup.source,
+  )])
+  backup.articles[0].source = source('fed', 'primary')
+  assert.equal(assessEventForPreselection(rejected).accepted, false)
+  assert.equal(assessEventForPreselection(backup).accepted, true)
+})
+
+test('真实缓存回放：教育英文事件均能生成具体中文备用稿并独立通过门禁', async () => {
+  const data = await fixture()
+  for (const [index, item] of data.replay.learningBackups.entries()) {
+    const event = createEvent('learning', [candidate(
+      `replay-learning-${index}`,
+      'learning',
+      item.title,
+      item.description,
+      `learning-replay-${index}.example`,
+    )])
+    const story = buildRuleStory(event)
+    assert.match(story.title, /[\p{Script=Han}]/u, story.title)
+    assert.equal(validateBriefingStory(story, event).length, 0, `${story.title}: ${validateBriefingStory(story, event).join('；')}`)
+  }
 })
 
 test('真实误聚类：霍尔木兹油轮与黑海粮食供应拆成两个事件', async () => {
