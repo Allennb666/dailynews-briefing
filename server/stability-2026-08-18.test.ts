@@ -252,6 +252,24 @@ test('来源等级门禁以事件绑定来源为准，不受成稿中的陈旧�
   assert.equal(validateBriefing(stale, events).some((error) => error.includes('other 来源')), false)
 })
 
+test('权威官方网站不会因搜索元数据陈旧而被计为 other 来源', () => {
+  const events = eventsFor('markets').slice(0, 5)
+  for (const [index, event] of events.entries()) {
+    if (index > 1) continue
+    event.primaryArticle.source = {
+      ...event.primaryArticle.source,
+      id: index === 0 ? 'sec.gov' : 'bls.gov',
+      type: 'media',
+      reliability: 'other',
+    }
+    event.primaryArticle.url = index === 0
+      ? 'https://www.sec.gov/newsroom/press-releases/example'
+      : 'https://www.bls.gov/news.release/ppi.nr0.htm'
+  }
+  const briefing = buildRulesBriefing(collection('markets', events), new Date('2026-08-18T00:00:00.000Z'), events.map((event) => event.id))
+  assert.equal(validateBriefing(briefing, events).some((error) => error.includes('other 来源')), false)
+})
+
 test('最新真实回放：AI、国际与教育备用事件均可成稿，重复链不再夹带另一公告', async () => {
   const data = await fixture()
   const latest = data.replay.latestGateFailures

@@ -489,7 +489,7 @@ function feasiblePreselection(proposed: NewsEvent[], pool: NewsEvent[]) {
     if (selected.some((item) => item.id === event.id)) continue
     const sourceId = event.primaryArticle.source.id
     const narrow = event.entities[0] ?? event.topicTags[0] ?? event.id
-    const isOther = event.primaryArticle.source.reliability === 'other'
+    const isOther = effectiveEventReliability(event) === 'other'
     const isUnverified = event.evidence.level === 'unverified'
     if ((sourceCounts.get(sourceId) ?? 0) >= 2 || (entityCounts.get(narrow) ?? 0) >= 2) continue
     if (isOther && otherCount >= 1) continue
@@ -683,7 +683,10 @@ export function analysisFieldHasSevereConflict(value: string, event: NewsEvent) 
 export function repairStoryContentFields(story: BriefingStory, baseline: BriefingStory, event: NewsEvent): BriefingStory {
   const specific = buildEventSpecificContent(event)
   const summaryTitle = titleFromSupportedSummary(story.summary, event)
-  const fallbackTitle = summaryTitle || (!isPlaceholderTitle(baseline.title) && hasConcreteActorAndAction(baseline.title, event)
+  const validSummaryTitle = summaryTitle && !isPlaceholderTitle(summaryTitle)
+    && hasConcreteActorAndAction(summaryTitle, event) && claimMatchesEvent(summaryTitle, event)
+    ? summaryTitle : ''
+  const fallbackTitle = validSummaryTitle || (!isPlaceholderTitle(baseline.title) && hasConcreteActorAndAction(baseline.title, event)
     ? baseline.title : specific.title)
   const title = isPlaceholderTitle(story.title) || !hasConcreteActorAndAction(story.title, event)
     || !claimMatchesEvent(story.title, event)
@@ -866,7 +869,10 @@ export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
   }
   if ([...sourceCounts.values()].some((count) => count > 2)) errors.push('同一主来源超过 2 条')
   if (sourceCounts.size < 3) errors.push('主来源少于 3 个')
-  const reliabilityForStory = (story: BriefingStory) => eventById.get(story.id)?.primaryArticle.source.reliability ?? story.source.reliability
+  const reliabilityForStory = (story: BriefingStory) => {
+    const event = eventById.get(story.id)
+    return event ? effectiveEventReliability(event) : story.source.reliability
+  }
   if (briefing.stories.filter((story) => reliabilityForStory(story) === 'other').length > 1) errors.push('other 来源超过 1 条')
   const unverified = briefing.stories.filter((story) => story.evidence.level === 'unverified')
   if (unverified.length > 1 || briefing.stories.slice(0, 3).some((story) => story.evidence.level === 'unverified')) errors.push('unverified 数量或排名不合规')
@@ -906,7 +912,7 @@ export function selectFixedSlotEvents(events: NewsEvent[]) {
       const event = ordered[index]
       const sourceId = event.primaryArticle.source.id
       const narrow = event.entities[0] ?? event.topicTags[0] ?? event.id
-      const isOther = event.primaryArticle.source.reliability === 'other'
+      const isOther = effectiveEventReliability(event) === 'other'
       const isUnverified = event.evidence.level === 'unverified'
       if ((sourceCounts.get(sourceId) ?? 0) >= 2 || (entityCounts.get(narrow) ?? 0) >= 2) continue
       if (isOther && otherCount >= 1) continue
@@ -953,6 +959,20 @@ type StoryOption = {
   originalRank: number | null
   preservesQwenStory: boolean
   priority: number
+}
+
+const AUTHORITATIVE_PRIMARY_HOST = /(?:^|\.)(?:federalreserve|bls|bea|sec|eia|treasury)\.gov$/i
+
+function effectiveEventReliability(event: NewsEvent) {
+  const source = event.primaryArticle.source
+  if (source.type === 'official') return 'primary' as const
+  try {
+    const hostname = new URL(event.primaryArticle.url).hostname.replace(/^www\./i, '')
+    if (AUTHORITATIVE_PRIMARY_HOST.test(hostname)) return 'primary' as const
+  } catch {
+    // Keep the collected reliability when a legacy fixture does not have a full URL.
+  }
+  return source.reliability
 }
 
 function combinations<T>(items: T[], size: number) {

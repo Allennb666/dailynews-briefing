@@ -315,7 +315,7 @@ const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
   ['threatened-person', /former Afghan police worker|Afghan former police|前阿富汗警员/i],
   ['model-report', /state of open models|open models?.{0,24}(?:report|observations?)|开源模型.{0,16}(?:报告|观察)/i],
   ['humanitarian-access', /humanitarian (?:access|workers?|aid)|famil(?:y|ies).{0,24}(?:besieg|trapp|surround)|人道工作者|人道援助|受困家庭|被围困.{0,12}家庭/i],
-  ['ai-policy-proposal', /policy ideas?|policy proposals?|政策建议|政策主张/i],
+  ['ai-policy-proposal', /policy ideas?|policy proposals?|(?:AI|artificial intelligence).{0,32}(?:policy|policies).{0,32}students?|students?.{0,32}(?:AI|artificial intelligence).{0,32}(?:policy|policies)|政策建议|政策主张|学生.{0,16}AI教育政策/i],
   ['agent-data-workflow', /strands agents?|lerobot|storage buckets?|record,?\s*train,?\s*and deploy|智能体训练部署流程/i],
   ['executive-appointment', /chief revenue officer|\bCRO\b|首席营收官/i],
 ]
@@ -1691,8 +1691,20 @@ function materialSpecificDetails(value: string) {
     && /settlers?/i.test(value)) details.push('受影响家庭此前被定居者围困数日')
   const frenchInstitutions = value.match(/(\d[\d,.]*)\s+French\s+(?:universit(?:y|ies)|higher education institutions?)/i)
   if (frenchInstitutions) details.push(`法国共有${frenchInstitutions[1]}所高校入榜`)
+  const institutionsInFrance = value.match(/(?:France|French).{0,48}?(\d[\d,.]*)\s+(?:universit(?:y|ies)|higher education institutions?|institutions?)/i)
+    ?? value.match(/(\d[\d,.]*)\s+(?:universit(?:y|ies)|higher education institutions?|institutions?).{0,48}?(?:in France|French)/i)
+  if (institutionsInFrance) details.push(`法国共有${institutionsInFrance[1]}所高校入榜`)
   const frenchTopHundred = value.match(/(\d[\d,.]*)\s+(?:French\s+)?(?:universit(?:y|ies)|institutions?).{0,32}(?:top|global)\s*100/i)
   if (frenchTopHundred) details.push(`其中${frenchTopHundred[1]}所法国高校进入全球前100`)
+  if (/\b27\b/.test(value) && /\b(?:four|4)\b/i.test(value) && /France|French/i.test(value)
+    && /universit|higher education institution/i.test(value) && /top\s*100/i.test(value)) {
+    details.push('法国共有27所高校入榜，其中4所进入全球前100')
+  }
+  if (/students?/i.test(value) && /(?:AI|artificial intelligence).{0,40}(?:policy|policies)|(?:policy|policies).{0,40}(?:AI|artificial intelligence)/i.test(value)) {
+    if (/draft(?:ed|ing)?|propos(?:al|e|ed|ing)|policy ideas?/i.test(value)) details.push('学生参与提出并起草AI教育政策建议')
+    if (/\bK-?12\b/i.test(value) && /national|nationwide|federal/i.test(value)) details.push('建议面向全国K-12教育体系')
+    else if (/\bK-?12\b/i.test(value)) details.push('建议聚焦K-12学校的AI使用规则')
+  }
   if (/evening mba/i.test(value) && /working professionals?|professionals? who work|在职专业人士/i.test(value)) {
     details.push('课程面向在职专业人士')
   }
