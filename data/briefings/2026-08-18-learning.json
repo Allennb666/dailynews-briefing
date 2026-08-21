@@ -12,155 +12,62 @@
   },
   "mode": "qwen",
   "overview": "从 21 个有效来源获取 59 条候选，文章去重后保留 5 条，聚合为 5 个事件，并选出 5 条重点。",
-  "keyTakeaway": "美国高等教育霸权面临结构性挑战，需警惕人才流失与资金缩减的叠加效应；全球科研版图正加速向多极化发展，亚洲国家通过制度性合作与资源投入重塑竞争格局。",
-  "logic": "数据表明，美国高校排名的下滑并非单一因素所致，而是招生萎缩、科研投入不足及学术自由受限共同作用的结果。相比之下，中国通过规模化培养 STEM 人才和增加科研产出，正在缩小与美国的差距。国际科研合作的深化（如日本加入欧盟项目）进一步稀释了单一国家的垄断优势。",
+  "keyTakeaway": "全球高等教育竞争格局加速重构，美国传统优势受资金与政策双重挤压，亚洲国家通过制度性合作与规模扩张抢占科研高地；基础教育端则从单纯技术引入转向关注学习机制与学生主体性。",
+  "logic": "数据表明，教育资源分配正从单一国家主导转向多极化竞争。美国因资金削减和移民限制导致人才流失，而中日等国通过增加投入和开放合作（如日本加入 Horizon Europe）巩固地位。同时，AI 在教育中的应用逻辑从“提效”转向“深化认知”，强调对错误的复盘而非快速解题。",
   "newKnowledge": "教育工具有效不等于学习有效；真正需要观察的是理解、迁移、反馈质量和学生独立判断能力。",
-  "outlook": "若美国无法扭转资金削减与国际学生申请下降的趋势，其顶尖大学的全球吸引力将进一步减弱，可能导致高端人才加速流向亚洲或欧洲。反之，若各国加强科研合作机制，全球创新生态将更趋多元，但地缘政治摩擦可能成为主要变量。",
+  "outlook": "若美国无法扭转资金紧缩与排外政策趋势，其科研霸权将进一步被稀释，全球学术中心将向亚洲转移。反之，若各国能建立更开放的跨境科研协作机制，可能形成新的全球知识生产网络。",
   "trendRadar": [
     {
-      "theme": "教育政策",
+      "theme": "AI 教育",
       "direction": "↑",
       "reason": "近期相关信息密度上升，需继续用后续数据验证。"
     },
     {
-      "theme": "AI 教育",
+      "theme": "教育政策",
       "direction": "→",
       "reason": "方向仍在形成，暂不把单日变化视为确定趋势。"
     }
   ],
   "watchNext": [
-    "官方后续材料",
-    "美国国会是否出台新法案以稳定高校科研经费",
-    "日本在‘地平线欧洲’框架下主导的首批跨国科研项目立项情况",
-    "后续公开信号"
+    "美国国会是否通过新一轮高等教育拨款法案",
+    "中国 STEM 博士毕业生留美比例变化",
+    "欧盟 Horizon Europe 下一轮项目对日本的资助额度"
   ],
   "stories": [
     {
-      "id": "bfd588b90b89",
-      "eventId": "bfd588b90b89",
-      "rank": 1,
-      "title": "美国大学全球排名下滑，国际生源锐减加剧衰退趋势",
-      "summary": "过去十年间，进入 QS 世界大学排名前 100 的美国大学数量从 31 所降至 26 所，同期中国高校稳步上升。去年夏季赴美留学生人数较前一年下降 22%，近六成院校报告国际生申请量再次下滑，预计秋季将减少 万名国际学生，。",
-      "keyFacts": [
-        "过去 10 年,QS 世界大学排名前 100 中的美国大学数量从 31 所降至 26 所。"
-      ],
-      "whyItMatters": "美国高等教育的全球主导地位正被削弱，这不仅影响其科研创新能力，还直接冲击经济收益与人才储备。若此趋势持续，美国可能失去作为全球学术中心的吸引力，进而动摇其科技领先地位。",
-      "background": "自特朗普政府以来，美国高校面临资金削减、国际学生限制及言论审查等多重压力。尽管部分顶尖名校仍维持高位，但整体声誉与研究质量指标呈下降态势。同时，其他国家加大对高教系统的投入，加速了全球格局的重塑。",
-      "impactChain": [
-        "国际生源减少",
-        "科研经费紧张",
-        "顶尖人才外流",
-        "国家竞争力下降"
-      ],
-      "affectedParties": [
-        "美国研究型大学",
-        "国际留学生群体",
-        "美国科技企业",
-        "联邦政府科研机构"
-      ],
-      "uncertainties": "未来两年内美国是否会调整移民与科研资助政策尚不明确；泰晤士高等教育即将发布的排名结果可能改变当前评估结论。",
-      "glossary": [
-        {
-          "term": "QS World University Rankings",
-          "definition": "由 Quacquarelli Symonds 发布的全球权威大学排名体系，综合考量学术声誉、雇主评价等指标。"
-        },
-        {
-          "term": "Academic Freedom Index",
-          "definition": "由德国埃尔朗根 - 纽伦堡大学研究人员编制的学术自由指数，用于衡量各国高校言论与研究自由度。"
-        }
-      ],
-      "trend": {
-        "nearTerm": "如果美国政府不采取紧急措施恢复科研拨款并放宽签证限制，可能在未来一年内出现更多顶尖学者离职及国际学生申请断崖式下跌",
-        "mediumTerm": "若中国及其他亚洲国家持续扩大 STEM 人才培养规模，可能在 5 年内形成与美国分庭抗礼的全球科研双极格局",
-        "signalsToWatch": [
-          "美国国会通过的新一轮高等教育预算法案内容",
-          "中国高校在 Nature/Science 期刊发表论文数量的年度变化",
-          "The Hechinger Report的后续正式信息",
-          "独立可靠来源的交叉验证"
-        ]
-      },
-      "url": "https://hechingerreport.org/once-globally-preeminent-u-s-universities-are-sliding-into-decline",
-      "source": {
-        "name": "The Hechinger Report",
-        "type": "media",
-        "reliability": "tier-1"
-      },
-      "sources": [
-        {
-          "name": "The Hechinger Report",
-          "type": "media",
-          "reliability": "tier-1"
-        }
-      ],
-      "evidenceSources": [
-        {
-          "name": "The Hechinger Report",
-          "type": "media",
-          "reliability": "tier-1",
-          "title": "Once globally preeminent, U.S. universities are sliding into decline",
-          "publishedAt": "2026-08-17T05:00:00.000Z",
-          "url": "https://hechingerreport.org/once-globally-preeminent-u-s-universities-are-sliding-into-decline",
-          "discoveryMethod": "rss",
-          "materialLevel": "full-text"
-        }
-      ],
-      "factSources": [
-        {
-          "factIndex": 0,
-          "urls": [
-            "https://hechingerreport.org/once-globally-preeminent-u-s-universities-are-sliding-into-decline"
-          ]
-        }
-      ],
-      "publishedAt": "2026-08-17T05:00:00.000Z",
-      "evidence": {
-        "level": "single-source",
-        "sourceCount": 1,
-        "independentSourceCount": 1,
-        "primarySourcePresent": false
-      },
-      "tags": [
-        "教育政策",
-        "学习科学",
-        "国际竞争"
-      ]
-    },
-    {
       "id": "0eba55b550e8",
       "eventId": "0eba55b550e8",
-      "rank": 2,
-      "title": "研究显示AI导师引导学生纠错可提升数学掌握度",
-      "summary": "一项针对田纳西州 6000 多名中学生的实验显示，当 AI 导师引导学生分析错误并要求其重新演示解题过程时，学生的数学掌握程度略有提升。该结果表明，‘慢速学习’模式可能优于传统快速刷题策略。",
+      "rank": 1,
+      "title": "田纳西州超 6000 名中学生实验显示 AI 引导纠错提升数学成绩",
+      "summary": "The Hechinger Report 报道了一项涉及田纳西州超过 6000 名中学生的实验，结果显示当 AI 导师引导学生分析错误并要求其演示解题过程时，学生的数学学习效果略有提升。该研究挑战了追求解题速度的传统观念。",
       "keyFacts": [
-        "AI 导师通过引导学生复盘错误并演示解题,提升了数学学习效果。"
+        "AI 导师引导学生复盘错误并演示解题后,数学学习效果提升。"
       ],
-      "whyItMatters": "该发现为 AI 在教育中的应用提供了实证依据，表明技术不应仅用于加速学习，更应聚焦于深度理解与错误修正。这有助于优化课程设计，提升基础学科教学质量。",
-      "background": "随着生成式 AI 普及，教育界对其在教学中的角色存在争议。部分观点认为 AI 会助长依赖，而本实验证明，合理设计的 AI 干预可增强学生对知识点的内化能力，尤其适用于数学等逻辑性强的学科。",
+      "whyItMatters": "这一发现为 AI 教育应用提供了关键方向：技术不应仅用于加速获取答案，而应作为认知脚手架，帮助学生通过反思错误来构建深层理解，这可能重塑未来智能辅导系统的设计逻辑。",
+      "background": "长期以来，教育科技倾向于利用 AI 快速纠正错误或提供即时答案以提高效率。然而，认知科学理论认为，面对困难和修正错误的过程是学习发生的关键时刻。此次大规模实验首次量化验证了“慢速学习”策略在 AI 环境下的有效性。",
       "impactChain": [
-        "AI 教学工具迭代",
-        "教师角色转型",
-        "课程结构优化",
-        "学生认知能力提升"
+        "AI 算法设计转向支持错误分析",
+        "教师角色从知识传授转为学习过程引导",
+        "学生评估标准从正确率转向思维过程质量"
       ],
       "affectedParties": [
         "K- 学校管理者",
-        "数学教师",
-        "教育科技公司",
-        "学生家长"
+        "教育科技公司开发者",
+        "一线数学教师"
       ],
-      "uncertainties": "该实验仅在单一地区开展，尚未验证其在不同文化背景或学科领域的普适性；长期效果仍需追踪。",
+      "uncertainties": "目前仅基于单一来源的片段报道，缺乏关于具体提升幅度、不同学科适用性及长期效果的详细数据。",
       "glossary": [
         {
-          "term": "Mastery Learning",
-          "definition": "一种强调完全掌握知识点后再进入下一阶段的教学方法，常结合反馈与重复练习。"
+          "term": "AI 导师 (AI Tutor)",
+          "definition": "利用人工智能技术模拟人类教师行为，提供个性化指导、反馈和练习的教育软件系统。"
         }
       ],
       "trend": {
-        "nearTerm": "如果更多学区采纳此类 AI 辅助教学模式，可能在下一学年看到数学平均分的小幅提升",
-        "mediumTerm": "若 AI 算法能个性化适配不同学生的学习节奏，可能彻底改变传统课堂讲授为主的教学范式",
+        "nearTerm": "如果更多学区采纳此类‘慢速纠错’AI 工具，可能短期内看到学生在复杂问题解决能力上的提升，但需重新培训教师适应新教学模式。",
+        "mediumTerm": "若该技术被证明在多种学科有效，可能引发全球教育科技市场从‘提效型’产品向‘认知增强型’产品的结构性转型。",
         "signalsToWatch": [
-          "其他州是否启动类似规模的 AI 教学试点项目",
-          "主流教育平台是否推出基于‘纠错演示’功能的 AI 模块",
+          "主流教育科技平台是否更新算法以支持错误复盘功能",
+          "相关学术论文是否发表具体的效果量化数据",
           "The Hechinger Report的后续正式信息",
           "独立可靠来源的交叉验证"
         ]
@@ -212,79 +119,93 @@
       ]
     },
     {
-      "id": "66b872df7954",
-      "eventId": "66b872df7954",
-      "rank": 3,
-      "title": "波士顿学生提出首份 K-12 国家级 AI 教育政策草案",
-      "summary": "学生这项涉及AI 教育的举措是实施新规；相关时间为2026-08-13。",
+      "id": "bfd588b90b89",
+      "eventId": "bfd588b90b89",
+      "rank": 2,
+      "title": "过去 10 年美国在 QS 世界大学排名前 100 的大学数量从 31 所降至 26 所",
+      "summary": "美国大学这项涉及全球领先地位的举措是竞争力下滑；相关参与方或受影响对象包括中国、美国、学校、学生；事件中的关键数值为$3.4 billion。",
       "keyFacts": [
-        "波士顿集会中,“学生参议员”提出首份 K-12 国家级 AI 政策草案。"
+        "QS 世界大学排名前 100 的美国大学数量在过去 10 年从 31 所降至 26 所。",
+        "去年夏季赴美国际学生人数较前一年夏季下降高达 22%。",
+        "2018 至 2023 年间,中国学者发表了全球 28% 的英文人工智能文章,高于美国的 16%。"
       ],
-      "whyItMatters": "学生直接参与政策制定标志着教育民主化的新阶段，有助于确保 AI 技术应用真正服务于学习者需求，而非仅由成人决策者主导。此举也可能推动联邦层面出台更具包容性的教育科技法规。",
-      "background": "随着 AI 工具广泛进入校园，关于其使用的争议日益增多。以往政策多由行政官员或专家制定，缺乏一线使用者声音。本次学生提案填补了这一空白，体现年轻一代对技术治理的主动性。",
+      "whyItMatters": "美国高等教育的全球主导地位正面临前所未有的挑战，这不仅影响其经济收益，更关乎其在人工智能等关键领域的创新领导力。生源与人才的流失可能引发长期的科研竞争力衰退。",
+      "background": "美国高校曾凭借充足的政府资金和开放的移民政策成为全球人才磁石。然而，近年来资金削减、签证限制以及公众信任度下降，叠加其他国家（特别是中国）在 STEM 领域的巨额投入，导致美国相对优势迅速缩小。",
       "impactChain": [
-        "学生话语权提升",
-        "政策制定流程变革",
-        "AI 教育标准建立",
-        "家校社协同机制强化"
+        "美国高校财政收入减少",
+        "顶尖实验室因缺乏博士生而缩减规模",
+        "全球科研重心向亚洲转移",
+        "美国企业面临高端技术人才短缺"
       ],
       "affectedParties": [
-        "K-12 学生群体",
-        "地方教育局",
-        "联邦教育部",
-        "教育科技供应商"
+        "美国研究型大学",
+        "依赖国际学费的私立学院",
+        "美国高科技产业",
+        "寻求海外深造的国际学生"
       ],
-      "uncertainties": "该草案是否会被官方采纳尚无定论；各州教育自治传统可能阻碍全国统一政策的实施。",
+      "uncertainties": "虽然趋势明显，但具体哪些学科受影响最大以及政策逆转的可能性尚不明确。",
       "glossary": [
         {
-          "term": "Student Senators",
-          "definition": "指在模拟立法会议或真实政策咨询中被赋予发言权的学生代表，通常来自不同年级与背景。"
+          "term": "STEM 博士",
+          "definition": "指在科学 (Science)、技术 (Technology)、工程 (Engineering) 和数学 (Mathematics) 领域获得博士学位的研究人员。"
         }
       ],
       "trend": {
-        "nearTerm": "如果教育部设立专门渠道接收学生政策建议，可能在 前形成区域性试点政策框架",
-        "mediumTerm": "若全国范围内出现多个类似学生倡议，可能促成联邦级 K-12 AI 教育指导原则的出台",
+        "nearTerm": "如果美国维持当前的签证与资金政策，国际学生申请量将继续萎缩，部分依赖国际生的小型院校可能面临关闭风险。",
+        "mediumTerm": "若中国在科研基础设施和人才待遇上持续领先，美国可能在多个前沿科技领域的全球话语权被削弱，形成多极化的科研格局。",
         "signalsToWatch": [
-          "美国教育部是否回应波士顿学生提案",
-          "其他城市是否举办同类学生政策论坛",
-          "EdSurge的后续正式信息",
-          "独立可靠来源的交叉验证"
+          "美国国务院签证审批通过率的变化",
+          "Nature/Science 期刊中美作者署名比例对比",
+          "美国联邦政府对基础研究的年度预算调整",
+          "The Hechinger Report的后续正式信息"
         ]
       },
-      "url": "https://edsurge.com/news/on-ai-policy-students-have-plenty-to-say",
+      "url": "https://hechingerreport.org/once-globally-preeminent-u-s-universities-are-sliding-into-decline",
       "source": {
-        "name": "EdSurge",
+        "name": "The Hechinger Report",
         "type": "media",
         "reliability": "tier-1"
       },
       "sources": [
         {
-          "name": "EdSurge",
+          "name": "The Hechinger Report",
           "type": "media",
           "reliability": "tier-1"
         }
       ],
       "evidenceSources": [
         {
-          "name": "EdSurge",
+          "name": "The Hechinger Report",
           "type": "media",
           "reliability": "tier-1",
-          "title": "On AI Policy, Students Have Plenty to Say",
-          "publishedAt": "2026-08-13T00:00:00.000Z",
-          "url": "https://edsurge.com/news/on-ai-policy-students-have-plenty-to-say",
+          "title": "Once globally preeminent, U.S. universities are sliding into decline",
+          "publishedAt": "2026-08-17T05:00:00.000Z",
+          "url": "https://hechingerreport.org/once-globally-preeminent-u-s-universities-are-sliding-into-decline",
           "discoveryMethod": "rss",
-          "materialLevel": "snippet-only"
+          "materialLevel": "full-text"
         }
       ],
       "factSources": [
         {
           "factIndex": 0,
           "urls": [
-            "https://edsurge.com/news/on-ai-policy-students-have-plenty-to-say"
+            "https://hechingerreport.org/once-globally-preeminent-u-s-universities-are-sliding-into-decline"
+          ]
+        },
+        {
+          "factIndex": 1,
+          "urls": [
+            "https://hechingerreport.org/once-globally-preeminent-u-s-universities-are-sliding-into-decline"
+          ]
+        },
+        {
+          "factIndex": 2,
+          "urls": [
+            "https://hechingerreport.org/once-globally-preeminent-u-s-universities-are-sliding-into-decline"
           ]
         }
       ],
-      "publishedAt": "2026-08-13T00:00:00.000Z",
+      "publishedAt": "2026-08-17T05:00:00.000Z",
       "evidence": {
         "level": "single-source",
         "sourceCount": 1,
@@ -292,22 +213,108 @@
         "primarySourcePresent": false
       },
       "tags": [
-        "AI 教育",
-        "基础教育",
-        "教育政策"
+        "教育政策",
+        "学习科学",
+        "高等教育"
+      ]
+    },
+    {
+      "id": "dfa5f6983715",
+      "eventId": "dfa5f6983715",
+      "rank": 3,
+      "title": "日本正式加入欧盟旗舰科研计划 Horizon Europe",
+      "summary": "Inside Higher Ed 报道，日本已成为欧盟旗舰研究与创新计划 Horizon Europe 的第 23 个关联国。此举使日本能够参与或领导国际科研项目，并获得针对气候、能源、健康及数字经济等社会挑战的资金支持。",
+      "keyFacts": [
+        "日本成为 Horizon Europe 第 23 个关联国。"
+      ],
+      "whyItMatters": "这是非欧洲国家深度融入欧洲科研体系的标志性事件，表明全球科研合作正突破地域限制。日本通过此渠道可获取巨额研发资金，强化其在关键技术领域的创新能力。",
+      "background": "Horizon Europe 是欧盟最大的科研资助计划，旨在通过跨国合作解决全球性挑战。此前韩国已加入该计划，日本的加入进一步扩展了其全球影响力，反映了欧洲在吸引外部合作伙伴方面的战略成功。",
+      "impactChain": [
+        "日本科研机构获得更多欧盟资金",
+        "日欧联合科研项目数量增加",
+        "全球科研网络更加紧密互联",
+        "非欧盟国家在欧盟标准制定中话语权提升"
+      ],
+      "affectedParties": [
+        "日本国立及私立大学",
+        "欧盟成员国研究机构",
+        "跨国科技企业",
+        "全球科研政策制定者"
+      ],
+      "uncertainties": "具体有多少日本项目将获得资助以及资金分配的具体细节尚未完全披露。",
+      "glossary": [
+        {
+          "term": "Horizon Europe",
+          "definition": "欧盟 的旗舰研究与创新资助计划，旨在推动科学卓越、工业竞争力和社会挑战的解决。"
+        }
+      ],
+      "trend": {
+        "nearTerm": "如果日本机构积极申报并符合欧盟标准，预计未来几年内将有大量日欧联合研究项目启动，特别是在绿色技术和数字领域。",
+        "mediumTerm": "若该模式被其他非欧大国效仿，可能形成一个超越单一国家利益的全球开放式科研共同体，改变地缘政治对科研的分割。",
+        "signalsToWatch": [
+          "首批获资助的日欧联合项目名单",
+          "日本政府对参与该计划的配套资金支持力度",
+          "其他非欧盟国家对加入该计划的意向表达",
+          "insidehighered.com的后续正式信息"
+        ]
+      },
+      "url": "https://www.insidehighered.com/news/global/2026/08/06/japan-officially-joins-europes-flagship-research-program",
+      "source": {
+        "name": "insidehighered.com",
+        "type": "media",
+        "reliability": "tier-2"
+      },
+      "sources": [
+        {
+          "name": "insidehighered.com",
+          "type": "media",
+          "reliability": "tier-2"
+        }
+      ],
+      "evidenceSources": [
+        {
+          "name": "insidehighered.com",
+          "type": "media",
+          "reliability": "tier-2",
+          "title": "Japan Officially Joins Europe’s Flagship Research Program - Inside Higher Ed",
+          "publishedAt": "2026-08-06T07:00:00.000Z",
+          "url": "https://www.insidehighered.com/news/global/2026/08/06/japan-officially-joins-europes-flagship-research-program",
+          "discoveryMethod": "news-search",
+          "materialLevel": "snippet-only"
+        }
+      ],
+      "factSources": [
+        {
+          "factIndex": 0,
+          "urls": [
+            "https://www.insidehighered.com/news/global/2026/08/06/japan-officially-joins-europes-flagship-research-program"
+          ]
+        }
+      ],
+      "publishedAt": "2026-08-06T07:00:00.000Z",
+      "evidence": {
+        "level": "single-source",
+        "sourceCount": 1,
+        "independentSourceCount": 1,
+        "primarySourcePresent": false
+      },
+      "tags": [
+        "教育政策",
+        "学习科学",
+        "国际合作"
       ]
     },
     {
       "id": "fe25c9cce38e",
       "eventId": "fe25c9cce38e",
       "rank": 4,
-      "title": "Coursera Blog推出支持措施课程改革",
-      "summary": "Coursera Blog这项涉及课程改革的举措是推出支持措施；相关参与方或受影响对象包括Google；相关时间为2026-08-12。",
+      "title": "Google推出支持措施课程改革",
+      "summary": "Google这项涉及课程改革的举措是推出支持措施；相关时间为2026-08-12。",
       "keyFacts": [
-        "Coursera Blog这项涉及课程改革的举措是推出支持措施；相关参与方或受影响对象包括Google；相关时间为2026-08-12。"
+        "Google这项涉及课程改革的举措是推出支持措施；相关时间为2026-08-12。"
       ],
       "whyItMatters": "这条信息可能影响学生与家庭与教师与学校管理者，但仍需结合后续数据判断真实影响。",
-      "background": "围绕“Coursera Blog推出支持措施课程改革”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。",
+      "background": "围绕“Google推出支持措施课程改革”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。",
       "impactChain": [
         "事件或政策信号出现",
         "相关主体调整资源与行为",
@@ -322,7 +329,7 @@
       "glossary": [],
       "trend": {
         "nearTerm": "如果后续出现官方补充信息或其他可靠来源的交叉验证，短期判断可能随证据变化。",
-        "mediumTerm": "若执行结果和后续数据持续印证，“Coursera Blog推出支持措施课程改革”的影响才可能从一次事件发展为更稳定的中期变化。",
+        "mediumTerm": "若执行结果和后续数据持续印证，“Google推出支持措施课程改革”的影响才可能从一次事件发展为更稳定的中期变化。",
         "signalsToWatch": [
           "官方文件或数据",
           "相关参与方行动",
@@ -374,16 +381,16 @@
       ]
     },
     {
-      "id": "49b9a4a4bcd1",
-      "eventId": "49b9a4a4bcd1",
+      "id": "f2af7007955b",
+      "eventId": "f2af7007955b",
       "rank": 5,
-      "title": "What Happens When AI实施新规AI教学方案",
-      "summary": "What Happens When AI这项涉及AI教学方案的举措是实施新规；相关时间为2026-08-05。",
+      "title": "Test引入融资安排",
+      "summary": "Test这项涉及融资安排的举措是引入；相关参与方或受影响对象包括学校、学生、大学；事件中的关键数值为£100,000。",
       "keyFacts": [
-        "What Happens When AI这项涉及AI教学方案的举措是实施新规；相关时间为2026-08-05。"
+        "Test这项涉及融资安排的举措是引入；相关参与方或受影响对象包括学校、学生、大学；事件中的关键数值为£100,000。"
       ],
       "whyItMatters": "这条信息可能影响学生与家庭与教师与学校管理者，但仍需结合后续数据判断真实影响。",
-      "background": "围绕“What Happens When AI实施新规AI教学方案”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。",
+      "background": "围绕“Test引入融资安排”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。",
       "impactChain": [
         "事件或政策信号出现",
         "相关主体调整资源与行为",
@@ -398,51 +405,51 @@
       "glossary": [],
       "trend": {
         "nearTerm": "如果后续出现官方补充信息或其他可靠来源的交叉验证，短期判断可能随证据变化。",
-        "mediumTerm": "若执行结果和后续数据持续印证，“What Happens When AI实施新规AI教学方案”的影响才可能从一次事件发展为更稳定的中期变化。",
+        "mediumTerm": "若执行结果和后续数据持续印证，“Test引入融资安排”的影响才可能从一次事件发展为更稳定的中期变化。",
         "signalsToWatch": [
           "官方文件或数据",
           "相关参与方行动",
           "行业与市场的持续反应"
         ]
       },
-      "url": "https://edsurge.com/news/what-happens-when-ai-policy-meets-a-real-classroom",
+      "url": "https://www.newscientist.com/article/2584776-test-moderators-use-ai-generated-writing-to-judge-literacy-standards",
       "source": {
-        "name": "EdSurge",
+        "name": "newscientist.com",
         "type": "media",
-        "reliability": "tier-1"
+        "reliability": "other"
       },
       "sources": [
         {
-          "name": "EdSurge",
+          "name": "newscientist.com",
           "type": "media",
-          "reliability": "tier-1"
+          "reliability": "other"
         }
       ],
       "evidenceSources": [
         {
-          "name": "EdSurge",
+          "name": "newscientist.com",
           "type": "media",
-          "reliability": "tier-1",
-          "title": "What Happens When AI Policy Meets a Real Classroom?",
-          "publishedAt": "2026-08-05T00:00:00.000Z",
-          "url": "https://edsurge.com/news/what-happens-when-ai-policy-meets-a-real-classroom",
-          "discoveryMethod": "rss",
-          "materialLevel": "snippet-only"
+          "reliability": "other",
+          "title": "Test moderators use AI-generated writing to judge literacy standards - newscientist.com",
+          "publishedAt": "2026-08-14T14:28:46.000Z",
+          "url": "https://www.newscientist.com/article/2584776-test-moderators-use-ai-generated-writing-to-judge-literacy-standards",
+          "discoveryMethod": "news-search",
+          "materialLevel": "full-text"
         }
       ],
       "factSources": [
         {
           "factIndex": 0,
           "urls": [
-            "https://edsurge.com/news/what-happens-when-ai-policy-meets-a-real-classroom"
+            "https://www.newscientist.com/article/2584776-test-moderators-use-ai-generated-writing-to-judge-literacy-standards"
           ]
         }
       ],
-      "publishedAt": "2026-08-05T00:00:00.000Z",
+      "publishedAt": "2026-08-14T14:28:46.000Z",
       "evidence": {
         "level": "single-source",
         "sourceCount": 1,
-        "independentSourceCount": 1,
+        "independentSourceCount": 0,
         "primarySourcePresent": false
       },
       "tags": [
@@ -468,11 +475,11 @@
     "maxSourceConcentration": 2,
     "qualityStatus": "passed",
     "warnings": [
-      "内容门禁已将 dfa5f6983715 替换为备用事件 fe25c9cce38e",
-      "内容门禁已将 ba02b25b1134 替换为备用事件 49b9a4a4bcd1",
+      "内容门禁已将 ba02b25b1134 替换为备用事件 fe25c9cce38e",
+      "内容门禁已将 66b872df7954 替换为备用事件 f2af7007955b",
       "程序保留合格成稿字段，并通过整体组合选择修复不合格槽位（检查 1 种组合）"
     ],
-    "articleFetchSuccess": 14,
+    "articleFetchSuccess": 15,
     "qwenRetries": 0,
     "contentQuality": {
       "repeatedSummaryCount": 0,
