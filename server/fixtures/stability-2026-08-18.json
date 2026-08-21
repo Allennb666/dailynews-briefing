@@ -29,11 +29,13 @@
     "aiBackups": [
       {
         "title": "Strengthening democratic oversight in national security",
-        "source": "openai"
+        "source": "openai",
+        "description": "OpenAI funded 14 independent projects to research AI policy ideas that expand economic opportunity and strengthen social resilience."
       },
       {
         "title": "Partnering with CodeAI to prepare the first AI generation",
-        "source": "openai"
+        "source": "openai",
+        "description": "OpenAI partnered with CodeAI on a training program designed to prepare students and workers for practical AI use."
       }
     ],
     "learningSecurity": {
@@ -52,7 +54,7 @@
         "domain": "world",
         "title": "Taliban threaten former Afghan police worker after MoD leak reveals identity",
         "source": "theguardian.com",
-        "expected": "publishable"
+        "expected": "insufficient-material"
       },
       {
         "domain": "world",
@@ -76,7 +78,7 @@
         "domain": "ai-tech",
         "title": "State of Open Models: Summer 2026 Observations",
         "source": "huggingface.co",
-        "expected": "publishable"
+        "expected": "insufficient-material"
       },
       {
         "domain": "ai-tech",

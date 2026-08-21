@@ -34,9 +34,9 @@ type ArtifactFixture = {
     qualityStatus: Record<DomainId, string>
     marketRejected: { title: string; source: string }
     marketBackup: { title: string; source: string }
-    aiBackups: Array<{ title: string; source: string }>
+    aiBackups: Array<{ title: string; source: string; description?: string }>
     learningSecurity: { title: string; source: string }
-    publishedGateMisses: Array<{ domain: DomainId; title: string; source: string; url?: string; expected: 'reject' | 'publishable' }>
+    publishedGateMisses: Array<{ domain: DomainId; title: string; source: string; url?: string; expected: 'reject' | 'publishable' | 'insufficient-material' }>
     learningBackups: Array<{ title: string; description: string }>
   }
   cases: {
@@ -219,16 +219,18 @@ test('真实缓存回放：教育英文事件均能生成具体中文备用稿�
   }
 })
 
-test('第二次真实缓存回放：官方省略主体、教育数据泄露和 Sentence Transformers 歧义均被通用处理', async () => {
+test('第二次真实缓存回放：官方省略主体按材料充足度处理，教育与 Sentence Transformers 歧义均被通用处理', async () => {
   const data = await fixture()
   for (const [index, item] of data.replay.aiBackups.entries()) {
-    const hit = candidate(`replay-ai-${index}`, 'ai-tech', item.title, item.title, item.source)
+    const hit = candidate(`replay-ai-${index}`, 'ai-tech', item.title, item.description ?? item.title, item.source)
     hit.source = source(item.source, 'primary')
     const event = createEvent('ai-tech', [hit])
     const story = buildRuleStory(event)
     assert.equal(assessEventForPreselection(event).accepted, true)
-    assert.equal(validateBriefingStory(story, event).length, 0, `${story.title}: ${validateBriefingStory(story, event).join('；')}`)
     assert.match(story.title, /OpenAI/)
+    assert.equal(validateBriefingStory(story, event).length, 0, validateBriefingStory(story, event).join('；'))
+    if (index === 0) assert.match(story.summary, /14个独立研究项目/)
+    else assert.match(story.summary, /CodeAI.*学生和从业者/)
   }
 
   const security = createEvent('learning', [candidate(
@@ -259,6 +261,10 @@ test('成功回放人工复核发现的伪通过稿会被拒绝或重写为来�
     }
     assert.equal(assessment.accepted, true, `${item.title}: ${assessment.reason}`)
     const story = buildRuleStory(event)
+    if (item.expected === 'insufficient-material') {
+      assert.ok(validateBriefingStory(story, event).length > 0, item.title)
+      continue
+    }
     assert.equal(validateBriefingStory(story, event).length, 0, `${story.title}: ${validateBriefingStory(story, event).join('；')}`)
     assert.doesNotMatch(story.title, /联合国发动袭击|说明新产品|竞争力下滑航运安排|达成合作新产品/)
   }

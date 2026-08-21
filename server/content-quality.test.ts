@@ -191,7 +191,7 @@ test('单个数字违规只删除对应数字，保留合格标题、摘要和�
   const model = new FixedModel(value)
   const briefing = await finalizeBriefing(collection(events), events, model, new Date('2026-08-16T00:00:00.000Z'))
   assert.equal(model.calls, 1)
-  assert.equal(briefing.pipeline.qualityStatus, 'passed', briefing.pipeline.warnings.join('；'))
+  assert.equal(briefing.pipeline.qualityStatus, 'passed', `${briefing.pipeline.warnings.join('；')}\n${JSON.stringify(briefing.stories.map(({ title, summary }) => ({ title, summary })), null, 2)}`)
   assert.equal(briefing.stories[0].title, expectedTitle)
   assert.equal(summaryAddsNewInformation(briefing.stories[0].title, briefing.stories[0].summary, events[0]), true)
   assert.match(briefing.stories[0].summary, /500|Apollo/)

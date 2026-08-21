@@ -32,6 +32,7 @@ import {
   isPlaceholderTitle,
   keyNumbersCompatible,
   supportingUrlsForClaim,
+  stripHtml,
   summaryAddsNewInformation,
 } from './pipeline.js'
 
@@ -614,10 +615,24 @@ function hanRatio(value: string) {
   return (meaningful.match(/[\p{Script=Han}]/gu) ?? []).length / meaningful.length
 }
 
-const BROKEN_QUANTIFIER = /(?:减少|增加|达到|高达|造成约?|约|近|超过)\s*(?:万?人|亿?欧元|亿美元|亿元|万亿元|经济损失)(?=[，。；]|$)/u
+const BROKEN_QUANTIFIER = /(?:减少|增加|达到|高达|造成约?|约|近|超过)\s*(?:万?人|亿?欧元|亿美元|亿元|万亿元|经济损失)(?=[，。；]|$)|(?<![\d数十百千])(?:万|亿)(?:美元|欧元|元)(?![\d])/u
 
 const CONDITIONAL_ANALYSIS = /如果|若|可能|或将|有望|取决于|需(?:要)?观察|在.+(?:情况下|前提下)|影响|传导|风险|机会|承压|受益/
 const CONCRETE_FACT_ASSERTION = /宣布|发布|推出|收购|融资|扩建|下调|上调|袭击|死亡|签署|批准|实施|发生|公布|启动|停止|关闭|裁员|invest|launch|announce|acquire|attack|kill|approve|implement/i
+
+function titleFromSupportedSummary(summary: string, event: NewsEvent) {
+  const clean = stripHtml(summary).replace(/\s+/g, ' ').trim()
+  const normalizedClean = clean.replace(/[\p{P}\p{S}\s]+/gu, '')
+  const sentences = clean.split(/(?<=[。！？!?])\s*/u).map((item) => item.replace(/[。！？!?]+$/u, '').trim()).filter(Boolean)
+  const candidates = sentences.flatMap((sentence) => [
+    ...sentence.split(/[，；]/u).map((item) => item.trim()),
+    sentence,
+  ]).filter((item) => item.length >= 10 && item.length <= 58 && !BROKEN_QUANTIFIER.test(item)
+    && item.replace(/[\p{P}\p{S}\s]+/gu, '') !== normalizedClean)
+  return candidates.find((candidate) => hasConcreteActorAndAction(candidate, event)
+    && claimMatchesEvent(candidate, event)
+    && supportingUrlsForClaim(event, candidate).length > 0) ?? ''
+}
 
 function overlaps(left: string[], right: string[]) {
   return left.some((value) => right.includes(value))
@@ -648,11 +663,12 @@ export function analysisFieldHasSevereConflict(value: string, event: NewsEvent) 
 
 export function repairStoryContentFields(story: BriefingStory, baseline: BriefingStory, event: NewsEvent): BriefingStory {
   const specific = buildEventSpecificContent(event)
-  const fallbackTitle = !isPlaceholderTitle(baseline.title) && hasConcreteActorAndAction(baseline.title, event)
-    ? baseline.title
-    : specific.title
+  const summaryTitle = titleFromSupportedSummary(story.summary, event)
+  const fallbackTitle = summaryTitle || (!isPlaceholderTitle(baseline.title) && hasConcreteActorAndAction(baseline.title, event)
+    ? baseline.title : specific.title)
   const title = isPlaceholderTitle(story.title) || !hasConcreteActorAndAction(story.title, event)
-    || !claimMatchesEvent(story.title, event) || hasHtmlArtifact(story.title) || hasMeaninglessEnglishFragment(story.title)
+    || !claimMatchesEvent(story.title, event)
+    || hasHtmlArtifact(story.title) || hasMeaninglessEnglishFragment(story.title)
     || hanRatio(story.title) < 0.18
     ? fallbackTitle
     : story.title

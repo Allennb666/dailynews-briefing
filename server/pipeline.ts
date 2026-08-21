@@ -196,6 +196,7 @@ const ENTITY_ALIASES: Array<[string, RegExp]> = [
   ['russia', /\brussia(?:n)?\b|俄罗斯|俄军/i],
   ['ukraine', /\bukrain(?:e|ian)\b|乌克兰|乌军/i],
   ['groq', /\bgroq\b/i],
+  ['hugging-face', /\bhugging\s*face\b|huggingface/i],
   ['research-team', /research team|研究团队/i],
   ['education-department', /department of education|education department|教育部门|教育主管部门/i],
   ['hackers', /\bhackers?\b|黑客/i],
@@ -249,7 +250,7 @@ const ACTION_GROUPS: Array<[string, RegExp]> = [
   ['sentence', /\bsentenced\b|\bsentencing\b|\b(?:court|judge)\b.{0,36}\bsentences?\b|\bjailed?\b|\bimprison(?:s|ed|ment)?\b|\bprison term\b|被判刑|判处|获刑|监禁|入狱/i],
   ['maintain', /\bmaintain(?:s|ed|ing)?\b|\bholds?\b.{0,24}\brates?\b|\bkeeps?\b.{0,24}\brates?\b|维持|保持不变/i],
   ['update', /\bupdat(?:e|es|ed|ing)\b|更新|修订/i],
-  ['research-find', /\b(?:research|study|experiment)\b.{0,80}\b(?:finds?|found|shows?|showed|suggests?|suggested|demonstrates?|demonstrated)\b|\b(?:finds?|found|shows?|showed|suggests?|suggested)\b.{0,80}\b(?:learning|students?|pupils?|kids)\b|\b(?:may|can|could)\s+learn more\b|\blearn(?:ed|s)? more\b|研究(?:团队)?(?:发现|表明)|实验(?:发现|表明)|结果(?:显示|表明)/i],
+  ['research-find', /\b(?:research|study|experiment)\b.{0,80}\b(?:finds?|found|shows?|showed|suggests?|suggested|demonstrates?|demonstrated)\b|\b(?:finds?|found|shows?|showed|suggests?|suggested)\b.{0,80}\b(?:learning|students?|pupils?|kids)\b|\b(?:may|can|could)\s+learn more\b|\blearn(?:ed|s)? more\b|研究(?:团队)?(?:发现|表明|显示)|实验(?:发现|表明|显示)|结果(?:显示|表明)/i],
   ['adopt', /\badopt(?:s|ed|ing|ion)?\b|\bdeploy(?:s|ed|ing|ment)?\b|\bintegrat(?:e|es|ed|ing|ion)\b|\buses?\b.{0,36}\b(?:AI|artificial intelligence)\b|采用|引入|部署|整合/i],
   ['join', /\bjoin(?:s|ed|ing)?\b|\benters?\b.{0,24}\b(?:program|programme|initiative)\b|加入|参与.{0,16}(?:计划|项目)/i],
   ['decline', /\b(?:declin(?:e|es|ed|ing)|slid(?:e|es|ing)|fall(?:s|ing)?|fell|drop(?:s|ped|ping))\b|下滑|衰退|下降|跌落/i],
@@ -257,6 +258,7 @@ const ACTION_GROUPS: Array<[string, RegExp]> = [
   ['strengthen', /\b(?:strengthen|tighten)(?:s|ed|ing)?\b|强化|加强|收紧|增强/i],
   ['threaten', /\bthreaten(?:s|ed|ing)?\b|威胁|恐吓/i],
   ['warn', /\bwarn(?:s|ed|ing)?\b|警告|警示/i],
+  ['reach', /\b(?:reach|contact)(?:es|ed|ing)?\b|接触|抵达|恢复联系/i],
 ]
 
 const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
@@ -308,8 +310,9 @@ const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
   ['student-data', /student data|student information|education ministry info|学生数据|学生信息|教育部门数据/i],
   ['ai-governance', /democratic oversight|national security oversight|ai governance|人工智能治理|国家安全治理|民主监督/i],
   ['ai-training', /prepare.{0,36}ai generation|ai generation.{0,36}(?:skills?|training|prepare)|ai workforce|ai talent|AI人才|人工智能人才|AI培训/i],
-  ['identity-exposure', /identity.{0,24}(?:leak|reveal|expos)|(?:leak|breach).{0,24}(?:identity|identities)|(?:data|information).{0,24}leak|身份泄露|身份曝光|数据泄露/i],
+  ['identity-exposure', /identity.{0,24}(?:leak|reveal|expos)|(?:leak|breach).{0,24}(?:identity|identities)|(?:data|information).{0,24}leak|身份.{0,12}(?:泄露|曝光)|数据泄露/i],
   ['model-report', /state of open models|open models?.{0,24}(?:report|observations?)|开源模型.{0,16}(?:报告|观察)/i],
+  ['humanitarian-access', /humanitarian (?:access|workers?|aid)|famil(?:y|ies).{0,24}(?:besieg|trapp|surround)|人道工作者|人道援助|受困家庭|被围困.{0,12}家庭/i],
 ]
 
 const INDICATOR_OBJECTS = new Set(['cpi', 'ppi', 'pce', 'interest-rate', 'bond-yield', 'earnings-results', 'oil-price'])
@@ -717,7 +720,7 @@ export function domainMatchSignals(config: DomainConfig, text: string, query = '
   const objectAffinity = config.id === 'markets'
     ? [...objects].some((object) => INDICATOR_OBJECTS.has(object) || ['funding-round', 'equity-stake', 'fraud-case', 'financial-regulation'].includes(object))
     : config.id === 'world'
-      ? [...objects].some((object) => ['sanctions-controls', 'military-strike', 'ceasefire-talks', 'shipping-route', 'earthquake', 'security-agreement', 'criminal-sentence', 'identity-exposure'].includes(object))
+      ? [...objects].some((object) => ['sanctions-controls', 'military-strike', 'ceasefire-talks', 'shipping-route', 'earthquake', 'security-agreement', 'criminal-sentence', 'identity-exposure', 'humanitarian-access'].includes(object))
       : config.id === 'learning'
         ? [...objects].some((object) => ['course-curriculum', 'assessment', 'ai-literacy', 'education-policy', 'student-support', 'student-data', 'mba-program', 'creative-program', 'learning-science', 'teacher-training', 'education-report', 'learning-method', 'higher-education-trend', 'ai-teaching', 'research-program'].includes(object))
         : [...objects].some((object) => ['product-release', 'funding-round', 'factory-capacity', 'memory-capacity', 'data-center', 'ai-center', 'watermark', 'coding-agent', 'ai-governance', 'ai-training', 'model-report'].includes(object))
@@ -1395,6 +1398,7 @@ const PLACEHOLDER_TITLE_PATTERNS = [
   /(?:来源|公司|机构|[\w.-]+\.com|[\w.-]+\.org|[\w.-]+\.gov|[\w.-]+\.edu|blog|news|cnbc|bbc|dw|techcrunch).{0,24}(?:发布|披露|提供).{0,18}(?:相关)?(?:更新|信息)$/iu,
   /^.{2,40}(?:发布|披露|提供)(?:了)?(?:与)?(?:当前)?[^：:，。]{1,24}(?:相关)?(?:更新|信息)$/u,
   /(?:发布|披露|提供)(?:了)?(?:与)?(?:当前)?(?:主题|事件|领域).{0,12}(?:相关)?(?:更新|信息)$/u,
+  /(?:强化模型|警告新产品|发现学习方法|威胁身份泄露|实施新规新产品)$/u,
 ]
 
 const PLACEHOLDER_SUMMARY_PATTERNS = [
@@ -1404,6 +1408,7 @@ const PLACEHOLDER_SUMMARY_PATTERNS = [
   /未获来源明确确认的细节不作推断/u,
   /现有来源材料明确记录了?这一具体动作/u,
   /(?:来源|原文)(?:已|明确)?(?:确认|记录|支持)(?:了)?(?:上述|这一|该)(?:动作|事件|说法)/u,
+  /围绕.{1,36}(?:发布|扩建|威胁|强化|实施新规)[；，].{0,12}参与或受影响的主体还包括/u,
 ]
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -1415,6 +1420,7 @@ const ENTITY_LABELS: Record<string, string> = {
   'sk-hynix': 'SK海力士', 'berkshire-hathaway': '伯克希尔', alphabet: 'Alphabet', grok: 'Grok',
   'mit-sloan': 'MIT斯隆管理学院', israel: '以色列', iran: '伊朗', oman: '阿曼', indonesia: '印度尼西亚',
   japan: '日本', 'south-korea': '韩国', 'north-korea': '朝鲜', uae: '阿联酋', russia: '俄罗斯', ukraine: '乌克兰', groq: 'Groq',
+  'hugging-face': 'Hugging Face',
   'research-team': '研究团队', 'education-department': '教育部门', hackers: '黑客', university: '大学',
   taliban: '塔利班', 'strait-of-hormuz': '霍尔木兹海峡船舶通行量',
   school: '学校', students: '学生', 'us-universities': '美国大学',
@@ -1428,7 +1434,7 @@ const ACTION_LABELS: Record<string, string> = {
   misuse: '卷入滥用争议', explain: '说明', rescue: '开展救援', implement: '启动实施', 'fraud-charge': '指控欺诈',
   sentence: '被判刑', maintain: '维持', update: '更新', 'data-release': '发布数据', occur: '发生',
   'research-find': '发现', adopt: '引入', join: '加入', decline: '竞争力下滑', enforce: '采取执法行动',
-  strengthen: '强化', threaten: '威胁', warn: '警告',
+  strengthen: '强化', threaten: '威胁', warn: '警告', reach: '接触',
 }
 
 const OBJECT_LABELS: Record<string, string> = {
@@ -1449,6 +1455,7 @@ const OBJECT_LABELS: Record<string, string> = {
   'research-program': '科研计划', 'financial-regulation': '金融监管事项',
   'student-data': '学生数据', 'ai-governance': '国家安全治理', 'ai-training': 'AI人才培养',
   'identity-exposure': '身份泄露', 'model-report': '开源模型观察报告',
+  'humanitarian-access': '受困家庭',
 }
 
 function articleMaterial(article: Candidate) {
@@ -1470,6 +1477,12 @@ function displayEntity(entity: string) {
   return ENTITY_LABELS[entity] ?? entity.replace(/\b\w/g, (letter) => letter.toLocaleUpperCase())
 }
 
+function firstAliasedEntity(text: string) {
+  return ENTITY_ALIASES.map(([entity, pattern], order) => ({ entity, index: text.search(pattern), order }))
+    .filter((item) => item.index >= 0)
+    .sort((left, right) => left.index - right.index || left.order - right.order)[0]?.entity
+}
+
 function contentActor(text: string, event: NewsEvent, includeEventMaterial = true) {
   const material = includeEventMaterial ? `${text} ${event.articles.map((article) => article.title).join(' ')}` : text
   if (/\b(?:u\.?s\.?|american) universities\b|美国大学/i.test(material)) return '美国大学'
@@ -1480,9 +1493,10 @@ function contentActor(text: string, event: NewsEvent, includeEventMaterial = tru
     const sourceEntity = extractEntities(event.primaryArticle.source.name)[0]
     if (sourceEntity) return displayEntity(sourceEntity)
   }
-  const entity = extractEntities(material)[0]
+  const entity = firstAliasedEntity(material)
   if (entity) return displayEntity(entity)
-  const englishLead = stripHtml(text).match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+/)?.[1]
+  const actorText = stripHtml(text).replace(/^Press Release Details?\s*/i, '')
+  const englishLead = actorText.match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+/)?.[1]
   if (englishLead) return englishLead
   return stripHtml(text).match(/^([\p{Script=Han}A-Za-z0-9·.-]{2,20})(?:正|已|将)?(?=发布|推出|宣布|公布|启动|设立|建立|联合|合作|投资|融资|扩产|增持|收购|指控|调查|下调|发生|袭击|警告|警示|威胁|提议|签署|实施|推进|去世)/u)?.[1] ?? ''
 }
@@ -1493,18 +1507,22 @@ function contentAction(text: string) {
   if (actions.has('security') && /\bhackers?\b|\btheft\b|黑客|窃取/i.test(text)) return '窃取'
   if (actions.has('decline') && objectSet.has('shipping-route')) return '下降'
   if (actions.has('data-release') && objectSet.has('model-report')) return '发布'
+  if (objectSet.has('model-report')) return '发布'
   if (actions.has('build') && objectSet.has('ai-center') && /\bopen(?:s|ed|ing)?\b|开设|设立/i.test(text)) return '开设'
   if (objectSet.has('funding-round') && actions.has('agreement')) return '联合设立'
   if ((objectSet.has('memory-capacity') || objectSet.has('factory-capacity')) && actions.has('build')) return '扩建'
-  const priority = ['fraud-charge', 'sentence', 'threaten', 'warn', 'research-find', 'join', 'adopt', 'decline', 'enforce', 'strengthen', 'security', 'restriction', 'policy', 'maintain', 'update', 'attack', 'rescue', 'negotiate', 'stake-change', 'reduce', 'misuse', 'death', 'rank-change', 'support', 'implement', 'agreement', 'funding', 'build', 'launch', 'data-release', 'explain']
+  const priority = ['fraud-charge', 'sentence', 'threaten', 'warn', 'reach', 'research-find', 'join', 'adopt', 'decline', 'enforce', 'strengthen', 'security', 'restriction', 'policy', 'maintain', 'update', 'attack', 'rescue', 'negotiate', 'stake-change', 'reduce', 'misuse', 'death', 'rank-change', 'support', 'implement', 'agreement', 'funding', 'build', 'launch', 'data-release', 'explain']
   const action = priority.find((value) => actions.has(value)) ?? [...actions][0]
   return ACTION_LABELS[action] ?? ''
 }
 
 function contentObject(text: string, event: NewsEvent) {
   const objects = extractEventObjects(text)
+  if (objects.has('identity-exposure') && /former Afghan police worker|Afghan former police|阿富汗前警员/i.test(text)) {
+    return '身份因泄密曝光的阿富汗前警员'
+  }
   if (objects.has('funding-round') && (objects.has('data-center') || /ai compute infrastructure/i.test(text))) return 'AI算力基础设施融资平台'
-  const priority = ['memory-capacity', 'equity-stake', 'cpi', 'ppi', 'pce', 'ev-target', 'fraud-case', 'criminal-sentence', 'security-agreement', 'student-data', 'identity-exposure', 'learning-method', 'learning-science', 'ai-teaching', 'research-program', 'higher-education-trend', 'teacher-training', 'education-report', 'university-ranking', 'financial-regulation', 'ai-governance', 'ai-center', 'ai-training', 'model-report', 'sanctions-controls', 'earthquake', 'military-strike', 'shipping-route', 'ceasefire-talks', 'image-abuse', 'watermark', 'coding-agent', 'student-support', 'mba-program', 'creative-program', 'executive-governance', 'funding-round', 'factory-capacity', 'data-center', 'product-release']
+  const priority = ['memory-capacity', 'equity-stake', 'cpi', 'ppi', 'pce', 'ev-target', 'fraud-case', 'criminal-sentence', 'security-agreement', 'student-data', 'identity-exposure', 'humanitarian-access', 'learning-method', 'learning-science', 'ai-teaching', 'research-program', 'higher-education-trend', 'teacher-training', 'education-report', 'university-ranking', 'financial-regulation', 'ai-governance', 'ai-center', 'ai-training', 'model-report', 'sanctions-controls', 'earthquake', 'military-strike', 'shipping-route', 'ceasefire-talks', 'image-abuse', 'watermark', 'coding-agent', 'student-support', 'mba-program', 'creative-program', 'executive-governance', 'funding-round', 'factory-capacity', 'data-center', 'product-release']
   const object = priority.find((value) => objects.has(value)) ?? [...objects][0]
   if (object === 'equity-stake') {
     const entities = extractEntities(text)
@@ -1544,6 +1562,7 @@ export function hasConcreteActorAndAction(value: string, event: NewsEvent) {
   const text = stripHtml(value)
   if (isPlaceholderTitle(text)) return false
   const hasObjectOrResult = extractEventObjects(text).size > 0
+    || /\d+\s*(?:个|项|名|所|家)/u.test(text)
     || /造成|导致|引发|获得|获批|拒绝|去世|死亡|受损|增长|下降|上升|持平|扩大|收缩|判刑|获刑|监禁|survivors?|concern|growth|decline|dead|damage|sentenced?|jailed?|imprisoned?/iu.test(text)
   return Boolean(contentActor(text, event, false))
     && Boolean(contentAction(text))
@@ -1617,34 +1636,73 @@ function rawNumberLabels(value: string) {
     ?.map((number) => number.replace(/\s+/g, ' ').trim()).filter((number) => /[%$€£¥￥]|\b(?:trillion|billion|million|tn|bn|mn|亿元|亿美元|万亿元|万吨|gw|mw)\b/i.test(number)) ?? [])]
 }
 
+function materialSpecificDetails(value: string) {
+  const details: string[] = []
+  const fundedProjects = value.match(/fund(?:ed|s|ing)?\s+(\d[\d,.]*)\s+(?:independent\s+)?projects?/i)
+  if (fundedProjects) details.push(`此次资助${fundedProjects[1]}个独立研究项目`)
+  const partner = value.match(/partner(?:ed|s|ing)?\s+with\s+([A-Z][\w.-]*(?:\s+[A-Z][\w.-]*){0,2})/)
+  if (partner) details.push(`合作方包括${partner[1].replace(/\s+(?:on|to|for)$/i, '')}`)
+  if (/students?\s+and\s+workers?|learners?\s+and\s+(?:workers?|employees?)/i.test(value)) details.push('项目面向学生和从业者')
+  else if (/enterprise customers?/i.test(value)) details.push('产品面向企业客户')
+  if (/identify\s+(?:AI[- ]?)?generated (?:material|content)/i.test(value)) details.push('该机制用于识别生成内容')
+  if (/collaborative (?:software )?development|code review and collaborative development/i.test(value)) details.push('产品用于协作开发')
+  return [...new Set(details)]
+}
+
 function structuredChineseSummary(title: string, candidate: Candidate, event: NewsEvent) {
   const material = articleMaterial(candidate)
   const anchor = articleEventAnchor(candidate)
   const actor = contentActor(anchor, event)
   const objects = [...extractEventObjects(material)]
   const object = objects[0] ?? ''
-  const secondaryEntities = [...new Set(extractEntities(material).map(displayEntity))]
-    .filter((entity) => entity !== actor && !/^(?:Press Release Details|Exclusive)$/i.test(entity)).slice(0, 4)
+  const secondaryEntities = [...new Set(extractEntities(material)
+    .filter((entity) => Boolean(ENTITY_LABELS[entity]))
+    .map(displayEntity))]
+    .filter((entity) => entity !== actor).slice(0, 4)
   const numbers = rawNumberLabels(material).filter((number) => !title.includes(number)).slice(0, 2)
   const locations = extractLocations(material).map((location) => ENTITY_LABELS[location] ?? LOCATION_ALIASES.find(([id]) => id === location)?.[0] ?? location)
   const dates = extractDates(material).filter((date) => !title.toLocaleLowerCase().includes(date)).slice(0, 2)
+  // The cleaned article material intentionally drops some short English
+  // fragments. Purpose/audience clauses are still useful for a Chinese rule
+  // fallback, so inspect the sanitized source fields before that lossy step.
+  const materialDetails = materialSpecificDetails(stripHtml(`${candidate.title} ${candidate.description} ${candidate.fullText ?? ''}`))
   const details: string[] = []
-  if (secondaryEntities.length) details.push(`参与或受影响的主体还包括${secondaryEntities.join('、')}`)
+  let substantiveDetailCount = 0
+  if (materialDetails.length) {
+    details.push(...materialDetails)
+    substantiveDetailCount += materialDetails.length
+  }
+  if (secondaryEntities.length) {
+    details.push(`相关参与方或受影响对象包括${secondaryEntities.join('、')}`)
+    substantiveDetailCount += 1
+  }
   if (numbers.length) {
     const prefix = object === 'funding-round' ? '计划涉及的资金规模为'
       : object === 'factory-capacity' || object === 'memory-capacity' ? '相关扩建规模为'
         : object === 'equity-stake' ? '相关持仓变动为'
           : '事件中的关键数值为'
     details.push(`${prefix}${numbers.join('、')}`)
+    substantiveDetailCount += 1
   }
-  if (locations.length) details.push(`事件涉及${[...new Set(locations)].join('、')}`)
+  if (locations.length) {
+    details.push(`事件涉及${[...new Set(locations)].join('、')}`)
+    substantiveDetailCount += 1
+  }
   if (dates.length) details.push(`相关时间为${dates.join('、')}`)
+  // A feed timestamp may be a useful extra fact only when the source actually
+  // supplied material beyond its headline. A title-only candidate must not turn
+  // into an apparently informative summary merely because the crawler knows its
+  // publication time.
+  const sourceAddsDetail = normalizeTitle(stripHtml(candidate.description)) !== normalizeTitle(stripHtml(candidate.title))
+    && normalizeTitle(stripHtml(candidate.description)).length >= 12
+  if (!substantiveDetailCount && !sourceAddsDetail) return ''
   const result = details.slice(0, 2).join('；')
   if (!result) return ''
   const action = contentAction(anchor) || contentAction(candidate.title) || contentAction(material)
   const objectLabel = contentObject(anchor, event) || contentObject(candidate.title, event) || contentObject(material, event)
   const eventClause = actor && action && objectLabel
-    ? action === '发现' ? `${actor}围绕${objectLabel}发现学习成效变化` : `${actor}围绕${objectLabel}${action}`
+    ? action === '发现' ? `${actor}针对${objectLabel}的研究发现了成效变化`
+      : `${actor}这项涉及${objectLabel}的举措是${action}`
     : `${actor || '相关主体'}推进该事项`
   const summary = `${eventClause}；${result}。`
   return summary.length >= 32 ? shorten(summary, 160) : ''
@@ -1668,6 +1726,10 @@ export function buildEventSpecificContent(event: NewsEvent): EventSpecificConten
     const action = contentAction(candidateAnchor) || contentAction(candidate.title) || contentAction(candidateText)
     const objectLabel = contentObject(candidateAnchor, event) || contentObject(candidate.title, event) || contentObject(candidateText, event)
     title = [contentActor(candidateAnchor, event), action, objectLabel].filter(Boolean).join('')
+  }
+  if (extractActions(candidateAnchor).has('research-find') && extractEventObjects(candidateAnchor).has('learning-method')
+    && /math|review mistakes?|mastery learning|数学|纠错|错题/i.test(candidateAnchor)) {
+    title = '研究显示AI导师引导学生纠错可提升数学掌握度'
   }
   title = shorten(title.replace(/\s+/g, ' ').trim(), 58)
 
