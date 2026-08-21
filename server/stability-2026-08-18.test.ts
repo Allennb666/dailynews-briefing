@@ -16,6 +16,7 @@ import {
   createEvent,
   crossDomainEventConfidence,
   extractActions,
+  hasConcreteActorAndAction,
   type Candidate,
   type CollectionResult,
   type NewsEvent,
@@ -302,6 +303,19 @@ test('真实动作漏识别：jailed、sentenced、获刑和监禁属于明确�
   for (const text of [data.cases.actionSynonym.title, 'Politician sentenced to prison', '政治人物获刑十一年', '法院判处其监禁']) {
     assert.equal(extractActions(text).has('sentence'), true, text)
   }
+})
+
+test('真实国际稿中的 warns/警告会被识别为明确事件动作', () => {
+  assert.equal(extractActions('Zelenskyy warns Egypt of food supply threat caused by Russian strikes').has('warn'), true)
+  assert.equal(extractActions('泽连斯基警告埃及俄罗斯袭击威胁粮食供应').has('warn'), true)
+  const event = createEvent('world', [candidate(
+    'zelensky-warning',
+    'world',
+    'Ukraine war briefing: Zelenskyy warns Egypt of food supply threat caused by Russian strikes in Black Sea',
+    'Russian strikes in the Black Sea threaten grain supplies to Egypt.',
+    'theguardian.com',
+  )])
+  assert.equal(hasConcreteActorAndAction('泽连斯基警告埃及：俄罗斯袭击威胁黑海粮食供应', event), true)
 })
 
 test('市场同时两条坏稿时整体组合一次换入两条备用事件', async () => {

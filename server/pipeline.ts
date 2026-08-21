@@ -256,6 +256,7 @@ const ACTION_GROUPS: Array<[string, RegExp]> = [
   ['enforce', /\benforcement action\b|\benforc(?:e|es|ed|ing|ement)\b|执法行动|采取执法|执行监管/i],
   ['strengthen', /\b(?:strengthen|tighten)(?:s|ed|ing)?\b|强化|加强|收紧|增强/i],
   ['threaten', /\bthreaten(?:s|ed|ing)?\b|威胁|恐吓/i],
+  ['warn', /\bwarn(?:s|ed|ing)?\b|警告|警示/i],
 ]
 
 const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
@@ -1427,7 +1428,7 @@ const ACTION_LABELS: Record<string, string> = {
   misuse: '卷入滥用争议', explain: '说明', rescue: '开展救援', implement: '启动实施', 'fraud-charge': '指控欺诈',
   sentence: '被判刑', maintain: '维持', update: '更新', 'data-release': '发布数据', occur: '发生',
   'research-find': '发现', adopt: '引入', join: '加入', decline: '竞争力下滑', enforce: '采取执法行动',
-  strengthen: '强化', threaten: '威胁',
+  strengthen: '强化', threaten: '威胁', warn: '警告',
 }
 
 const OBJECT_LABELS: Record<string, string> = {
@@ -1483,7 +1484,7 @@ function contentActor(text: string, event: NewsEvent, includeEventMaterial = tru
   if (entity) return displayEntity(entity)
   const englishLead = stripHtml(text).match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+/)?.[1]
   if (englishLead) return englishLead
-  return stripHtml(text).match(/^([\p{Script=Han}A-Za-z0-9·.-]{2,20})(?:正|已|将)?(?=发布|推出|宣布|公布|启动|设立|建立|联合|合作|投资|融资|扩产|增持|收购|指控|调查|下调|发生|袭击|提议|签署|实施|推进|去世)/u)?.[1] ?? ''
+  return stripHtml(text).match(/^([\p{Script=Han}A-Za-z0-9·.-]{2,20})(?:正|已|将)?(?=发布|推出|宣布|公布|启动|设立|建立|联合|合作|投资|融资|扩产|增持|收购|指控|调查|下调|发生|袭击|警告|警示|威胁|提议|签署|实施|推进|去世)/u)?.[1] ?? ''
 }
 
 function contentAction(text: string) {
@@ -1495,7 +1496,7 @@ function contentAction(text: string) {
   if (actions.has('build') && objectSet.has('ai-center') && /\bopen(?:s|ed|ing)?\b|开设|设立/i.test(text)) return '开设'
   if (objectSet.has('funding-round') && actions.has('agreement')) return '联合设立'
   if ((objectSet.has('memory-capacity') || objectSet.has('factory-capacity')) && actions.has('build')) return '扩建'
-  const priority = ['fraud-charge', 'sentence', 'threaten', 'research-find', 'join', 'adopt', 'decline', 'enforce', 'strengthen', 'security', 'restriction', 'policy', 'maintain', 'update', 'attack', 'rescue', 'negotiate', 'stake-change', 'reduce', 'misuse', 'death', 'rank-change', 'support', 'implement', 'agreement', 'funding', 'build', 'launch', 'data-release', 'explain']
+  const priority = ['fraud-charge', 'sentence', 'threaten', 'warn', 'research-find', 'join', 'adopt', 'decline', 'enforce', 'strengthen', 'security', 'restriction', 'policy', 'maintain', 'update', 'attack', 'rescue', 'negotiate', 'stake-change', 'reduce', 'misuse', 'death', 'rank-change', 'support', 'implement', 'agreement', 'funding', 'build', 'launch', 'data-release', 'explain']
   const action = priority.find((value) => actions.has(value)) ?? [...actions][0]
   return ACTION_LABELS[action] ?? ''
 }
