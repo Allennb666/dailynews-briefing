@@ -16,6 +16,7 @@ import {
   createEvent,
   crossDomainEventConfidence,
   extractActions,
+  extractEventObjects,
   hasConcreteActorAndAction,
   type Candidate,
   type CollectionResult,
@@ -41,6 +42,7 @@ type ArtifactFixture = {
       agentWorkflow: { title: string }
       executiveAppointment: { title: string; unrelatedTitle: string }
       talibanThreat: { title: string }
+      humanitarianAccess: { title: string; description: string }
       franceRanking: { title: string }
     }
     learningSecurity: { title: string; source: string }
@@ -247,6 +249,7 @@ test('最新真实回放：AI、国际与教育备用事件均可成稿，重复
     { domain: 'ai-tech', title: latest.aiPolicy.title, description: latest.aiPolicy.description, sourceId: 'openai.com', reliability: 'primary' },
     { domain: 'ai-tech', title: latest.agentWorkflow.title, description: latest.agentWorkflow.title, sourceId: 'huggingface.co', reliability: 'primary' },
     { domain: 'world', title: latest.talibanThreat.title, description: latest.talibanThreat.title, sourceId: 'theguardian.com', reliability: 'tier-1' },
+    { domain: 'world', title: latest.humanitarianAccess.title, description: latest.humanitarianAccess.description, sourceId: 'news.un.org', reliability: 'primary' },
     { domain: 'learning', title: latest.franceRanking.title, description: latest.franceRanking.title, sourceId: 'lemonde.fr', reliability: 'tier-1' },
   ]
   for (const [index, item] of cases.entries()) {
@@ -265,6 +268,16 @@ test('最新真实回放：AI、国际与教育备用事件均可成稿，重复
   const event = createEvent('ai-tech', [appointment])
   assert.equal(event.articles.length, 1)
   assert.doesNotMatch(event.articles.map((article) => article.title).join(' '), /Daybreak/)
+
+  const humanitarian = candidate('humanitarian-domain', 'world', latest.humanitarianAccess.title, latest.humanitarianAccess.description, 'news.un.org')
+  humanitarian.source = source('news.un.org', 'primary')
+  const humanitarianEvent = createEvent('world', [humanitarian])
+  assert.equal(extractEventObjects(latest.humanitarianAccess.title).has('product-release'), false)
+  assert.equal(assessEventForPreselection(humanitarianEvent, 'world').accepted, true)
+
+  const ranking = candidate('ranking-domain', 'learning', latest.franceRanking.title, latest.franceRanking.title, 'lemonde.fr')
+  ranking.source = source('lemonde.fr', 'tier-1')
+  assert.equal(assessEventForPreselection(createEvent('learning', [ranking]), 'learning').accepted, true)
 })
 
 test('真实缓存回放：教育英文事件均能生成具体中文备用稿并独立通过门禁', async () => {

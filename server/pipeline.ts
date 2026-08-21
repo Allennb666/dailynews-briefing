@@ -269,7 +269,7 @@ const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
   ['interest-rate', /interest rates?|rate cut|rate hike|policy rate|利率|降息|加息/i],
   ['bond-yield', /treasury yields?|bond yields?|国债收益率|债券收益率/i],
   ['earnings-results', /earnings|quarterly results|financial results|revenue|profit|guidance|财报|季报|营收|利润|业绩|指引/i],
-  ['product-release', /product|platform|model|chip|gpu|processor|software|app|产品|平台|模型|芯片|处理器|软件|应用/i],
+  ['product-release', /\b(?:products?|platforms?|models?|chips?|gpus?|processors?|software|apps?)\b|产品|平台|模型|芯片|处理器|软件|应用/i],
   ['acquisition-target', /acquisition|acquire|merger|收购|并购|合并/i],
   ['funding-round', /funding round|financing|investment|raise[ds]?|融资|募资|投资/i],
   ['factory-capacity', /factory|fab|capacity|production line|产能|工厂|晶圆厂|生产线/i],
@@ -727,7 +727,7 @@ export function domainMatchSignals(config: DomainConfig, text: string, query = '
     : config.id === 'world'
       ? [...objects].some((object) => ['sanctions-controls', 'military-strike', 'ceasefire-talks', 'shipping-route', 'earthquake', 'security-agreement', 'criminal-sentence', 'identity-exposure', 'humanitarian-access'].includes(object))
       : config.id === 'learning'
-        ? [...objects].some((object) => ['course-curriculum', 'assessment', 'ai-literacy', 'education-policy', 'student-support', 'student-data', 'mba-program', 'creative-program', 'learning-science', 'teacher-training', 'education-report', 'learning-method', 'higher-education-trend', 'ai-teaching', 'research-program'].includes(object))
+        ? [...objects].some((object) => ['course-curriculum', 'assessment', 'ai-literacy', 'education-policy', 'student-support', 'student-data', 'mba-program', 'creative-program', 'learning-science', 'teacher-training', 'education-report', 'learning-method', 'higher-education-trend', 'university-ranking', 'ai-teaching', 'research-program'].includes(object))
         : [...objects].some((object) => ['product-release', 'funding-round', 'factory-capacity', 'memory-capacity', 'data-center', 'ai-center', 'watermark', 'coding-agent', 'ai-governance', 'ai-policy-proposal', 'agent-data-workflow', 'executive-appointment', 'ai-training', 'model-report'].includes(object))
   const officialAffinity = Boolean(source?.type === 'official'
     && OFFICIAL_DOMAIN_AFFINITY[config.id].some((host) => source.id === host || source.id.endsWith(`.${host}`)))
