@@ -263,3 +263,11 @@ test('定时任务无论生成结果都评估并上传 Actions artifact，Pages 
   assert.match(pages, /path: dist/)
   assert.doesNotMatch(pages, /\.diagnostics/)
 })
+
+test('定时任务只在四领域两阶段均无法连接 Qwen 时复用缓存重跑一次', async () => {
+  const daily = await readFile(resolve('.github/workflows/daily-briefing.yml'), 'utf8')
+  assert.match(daily, /contains\("Qwen 网络连接失败"\)/)
+  assert.match(daily, /length >= 8/)
+  assert.match(daily, /sleep 60[\s\S]*npm run briefing:generate/)
+  assert.match(daily, /same-day cache keeps Tavily at[\s\S]*zero/i)
+})

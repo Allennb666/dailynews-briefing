@@ -59,7 +59,27 @@ jobs:
         continue-on-error: true
         env:
           BRIEFING_REPLAY_DATE: ${{ inputs.replay_date }}
-        run: npm run briefing:generate
+        run: |
+          set +e
+          npm run briefing:generate
+          status=$?
+          set -e
+
+          # GitHub-hosted runners occasionally cannot establish any connection
+          # to the mainland DashScope endpoint for an entire generation pass.
+          # Retry the pass once only when all four domains failed in both model
+          # stages for that network reason. The same-day cache keeps Tavily at
+          # zero on the retry; content-gate failures never trigger this path.
+          if [ "$status" -ne 0 ] && jq -e \
+            '[.qualityWarnings[]? | select(contains("Qwen 网络连接失败"))] | length >= 8' \
+            .diagnostics/latest.json >/dev/null; then
+            echo "DashScope was unreachable for every domain; retrying the cached generation once in 60 seconds."
+            sleep 60
+            npm run briefing:generate
+            exit $?
+          fi
+
+          exit "$status"
       - name: Save same-day search cache
         if: always()
         uses: actions/cache/save@v5
