@@ -909,10 +909,15 @@ export function selectFixedSlotEvents(events: NewsEvent[]) {
   const locallyPublishable = (event: NewsEvent) => !validateBriefingStory(buildRuleStory(event), event).length
   const orderedGroup = (items: NewsEvent[]) => [...items].sort((left, right) =>
     Number(effectiveEventReliability(left) === 'other') - Number(effectiveEventReliability(right) === 'other'))
-  const ordered = [true, false].flatMap((ready) => [
-    ...orderedGroup(events.filter((event) => event.evidence.level !== 'unverified' && locallyPublishable(event) === ready)),
-    ...orderedGroup(events.filter((event) => event.evidence.level === 'unverified' && locallyPublishable(event) === ready)),
-  ])
+  const ordered = [true, false].flatMap((ready) => {
+    const group = events.filter((event) => locallyPublishable(event) === ready)
+    return [
+      ...orderedGroup(group.filter((event) => event.evidence.level !== 'unverified' && effectiveEventReliability(event) !== 'other')),
+      ...orderedGroup(group.filter((event) => event.evidence.level === 'unverified' && effectiveEventReliability(event) !== 'other')),
+      ...orderedGroup(group.filter((event) => event.evidence.level !== 'unverified' && effectiveEventReliability(event) === 'other')),
+      ...orderedGroup(group.filter((event) => event.evidence.level === 'unverified' && effectiveEventReliability(event) === 'other')),
+    ]
+  })
   const search = (
     start: number,
     selected: NewsEvent[],
@@ -1194,7 +1199,29 @@ export async function finalizeBriefing(
             },
           }
         }
-        const stabilized = stabilizeBriefingWithBackups(collection, locallyRepaired, events, now)
+        // A field-by-field repair can still leave one internally consistent but
+        // unsupported story. Replace only those remaining bad slots with the
+        // exact pre-validated fallback before considering different events.
+        const strictlyRepaired = normalizeRanking({
+          ...locallyRepaired,
+          stories: locallyRepaired.stories.map((story) => {
+            const event = eventById.get(story.id)
+            const baselineStory = fallbackById.get(story.id)
+            return event && baselineStory && validateBriefingStory(story, event).length ? baselineStory : story
+          }),
+        })
+        const strictErrors = validateBriefing(strictlyRepaired, slotEvents)
+        if (!strictErrors.length) {
+          return {
+            ...strictlyRepaired,
+            pipeline: {
+              ...pipelineMetrics(strictlyRepaired, Math.max(0, modelCalls - 1), slotEvents),
+              qualityStatus: 'passed' as const,
+              warnings: [...strictlyRepaired.pipeline.warnings, '程序保留合格成稿；仅将字段修复后仍不合格的槽位换回已验证事件底稿'],
+            },
+          }
+        }
+        const stabilized = stabilizeBriefingWithBackups(collection, strictlyRepaired, events, now)
         if (!stabilized.errors.length) {
           const stableBriefing = stabilized.briefing
           return {

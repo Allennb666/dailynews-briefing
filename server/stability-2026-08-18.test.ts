@@ -316,6 +316,25 @@ test('固定槽位在候选充足时优先可靠来源，只有不足五条才�
   assert.equal(scarce.filter((event) => event.primaryArticle.source.reliability === 'other').length, 1)
 })
 
+test('可靠未验证候选在前三之后优先于 other 来源', () => {
+  const reliable = eventsFor('world').slice(0, 4)
+  const unverified = createEvent('world', [candidate(
+    'reliable-unverified', 'world', '联合国警告地区平民伤亡上升',
+    '联合国警告地区平民伤亡上升，并呼吁冲突各方保持克制。', 'news.un.org', 80,
+  )])
+  unverified.primaryArticle.source = source('news.un.org', 'primary')
+  unverified.evidence.level = 'unverified'
+  const other = createEvent('world', [candidate(
+    'other-world', 'world', '行业媒体警告地区航运风险上升',
+    '行业媒体警告地区航运风险上升，并称部分船舶调整航线。', 'other.example', 200,
+  )])
+  other.primaryArticle.source = source('other.example', 'other')
+  const selected = selectFixedSlotEvents([...reliable, other, unverified])
+  assert.equal(selected.some((event) => event.id === unverified.id), true)
+  assert.equal(selected.some((event) => event.id === other.id), false)
+  assert.ok(selected.findIndex((event) => event.id === unverified.id) >= 3)
+})
+
 test('固定槽位规则底稿使用已验证事件边界，不在最终写作前重新聚类', async () => {
   const events = eventsFor('learning').slice(0, 5)
   const invalidModel = {
