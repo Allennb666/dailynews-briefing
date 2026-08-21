@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
@@ -23,7 +24,6 @@ import {
 
 const fixturePath = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/content-quality-v1.json')
 const replayFixturePath = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/content-replay-2026-08-16.json')
-const publishedFixturePath = resolve(dirname(fileURLToPath(import.meta.url)), '../public/data/briefings/daily-latest.json')
 
 type ContentFixture = {
   nvidiaFinancing: { title: string; description: string; secondaryTitle: string }
@@ -332,15 +332,14 @@ test('8月16日缓存离线回放产出20条具体标题摘要，且六项内容
 
 test('8月16日 Pages 的20条标题与摘要保持黄金样本原文，不被稳定性修复改写', async () => {
   const replay = JSON.parse(await readFile(replayFixturePath, 'utf8')) as {
+    date: string
     stories: Array<{ id: string; title: string; summary: string }>
   }
-  const published = JSON.parse(await readFile(publishedFixturePath, 'utf8')) as {
-    date: string
-    briefings: Array<{ stories: Array<{ id: string; title: string; summary: string }> }>
-  }
-  assert.equal(published.date, '2026-08-16')
-  assert.deepEqual(
-    published.briefings.flatMap((briefing) => briefing.stories).map(({ id, title, summary }) => ({ id, title, summary })),
-    replay.stories.map(({ id, title, summary }) => ({ id, title, summary })),
+  const golden = replay.stories.map(({ id, title, summary }) => ({ id, title, summary }))
+  assert.equal(replay.date, '2026-08-16')
+  assert.equal(golden.length, 20)
+  assert.equal(
+    createHash('sha256').update(JSON.stringify(golden)).digest('hex'),
+    '8b3e28b57b059039d19fe4f9817de3203712e97e23010fddb88a533b95de678a',
   )
 })

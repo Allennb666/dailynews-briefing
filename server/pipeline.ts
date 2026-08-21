@@ -193,6 +193,8 @@ const ENTITY_ALIASES: Array<[string, RegExp]> = [
   ['research-team', /research team|研究团队/i],
   ['education-department', /department of education|education department|教育部门|教育主管部门/i],
   ['hackers', /\bhackers?\b|黑客/i],
+  ['taliban', /\btaliban\b|塔利班/i],
+  ['strait-of-hormuz', /\bstrait of hormuz\b|霍尔木兹海峡/i],
   ['school', /\bschool\b|学校/i],
   ['students', /\bstudents?\b|\bkids\b|\bpupils?\b|学生|儿童/i],
   ['us-universities', /\b(?:u\.?s\.?|american) universities\b|美国大学/i],
@@ -246,7 +248,8 @@ const ACTION_GROUPS: Array<[string, RegExp]> = [
   ['join', /\bjoin(?:s|ed|ing)?\b|\benters?\b.{0,24}\b(?:program|programme|initiative)\b|加入|参与.{0,16}(?:计划|项目)/i],
   ['decline', /\b(?:declin(?:e|es|ed|ing)|slid(?:e|es|ing)|fall(?:s|ing)?|fell|drop(?:s|ped|ping))\b|下滑|衰退|下降|跌落/i],
   ['enforce', /\benforcement action\b|\benforc(?:e|es|ed|ing|ement)\b|执法行动|采取执法|执行监管/i],
-  ['strengthen', /\bstrengthen(?:s|ed|ing)?\b|强化|加强|增强/i],
+  ['strengthen', /\b(?:strengthen|tighten)(?:s|ed|ing)?\b|强化|加强|收紧|增强/i],
+  ['threaten', /\bthreaten(?:s|ed|ing)?\b|威胁|恐吓/i],
 ]
 
 const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
@@ -267,7 +270,7 @@ const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
   ['ai-literacy', /ai literacy|artificial intelligence literacy|人工智能素养|ai 素养/i],
   ['education-policy', /education policy|school policy|education reform|教育政策|教育改革/i],
   ['sanctions-controls', /sanctions?|export controls?|制裁|出口管制/i],
-  ['military-strike', /airstrikes?|missile|drone attack|袭击|空袭|导弹|无人机/i],
+  ['military-strike', /\battacks?\b|airstrikes?|missile|drone attack|袭击|空袭|导弹|无人机/i],
   ['ceasefire-talks', /ceasefire|peace talks?|negotiations?|停火|和谈|谈判/i],
   ['shipping-route', /shipping|vessels?|strait|canal|航运|船只|海峡|运河/i],
   ['oil-price', /oil prices?|brent|wti|原油|油价|布兰特/i],
@@ -298,6 +301,8 @@ const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
   ['student-data', /student data|student information|education ministry info|学生数据|学生信息|教育部门数据/i],
   ['ai-governance', /democratic oversight|national security oversight|ai governance|人工智能治理|国家安全治理|民主监督/i],
   ['ai-training', /prepare.{0,36}ai generation|ai generation.{0,36}(?:skills?|training|prepare)|ai workforce|ai talent|AI人才|人工智能人才|AI培训/i],
+  ['identity-exposure', /identity.{0,24}(?:leak|reveal|expos)|(?:leak|breach).{0,24}(?:identity|identities)|(?:data|information).{0,24}leak|身份泄露|身份曝光|数据泄露/i],
+  ['model-report', /state of open models|open models?.{0,24}(?:report|observations?)|开源模型.{0,16}(?:报告|观察)/i],
 ]
 
 const INDICATOR_OBJECTS = new Set(['cpi', 'ppi', 'pce', 'interest-rate', 'bond-yield', 'earnings-results', 'oil-price'])
@@ -365,10 +370,10 @@ export function isNonArticlePage(title: string, rawUrl: string, description = ''
   }
   const normalizedTitle = title.toLocaleLowerCase().normalize('NFKC').replace(/[\p{P}\p{S}]+/gu, ' ').replace(/\s+/g, ' ').trim()
   const newsArchiveTitle = /^(?:news\s+)?archives?$|新闻归档/i.test(normalizedTitle)
-  const genericTitle = /^(?:news|latest news|press releases?|index|category|tag|blog)$|新闻中心|资讯中心|文章列表/i.test(normalizedTitle)
+  const genericTitle = /^(?:news|latest news|press releases?|index|category|tag|blog)(?:\s*[|·-].*)?$|新闻中心|资讯中心|文章列表/i.test(normalizedTitle)
   const listingPath = /(?:^|\/)(?:archive|archives|index|category|categories|tag|tags)(?:\/|$)/i.test(pathname)
     || /\/(?:news|press-releases?|blog)$/i.test(pathname)
-  return newsArchiveTitle || ((genericTitle || listingPath) && !hasSpecificEventInformation(title, description))
+  return newsArchiveTitle || genericTitle || (listingPath && !hasSpecificEventInformation(title, description))
 }
 
 export function extractKeyNumbers(text: string) {
@@ -576,6 +581,7 @@ function fingerprintActions(text: string, objects: Set<string>) {
   const actions = extractActions(text)
   if (actions.size) return actions
   if ([...objects].some((object) => ['cpi', 'ppi', 'pce', 'earnings-results'].includes(object))) actions.add('data-release')
+  if (objects.has('model-report')) actions.add('data-release')
   if (objects.has('earthquake')) actions.add('occur')
   if (objects.has('education-policy')) actions.add('policy')
   return actions
@@ -704,10 +710,10 @@ export function domainMatchSignals(config: DomainConfig, text: string, query = '
   const objectAffinity = config.id === 'markets'
     ? [...objects].some((object) => INDICATOR_OBJECTS.has(object) || ['funding-round', 'equity-stake', 'fraud-case', 'financial-regulation'].includes(object))
     : config.id === 'world'
-      ? [...objects].some((object) => ['sanctions-controls', 'military-strike', 'ceasefire-talks', 'shipping-route', 'earthquake', 'security-agreement', 'criminal-sentence'].includes(object))
+      ? [...objects].some((object) => ['sanctions-controls', 'military-strike', 'ceasefire-talks', 'shipping-route', 'earthquake', 'security-agreement', 'criminal-sentence', 'identity-exposure'].includes(object))
       : config.id === 'learning'
         ? [...objects].some((object) => ['course-curriculum', 'assessment', 'ai-literacy', 'education-policy', 'student-support', 'student-data', 'mba-program', 'creative-program', 'learning-science', 'teacher-training', 'education-report', 'learning-method', 'higher-education-trend', 'ai-teaching', 'research-program'].includes(object))
-        : [...objects].some((object) => ['product-release', 'funding-round', 'factory-capacity', 'memory-capacity', 'data-center', 'ai-center', 'watermark', 'coding-agent', 'ai-governance', 'ai-training'].includes(object))
+        : [...objects].some((object) => ['product-release', 'funding-round', 'factory-capacity', 'memory-capacity', 'data-center', 'ai-center', 'watermark', 'coding-agent', 'ai-governance', 'ai-training', 'model-report'].includes(object))
   const officialAffinity = Boolean(source?.type === 'official'
     && OFFICIAL_DOMAIN_AFFINITY[config.id].some((host) => source.id === host || source.id.endsWith(`.${host}`)))
   const learningFit = config.id === 'learning' ? learningPersonalRelevance(text) : null
@@ -1403,6 +1409,7 @@ const ENTITY_LABELS: Record<string, string> = {
   'mit-sloan': 'MIT斯隆管理学院', israel: '以色列', iran: '伊朗', oman: '阿曼', indonesia: '印度尼西亚',
   japan: '日本', 'south-korea': '韩国', 'north-korea': '朝鲜', uae: '阿联酋', russia: '俄罗斯', ukraine: '乌克兰', groq: 'Groq',
   'research-team': '研究团队', 'education-department': '教育部门', hackers: '黑客', university: '大学',
+  taliban: '塔利班', 'strait-of-hormuz': '霍尔木兹海峡船舶通行量',
   school: '学校', students: '学生', 'us-universities': '美国大学',
 }
 
@@ -1414,7 +1421,7 @@ const ACTION_LABELS: Record<string, string> = {
   misuse: '卷入滥用争议', explain: '说明', rescue: '开展救援', implement: '启动实施', 'fraud-charge': '指控欺诈',
   sentence: '被判刑', maintain: '维持', update: '更新', 'data-release': '发布数据', occur: '发生',
   'research-find': '发现', adopt: '引入', join: '加入', decline: '竞争力下滑', enforce: '采取执法行动',
-  strengthen: '强化',
+  strengthen: '强化', threaten: '威胁',
 }
 
 const OBJECT_LABELS: Record<string, string> = {
@@ -1434,10 +1441,18 @@ const OBJECT_LABELS: Record<string, string> = {
   'learning-method': '学习方法', 'higher-education-trend': '全球领先地位', 'ai-teaching': 'AI教学方案',
   'research-program': '科研计划', 'financial-regulation': '金融监管事项',
   'student-data': '学生数据', 'ai-governance': '国家安全治理', 'ai-training': 'AI人才培养',
+  'identity-exposure': '身份泄露', 'model-report': '开源模型观察报告',
 }
 
 function articleMaterial(article: Candidate) {
   return `${article.title} ${cleanEventMaterial(article.title, article.description, article.domain)} ${cleanEventMaterial(article.title, article.fullText ?? '', article.domain)} ${article.publishedAt.slice(0, 10)}`.trim()
+}
+
+// Headline and cleaned deck are the safest shared event anchor. Full article text is
+// still available for factual detail, but must not choose the fallback actor/action:
+// publisher pages can contain unrelated recommendations and navigation copy.
+function articleEventAnchor(article: Candidate) {
+  return `${article.title} ${cleanEventMaterial(article.title, article.description, article.domain)}`.trim()
 }
 
 function normalizedMaterial(event: NewsEvent) {
@@ -1451,6 +1466,7 @@ function displayEntity(entity: string) {
 function contentActor(text: string, event: NewsEvent, includeEventMaterial = true) {
   const material = includeEventMaterial ? `${text} ${event.articles.map((article) => article.title).join(' ')}` : text
   if (/\b(?:u\.?s\.?|american) universities\b|美国大学/i.test(material)) return '美国大学'
+  if (extractEventObjects(text).has('shipping-route') && /\bstrait of hormuz\b|霍尔木兹海峡/i.test(text)) return '霍尔木兹海峡船舶通行量'
   if (extractActions(material).has('join') && /\bjapan(?:ese)?\b|日本/i.test(material)) return '日本'
   if (extractActions(material).has('research-find')) return '研究团队'
   if (event.primaryArticle.source.type === 'official') {
@@ -1468,9 +1484,12 @@ function contentAction(text: string) {
   const objectSet = extractEventObjects(text)
   const actions = fingerprintActions(text, objectSet)
   if (actions.has('security') && /\bhackers?\b|\btheft\b|黑客|窃取/i.test(text)) return '窃取'
+  if (actions.has('decline') && objectSet.has('shipping-route')) return '下降'
+  if (actions.has('data-release') && objectSet.has('model-report')) return '发布'
+  if (actions.has('build') && objectSet.has('ai-center') && /\bopen(?:s|ed|ing)?\b|开设|设立/i.test(text)) return '开设'
   if (objectSet.has('funding-round') && actions.has('agreement')) return '联合设立'
   if ((objectSet.has('memory-capacity') || objectSet.has('factory-capacity')) && actions.has('build')) return '扩建'
-  const priority = ['fraud-charge', 'sentence', 'research-find', 'join', 'adopt', 'decline', 'enforce', 'strengthen', 'security', 'maintain', 'update', 'attack', 'rescue', 'negotiate', 'stake-change', 'reduce', 'misuse', 'death', 'rank-change', 'support', 'implement', 'agreement', 'funding', 'build', 'launch', 'explain']
+  const priority = ['fraud-charge', 'sentence', 'threaten', 'research-find', 'join', 'adopt', 'decline', 'enforce', 'strengthen', 'security', 'restriction', 'policy', 'maintain', 'update', 'attack', 'rescue', 'negotiate', 'stake-change', 'reduce', 'misuse', 'death', 'rank-change', 'support', 'implement', 'agreement', 'funding', 'build', 'launch', 'data-release', 'explain']
   const action = priority.find((value) => actions.has(value)) ?? [...actions][0]
   return ACTION_LABELS[action] ?? ''
 }
@@ -1478,14 +1497,14 @@ function contentAction(text: string) {
 function contentObject(text: string, event: NewsEvent) {
   const objects = extractEventObjects(text)
   if (objects.has('funding-round') && (objects.has('data-center') || /ai compute infrastructure/i.test(text))) return 'AI算力基础设施融资平台'
-  const priority = ['memory-capacity', 'equity-stake', 'cpi', 'ppi', 'pce', 'ev-target', 'fraud-case', 'criminal-sentence', 'security-agreement', 'student-data', 'learning-method', 'learning-science', 'ai-teaching', 'research-program', 'higher-education-trend', 'teacher-training', 'education-report', 'university-ranking', 'financial-regulation', 'ai-governance', 'ai-training', 'earthquake', 'military-strike', 'shipping-route', 'ceasefire-talks', 'image-abuse', 'watermark', 'coding-agent', 'student-support', 'mba-program', 'creative-program', 'executive-governance', 'funding-round', 'factory-capacity', 'data-center', 'ai-center', 'product-release']
+  const priority = ['memory-capacity', 'equity-stake', 'cpi', 'ppi', 'pce', 'ev-target', 'fraud-case', 'criminal-sentence', 'security-agreement', 'student-data', 'identity-exposure', 'learning-method', 'learning-science', 'ai-teaching', 'research-program', 'higher-education-trend', 'teacher-training', 'education-report', 'university-ranking', 'financial-regulation', 'ai-governance', 'ai-center', 'ai-training', 'model-report', 'sanctions-controls', 'earthquake', 'military-strike', 'shipping-route', 'ceasefire-talks', 'image-abuse', 'watermark', 'coding-agent', 'student-support', 'mba-program', 'creative-program', 'executive-governance', 'funding-round', 'factory-capacity', 'data-center', 'product-release']
   const object = priority.find((value) => objects.has(value)) ?? [...objects][0]
   if (object === 'equity-stake') {
     const entities = extractEntities(text)
     if (entities[1]) return `${displayEntity(entities[1])}股份`
   }
   if (object && OBJECT_LABELS[object]) return OBJECT_LABELS[object]
-  return event.topicTags.find((tag) => tag.length >= 2 && !/^(?:AI|科技|产业|市场|国际新闻|高等教育|学习)$/.test(tag)) ?? ''
+  return event.topicTags.find((tag) => tag && tag.length >= 2 && !/^(?:AI|科技|产业|市场|国际新闻|高等教育|学习)$/.test(tag)) ?? ''
 }
 
 function candidateSpecificity(candidate: Candidate) {
@@ -1593,7 +1612,8 @@ function rawNumberLabels(value: string) {
 
 function structuredChineseSummary(title: string, candidate: Candidate, event: NewsEvent) {
   const material = articleMaterial(candidate)
-  const actor = contentActor(material, event)
+  const anchor = articleEventAnchor(candidate)
+  const actor = contentActor(anchor, event)
   const objects = [...extractEventObjects(material)]
   const object = objects[0] ?? ''
   const secondaryEntities = [...new Set(extractEntities(material).map(displayEntity))]
@@ -1614,8 +1634,8 @@ function structuredChineseSummary(title: string, candidate: Candidate, event: Ne
   if (dates.length) details.push(`相关时间为${dates.join('、')}`)
   const result = details.slice(0, 2).join('；')
   if (!result) return ''
-  const action = contentAction(material)
-  const objectLabel = contentObject(material, event)
+  const action = contentAction(anchor) || contentAction(candidate.title) || contentAction(material)
+  const objectLabel = contentObject(anchor, event) || contentObject(candidate.title, event) || contentObject(material, event)
   const eventClause = actor && action && objectLabel
     ? action === '发现' ? `${actor}围绕${objectLabel}发现学习成效变化` : `${actor}围绕${objectLabel}${action}`
     : `${actor || '相关主体'}推进该事项`
@@ -1635,9 +1655,12 @@ export function buildEventSpecificContent(event: NewsEvent): EventSpecificConten
   const candidate = bestSpecificCandidate(event)
   const rawTitle = stripHtml(candidate.title)
   const candidateText = articleMaterial(candidate)
+  const candidateAnchor = articleEventAnchor(candidate)
   let title = rawTitle
   if (!containsEnoughChinese(rawTitle) || rawTitle.length > 58 || isPlaceholderTitle(rawTitle) || !hasConcreteActorAndAction(rawTitle, event)) {
-    title = [contentActor(candidateText, event), contentAction(candidateText), contentObject(candidateText, event)].filter(Boolean).join('')
+    const action = contentAction(candidateAnchor) || contentAction(candidate.title) || contentAction(candidateText)
+    const objectLabel = contentObject(candidateAnchor, event) || contentObject(candidate.title, event) || contentObject(candidateText, event)
+    title = [contentActor(candidateAnchor, event), action, objectLabel].filter(Boolean).join('')
   }
   title = shorten(title.replace(/\s+/g, ' ').trim(), 58)
 

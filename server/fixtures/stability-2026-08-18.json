@@ -40,6 +40,51 @@
       "title": "French tax data hackers claim theft of Education Ministry info on millions of students",
       "source": "lemonde-education"
     },
+    "publishedGateMisses": [
+      {
+        "domain": "world",
+        "title": "Latest News | 1 UN News",
+        "source": "news.un.org",
+        "url": "https://news.un.org/en/news",
+        "expected": "reject"
+      },
+      {
+        "domain": "world",
+        "title": "Taliban threaten former Afghan police worker after MoD leak reveals identity",
+        "source": "theguardian.com",
+        "expected": "publishable"
+      },
+      {
+        "domain": "world",
+        "title": "Russian attacks on Black Sea ports disrupt Ukraine grain supplies",
+        "source": "theguardian.com",
+        "expected": "publishable"
+      },
+      {
+        "domain": "world",
+        "title": "Gulf shipping traffic via Strait of Hormuz falls to six vessels - Reuters",
+        "source": "reuters.com",
+        "expected": "publishable"
+      },
+      {
+        "domain": "world",
+        "title": "Match Act poised for inclusion in Senate NDAA as US tightens chip export controls",
+        "source": "cryptobriefing.com",
+        "expected": "publishable"
+      },
+      {
+        "domain": "ai-tech",
+        "title": "State of Open Models: Summer 2026 Observations",
+        "source": "huggingface.co",
+        "expected": "publishable"
+      },
+      {
+        "domain": "ai-tech",
+        "title": "Universitas Gadjah Mada, Indosat and NVIDIA Open Indonesia’s First University AI Center to Develop Local AI Talent",
+        "source": "blogs.nvidia.com",
+        "expected": "publishable"
+      }
+    ],
     "learningBackups": [
       {
         "title": "Slow math: Kids may learn more when AI makes them review mistakes",

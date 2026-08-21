@@ -33,6 +33,7 @@ type ArtifactFixture = {
     marketBackup: { title: string; source: string }
     aiBackups: Array<{ title: string; source: string }>
     learningSecurity: { title: string; source: string }
+    publishedGateMisses: Array<{ domain: DomainId; title: string; source: string; url?: string; expected: 'reject' | 'publishable' }>
     learningBackups: Array<{ title: string; description: string }>
   }
   cases: {
@@ -239,6 +240,29 @@ test('第二次真实缓存回放：官方省略主体、教育数据泄露和 S
 
   assert.equal(extractActions('Sentence Transformers multi-vector embedding models').has('sentence'), false)
   assert.equal(extractActions('A politician was sentenced to prison').has('sentence'), true)
+})
+
+test('成功回放人工复核发现的伪通过稿会被拒绝或重写为来源标题锚定的具体稿', async () => {
+  const data = await fixture()
+  for (const [index, item] of data.replay.publishedGateMisses.entries()) {
+    const hit = candidate(`published-gate-${index}`, item.domain, item.title, item.title, item.source)
+    if (item.url) hit.url = item.url
+    if (/huggingface|nvidia/i.test(item.source)) hit.source = source(item.source, 'primary')
+    const event = createEvent(item.domain, [hit])
+    const assessment = assessEventForPreselection(event)
+    if (item.expected === 'reject') {
+      assert.equal(assessment.accepted, false, item.title)
+      continue
+    }
+    assert.equal(assessment.accepted, true, `${item.title}: ${assessment.reason}`)
+    const story = buildRuleStory(event)
+    assert.equal(validateBriefingStory(story, event).length, 0, `${story.title}: ${validateBriefingStory(story, event).join('；')}`)
+    assert.doesNotMatch(story.title, /联合国发动袭击|说明新产品|竞争力下滑航运安排|达成合作新产品/)
+  }
+
+  const event = eventsFor('learning')[0]
+  const broken = { ...buildRuleStory(event), summary: '该项目预计今年秋季将减少 万人，并造成约 经济损失。' }
+  assert.ok(validateBriefingStory(broken, event).some((error) => error.includes('残缺量词')))
 })
 
 test('真实误聚类：霍尔木兹油轮与黑海粮食供应拆成两个事件', async () => {

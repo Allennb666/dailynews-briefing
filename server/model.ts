@@ -345,6 +345,7 @@ function removeUnsupportedNumericExpressions(value: string, event: NewsEvent, ar
   return output
     .replace(/(?:约|超过|近|逾|达到|增至|升至|降至|为)\s*(?=[，。；、]|$)/gu, '')
     .replace(/(?:筹集|募集|融资|投资)\s*(?=建设|扩建|扩产|推进|用于)/gu, (action) => `${action}资金并`)
+    .replace(/(?:预计[^，。；]{0,24})?(?:减少|增加|达到|高达|造成约?|约|近|超过)\s*(?:万?人|亿?欧元|亿美元|亿元|万亿元|经济损失)(?=[，。；]|$)/gu, '')
     .replace(/增长\s*(?=[，。；]|$)/gu, '出现增长')
     .replace(/下降\s*(?=[，。；]|$)/gu, '出现下降')
     .replace(/\(\s*\)|（\s*）/gu, '')
@@ -613,6 +614,8 @@ function hanRatio(value: string) {
   return (meaningful.match(/[\p{Script=Han}]/gu) ?? []).length / meaningful.length
 }
 
+const BROKEN_QUANTIFIER = /(?:减少|增加|达到|高达|造成约?|约|近|超过)\s*(?:万?人|亿?欧元|亿美元|亿元|万亿元|经济损失)(?=[，。；]|$)/u
+
 const CONDITIONAL_ANALYSIS = /如果|若|可能|或将|有望|取决于|需(?:要)?观察|在.+(?:情况下|前提下)|影响|传导|风险|机会|承压|受益/
 const CONCRETE_FACT_ASSERTION = /宣布|发布|推出|收购|融资|扩建|下调|上调|袭击|死亡|签署|批准|实施|发生|公布|启动|停止|关闭|裁员|invest|launch|announce|acquire|attack|kill|approve|implement/i
 
@@ -657,7 +660,7 @@ export function repairStoryContentFields(story: BriefingStory, baseline: Briefin
     ? baseline.summary
     : specific.summary
   const summary = isPlaceholderSummary(story.summary) || !summaryAddsNewInformation(title, story.summary, event)
-    || hasHtmlArtifact(story.summary) || hasMeaninglessEnglishFragment(story.summary) || hanRatio(story.summary) < 0.32
+    || hasHtmlArtifact(story.summary) || hasMeaninglessEnglishFragment(story.summary) || BROKEN_QUANTIFIER.test(story.summary) || hanRatio(story.summary) < 0.32
     ? fallbackSummary
     : story.summary
 
@@ -779,6 +782,7 @@ export function validateBriefingStory(story: BriefingStory, event?: NewsEvent) {
   }
   if (storyTextFields(story).some(hasHtmlArtifact)) errors.push(`${story.id} 含有 HTML 或乱码残片`)
   if (storyTextFields(story).some(hasMeaninglessEnglishFragment)) errors.push(`${story.id} 含有无意义英文残句`)
+  if (storyTextFields(story).some((value) => BROKEN_QUANTIFIER.test(value))) errors.push(`${story.id} 含有数字删除后的残缺量词`)
   if (story.keyFacts.some((fact) => isPlaceholderSummary(fact))) errors.push(`${story.id} 关键事实包含占位文案`)
   const allowedUrls = new Set(event?.articles.map((article) => article.url) ?? [])
   story.keyFacts.forEach((fact, factIndex) => {
