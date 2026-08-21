@@ -368,6 +368,19 @@ test('排名稿识别保持稳定动作，并允许来源英文数字词支持�
   assert.equal(validateBriefingStory(story, event).length, 0, validateBriefingStory(story, event).join('；'))
 })
 
+test('大学排名结果标题以测量对象和方向变化构成具体事件，不误判为缺少动作', () => {
+  const hit = candidate(
+    'ranking-result-headline',
+    'learning',
+    'Global university rankings show France holding steady while China advances',
+    'France kept the same number of ranked institutions while Chinese universities moved higher in the table.',
+    'rankings.example',
+  )
+  const event = createEvent('learning', [hit])
+  assert.equal(hasConcreteActorAndAction('上海大学排名显示法国高校持平、中国高校继续上升', event), true)
+  assert.equal(hasConcreteActorAndAction('2026年榜单结果', event), false)
+})
+
 test('最新真实回放：AI、国际与教育备用事件均可成稿，重复链不再夹带另一公告', async () => {
   const data = await fixture()
   const latest = data.replay.latestGateFailures

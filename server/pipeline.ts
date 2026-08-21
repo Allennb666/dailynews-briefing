@@ -1587,10 +1587,19 @@ export function isPlaceholderSummary(value: string) {
 export function hasConcreteActorAndAction(value: string, event: NewsEvent) {
   const text = stripHtml(value)
   if (isPlaceholderTitle(text)) return false
+  // Ranking headlines often describe a measured outcome rather than an actor
+  // performing a conventional verb (for example, "the ranking shows France
+  // holding steady while China rises").  Treat that as a concrete event only
+  // when the current event is actually a university-ranking event and the
+  // headline names both a measured participant and a directional result.
+  const rankingResult = eventFingerprint(event).objects.includes('university-ranking')
+    && /(?:高校|大学|院校|France|French|China|Chinese|法国|中国|美国|英国)/iu.test(text)
+    && /(?:持平|保持稳定|上升|下降|进步|下滑|进入|跻身|升至|降至|holds? steady|advances?|rises?|falls?|declines?)/iu.test(text)
+    && /(?:排名|榜单|rankings?)/iu.test(text)
   const hasObjectOrResult = extractEventObjects(text).size > 0
     || /\d+\s*(?:个|项|名|所|家)/u.test(text)
     || /造成|导致|引发|获得|获批|拒绝|去世|死亡|受损|增长|下降|上升|持平|扩大|收缩|判刑|获刑|监禁|survivors?|concern|growth|decline|dead|damage|sentenced?|jailed?|imprisoned?/iu.test(text)
-  return Boolean(contentActor(text, event, false))
+  return rankingResult || Boolean(contentActor(text, event, false))
     && Boolean(contentAction(text))
     && hasObjectOrResult
 }
