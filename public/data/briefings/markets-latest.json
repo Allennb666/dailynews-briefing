@@ -12,25 +12,20 @@
   },
   "mode": "qwen",
   "overview": "从 12 个有效来源获取 22 条候选，文章去重后保留 5 条，聚合为 5 个事件，并选出 5 条重点。",
-  "keyTakeaway": "监管层持续高压打击非法融资活动，而通胀数据与科技巨头财报将成为下周市场定价核心变量。投资者需警惕政策信号错位引发的资产重估风险。",
-  "logic": "PPI数据修正机制显示历史数据存在回溯调整可能，影响通胀趋势判断；SEC执法案例表明监管正从传统金融向私募及社群化投资渗透；央行决策窗口临近，市场对降息路径分歧加剧，企业资本开支指引将验证经济韧性。",
+  "keyTakeaway": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
+  "logic": "事件聚类综合标题、摘要、实体、动作和时间接近度；排序继续沿用来源级别、发布时间、影响关键词与信息完整度，并限制单一主来源最多 2 条。本期有 0 个事件达到多源确认或印证。",
   "newKnowledge": "公司基本面改善不一定带来股价上涨；当估值已经反映高预期时，市场会要求更强的盈利兑现。",
   "outlook": "关注后续数据、公司指引、资金价格与成交反应，验证市场是否形成持续重估。",
   "trendRadar": [
     {
-      "theme": "通胀数据修正效应",
+      "theme": "投资市场",
       "direction": "↑",
       "reason": "近期相关信息密度上升，需继续用后续数据验证。"
     },
     {
-      "theme": "监管执法强度",
-      "direction": "↑↑",
-      "reason": "SEC单周两起重大欺诈指控显示对非公开市场及社群化投资的穿透式监管升级"
-    },
-    {
-      "theme": "科技股盈利分化",
-      "direction": "高波动",
-      "reason": "AI投资回报周期拉长，部分企业资本开支增速放缓可能引发估值重构"
+      "theme": "资本",
+      "direction": "→",
+      "reason": "方向仍在形成，暂不把单日变化视为确定趋势。"
     }
   ],
   "watchNext": [
@@ -44,41 +39,31 @@
       "eventId": "03a29f0e1d12",
       "rank": 1,
       "title": "美国劳工统计局发布生产者价格指数",
-      "summary": "美国劳工统计局（BLS）于2026年8月13日发布7月PPI初步结果，同时宣布因收到迟报与受访者更正，已对3月至6月数据进行修订。报告强调季节调整指数未来五年内可能因每年1月发布的季节性因子重算而变动。",
+      "summary": "美国劳工统计局这项涉及生产者价格指数的举措是发布；相关参与方或受影响对象包括美国；事件涉及美国。",
       "keyFacts": [
-        "美国劳工统计局围绕生产者价格指数发布；参与或受影响的主体还包括美国、Producer Price Index、The Producer Price、Index；事件涉及美国。"
+        "美国劳工统计局这项涉及生产者价格指数的举措是发布；相关参与方或受影响对象包括美国；事件涉及美国。"
       ],
-      "whyItMatters": "数据修订直接影响市场对中期通胀路径的研判，尤其当能源与食品价格波动剧烈时，历史数据的回溯调整可能触发货币政策预期重估。",
-      "background": "PPI衡量批发层面价格变动，是CPI的重要先行指标。其统计口径排除即食餐饮服务，且‘最终需求商品’仅限个人消费与私人资本投资部分。贸易指数反映批发与零售环节价差变化，分销服务涵盖运输、仓储及商品交易。",
+      "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
+      "background": "围绕“美国劳工统计局发布生产者价格指数”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。",
       "impactChain": [
         "事件或政策信号出现",
         "相关主体调整资源与行为",
         "影响逐步传导至行业、市场或个人决策"
       ],
       "affectedParties": [
-        "债券投资者",
-        "跨国制造企业",
-        "大宗商品交易商"
+        "上市公司与投资者",
+        "行业上下游",
+        "消费者与融资主体"
       ],
-      "uncertainties": "PPI具体数值未在材料中披露，仅确认数据修订事实；季节因子重算的具体幅度未知。",
-      "glossary": [
-        {
-          "term": "季节调整指数",
-          "definition": "剔除季节性因素后的价格指数，用于更准确反映经济趋势"
-        },
-        {
-          "term": "最终需求商品",
-          "definition": "PPI统计中仅包含个人消费与私人资本投资部分的成品"
-        }
-      ],
+      "uncertainties": "当前只依据 RSS 标题与摘要整理；当前只有一个来源，仍需等待独立信息补充。 未获来源明确确认的细节不作推断。",
+      "glossary": [],
       "trend": {
-        "nearTerm": "如果后续月份PPI继续显示能源价格反弹，可能强化市场对美联储维持高利率的预期",
-        "mediumTerm": "若季节因子重算导致历史通胀率系统性下调，可能缓解长期通胀担忧并支持宽松政策转向",
+        "nearTerm": "如果后续出现官方补充信息或其他可靠来源的交叉验证，短期判断可能随证据变化。",
+        "mediumTerm": "若执行结果和后续数据持续印证，“美国劳工统计局发布生产者价格指数”的影响才可能从一次事件发展为更稳定的中期变化。",
         "signalsToWatch": [
-          "CPI报告中数据是否同步修订",
-          "BLS次年1月发布的季节因子调整幅度",
-          "bls.gov的后续正式信息",
-          "独立可靠来源的交叉验证"
+          "官方文件或数据",
+          "相关参与方行动",
+          "行业与市场的持续反应"
         ]
       },
       "url": "https://www.bls.gov/news.release/archives/ppi_08132026.htm",
@@ -122,52 +107,39 @@
         "primarySourcePresent": true
       },
       "tags": [
-        "通胀",
-        "数据修订",
-        "货币政策"
+        "投资市场"
       ]
     },
     {
       "id": "b7e4db6530ba",
       "eventId": "b7e4db6530ba",
       "rank": 2,
-      "title": "SEC指控纽约男子及其控制实体通过Pre-IPO骗局诈骗散户万美元",
-      "summary": "美国证券交易委员会（SEC）于2026年8月14日指控纽约居民Andrew Spaventa及其控制的三家实体，在未注册证券发行中欺诈零售投资者，涉案金额达万美元。该案件涉及所谓‘Pre-IPO投资机会’的虚假宣传。",
+      "title": "美国证交会指控欺诈Pre-IPO投资骗局",
+      "summary": "美国证交会这项涉及Pre-IPO投资骗局的举措是指控欺诈；受影响对象包括散户投资者；相关参与方或受影响对象包括美国。",
       "keyFacts": [
-        "SEC指控Andrew Spaventa及三家关联实体实施欺诈",
-        "涉案金额为万美元,受害者为零售投资者"
+        "美国证交会这项涉及Pre-IPO投资骗局的举措是指控欺诈；受影响对象包括散户投资者；相关参与方或受影响对象包括美国。"
       ],
-      "whyItMatters": "此案标志监管层对‘锅炉房’式私募欺诈的打击升级，尤其针对利用Pre-IPO概念吸引散户的非公开市场行为，可能引发同类基金合规审查潮。",
-      "background": "‘锅炉房’指通过电话推销诱导投资者购买高风险或未注册证券的非法操作模式。SEC近年加强对私募股权、SPAC及Pre-IPO项目的监管，要求信息披露透明化。",
+      "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
+      "background": "围绕“美国证交会指控欺诈Pre-IPO投资骗局”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。",
       "impactChain": [
         "事件或政策信号出现",
         "相关主体调整资源与行为",
         "影响逐步传导至行业、市场或个人决策"
       ],
       "affectedParties": [
-        "私募股权基金",
-        "零售投资者",
-        "证券承销商"
+        "上市公司与投资者",
+        "行业上下游",
+        "消费者与融资主体"
       ],
-      "uncertainties": "具体欺诈手段细节未披露；是否已有资金追回尚不明确。",
-      "glossary": [
-        {
-          "term": "Pre-IPO投资",
-          "definition": "在企业首次公开募股前进行的股权投资，通常面向合格投资者"
-        },
-        {
-          "term": "锅炉房",
-          "definition": "通过电话密集推销未注册证券的非法销售场所"
-        }
-      ],
+      "uncertainties": "当前只依据 RSS 标题与摘要整理；当前只有一个来源，仍需等待独立信息补充。 未获来源明确确认的细节不作推断。",
+      "glossary": [],
       "trend": {
-        "nearTerm": "如果SEC扩大对此类案件的调查范围，可能引发更多类似指控并推动行业自律规范出台",
-        "mediumTerm": "若法院判决确立高额赔偿先例，可能显著抑制非正规Pre-IPO融资活动",
+        "nearTerm": "如果后续出现官方补充信息或其他可靠来源的交叉验证，短期判断可能随证据变化。",
+        "mediumTerm": "若执行结果和后续数据持续印证，“美国证交会指控欺诈Pre-IPO投资骗局”的影响才可能从一次事件发展为更稳定的中期变化。",
         "signalsToWatch": [
-          "SEC是否发布针对Pre-IPO项目的专项警示",
-          "相关被告是否申请破产以规避赔偿",
-          "U.S. SEC的后续正式信息",
-          "独立可靠来源的交叉验证"
+          "官方文件或数据",
+          "相关参与方行动",
+          "行业与市场的持续反应"
         ]
       },
       "url": "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo",
@@ -192,18 +164,12 @@
           "publishedAt": "2026-08-14T20:16:34.000Z",
           "url": "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo",
           "discoveryMethod": "rss",
-          "materialLevel": "snippet-only"
+          "materialLevel": "full-text"
         }
       ],
       "factSources": [
         {
           "factIndex": 0,
-          "urls": [
-            "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo"
-          ]
-        },
-        {
-          "factIndex": 1,
           "urls": [
             "https://www.sec.gov/newsroom/press-releases/2026-75-sec-charges-boiler-room-operator-three-entities-defrauding-retail-investors-74-million-pre-ipo"
           ]
@@ -217,47 +183,117 @@
         "primarySourcePresent": true
       },
       "tags": [
-        "证券欺诈",
-        "监管执法",
-        "私募市场"
+        "资本",
+        "监管",
+        "能源"
       ]
     },
     {
-      "id": "f20c0967c243",
-      "eventId": "f20c0967c243",
+      "id": "8a93365ae16c",
+      "eventId": "8a93365ae16c",
       "rank": 3,
-      "title": "美联储对Regions Bank前员工采取执法行动",
-      "summary": "美联储董事会于2026年8月13日宣布对Regions Bank一名前员工采取执法行动，但材料未披露具体违规内容、处罚措施或涉事人员身份。",
+      "title": "美国证交会指控欺诈针对正统派犹太社区的投资骗局",
+      "summary": "美国证交会这项涉及针对正统派犹太社区的投资骗局的举措是指控欺诈；事件针对正统派犹太社区；相关参与方或受影响对象包括美国。",
       "keyFacts": [
-        "美联储围绕金融监管事项采取执法行动；参与或受影响的主体还包括Regions Bank Federal、Reserve Board、Regions Bank；相关时间为2026-08-13。"
+        "美国证交会这项涉及针对正统派犹太社区的投资骗局的举措是指控欺诈；事件针对正统派犹太社区；相关参与方或受影响对象包括美国。"
       ],
-      "whyItMatters": "尽管细节缺失，此类行动通常涉及银行内部风控失效或员工违规行为，可能影响市场对区域银行治理能力的信心。",
-      "background": "美联储作为银行监管机构，有权对违反审慎经营规则的员工或机构采取民事处罚、禁令或资格限制等措施。Regions Bank是美国东南部主要区域性银行之一。",
+      "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
+      "background": "围绕“美国证交会指控欺诈针对正统派犹太社区的投资骗局”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。",
       "impactChain": [
         "事件或政策信号出现",
         "相关主体调整资源与行为",
         "影响逐步传导至行业、市场或个人决策"
       ],
       "affectedParties": [
-        "Regions Bank",
-        "区域银行同业",
-        "储户"
+        "上市公司与投资者",
+        "行业上下游",
+        "消费者与融资主体"
       ],
-      "uncertainties": "违规性质、处罚力度及是否牵连其他人员均无信息；事件是否与近期银行业动荡有关联未知。",
-      "glossary": [
+      "uncertainties": "当前只依据 RSS 标题与摘要整理；当前只有一个来源，仍需等待独立信息补充。 未获来源明确确认的细节不作推断。",
+      "glossary": [],
+      "trend": {
+        "nearTerm": "如果后续出现官方补充信息或其他可靠来源的交叉验证，短期判断可能随证据变化。",
+        "mediumTerm": "若执行结果和后续数据持续印证，“美国证交会指控欺诈针对正统派犹太社区的投资骗局”的影响才可能从一次事件发展为更稳定的中期变化。",
+        "signalsToWatch": [
+          "官方文件或数据",
+          "相关参与方行动",
+          "行业与市场的持续反应"
+        ]
+      },
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-74-sec-charges-toms-river-trio-connection-alleged-47-million-fraud-targeting-orthodox-jewish",
+      "source": {
+        "name": "U.S. SEC",
+        "type": "official",
+        "reliability": "primary"
+      },
+      "sources": [
         {
-          "term": "执法行动",
-          "definition": "监管机构对违反法律法规主体采取的正式惩戒措施"
+          "name": "U.S. SEC",
+          "type": "official",
+          "reliability": "primary"
         }
       ],
+      "evidenceSources": [
+        {
+          "name": "U.S. SEC",
+          "type": "official",
+          "reliability": "primary",
+          "title": "SEC Charges Toms River Trio in Connection with Alleged $47 Million Fraud Targeting Orthodox Jewish Communities",
+          "publishedAt": "2026-08-13T20:32:19.000Z",
+          "url": "https://www.sec.gov/newsroom/press-releases/2026-74-sec-charges-toms-river-trio-connection-alleged-47-million-fraud-targeting-orthodox-jewish",
+          "discoveryMethod": "rss",
+          "materialLevel": "full-text"
+        }
+      ],
+      "factSources": [
+        {
+          "factIndex": 0,
+          "urls": [
+            "https://www.sec.gov/newsroom/press-releases/2026-74-sec-charges-toms-river-trio-connection-alleged-47-million-fraud-targeting-orthodox-jewish"
+          ]
+        }
+      ],
+      "publishedAt": "2026-08-13T20:32:19.000Z",
+      "evidence": {
+        "level": "single-source",
+        "sourceCount": 1,
+        "independentSourceCount": 0,
+        "primarySourcePresent": true
+      },
+      "tags": [
+        "监管"
+      ]
+    },
+    {
+      "id": "f20c0967c243",
+      "eventId": "f20c0967c243",
+      "rank": 4,
+      "title": "美联储采取执法行动金融监管事项",
+      "summary": "美联储这项涉及金融监管事项的举措是采取执法行动；事件涉及Regions Bank一名前员工；相关时间为2026-08-13。",
+      "keyFacts": [
+        "美联储这项涉及金融监管事项的举措是采取执法行动；事件涉及Regions Bank一名前员工；相关时间为2026-08-13。"
+      ],
+      "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
+      "background": "围绕“美联储采取执法行动金融监管事项”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。",
+      "impactChain": [
+        "事件或政策信号出现",
+        "相关主体调整资源与行为",
+        "影响逐步传导至行业、市场或个人决策"
+      ],
+      "affectedParties": [
+        "上市公司与投资者",
+        "行业上下游",
+        "消费者与融资主体"
+      ],
+      "uncertainties": "当前只依据 RSS 标题与摘要整理；当前只有一个来源，仍需等待独立信息补充。 未获来源明确确认的细节不作推断。",
+      "glossary": [],
       "trend": {
-        "nearTerm": "如果后续披露显示系统性内控缺陷，可能引发对该行及其他区域银行的额外审查",
-        "mediumTerm": "若此类个案频发形成趋势，可能促使监管层加强区域银行员工行为准则",
+        "nearTerm": "如果后续出现官方补充信息或其他可靠来源的交叉验证，短期判断可能随证据变化。",
+        "mediumTerm": "若执行结果和后续数据持续印证，“美联储采取执法行动金融监管事项”的影响才可能从一次事件发展为更稳定的中期变化。",
         "signalsToWatch": [
-          "美联储是否发布详细处罚公告",
-          "Regions Bank股价异常波动",
-          "Federal Reserve的后续正式信息",
-          "独立可靠来源的交叉验证"
+          "官方文件或数据",
+          "相关参与方行动",
+          "行业与市场的持续反应"
         ]
       },
       "url": "https://www.federalreserve.gov/newsevents/pressreleases/enforcement20260813a.htm",
@@ -301,141 +337,40 @@
         "primarySourcePresent": true
       },
       "tags": [
-        "银行监管",
-        "执法行动",
-        "区域金融"
-      ]
-    },
-    {
-      "id": "8a93365ae16c",
-      "eventId": "8a93365ae16c",
-      "rank": 4,
-      "title": "SEC指控新泽西三人组针对正统犹太社区实施万美元亲和性投资欺诈",
-      "summary": "美国证券交易委员会（SEC）于2026年8月13日指控三名新泽西州Toms River居民，通过针对正统犹太社区的‘亲和性投资欺诈’，从87名以上投资者处募集约万美元。",
-      "keyFacts": [
-        "三名被告被控实施针对特定宗教社群的投资欺诈"
-      ],
-      "whyItMatters": "此案凸显监管层对利用社群信任进行定向欺诈的关注，可能推动针对少数族裔或宗教群体的投资保护机制完善。",
-      "background": "‘亲和性欺诈’指利用受害者对特定社群（如宗教、族裔）的信任实施诈骗。SEC近年来多次揭露针对华人、犹太人社群的非法集资案。",
-      "impactChain": [
-        "事件或政策信号出现",
-        "相关主体调整资源与行为",
-        "影响逐步传导至行业、市场或个人决策"
-      ],
-      "affectedParties": [
-        "正统犹太社区成员",
-        "社群领袖",
-        "地方执法机构"
-      ],
-      "uncertainties": "资金流向、是否涉及跨境转移及是否有同伙未被起诉均不明。",
-      "glossary": [
-        {
-          "term": "亲和性欺诈",
-          "definition": "利用受害者对特定社群归属感的信任实施的金融诈骗"
-        },
-        {
-          "term": "正统犹太教",
-          "definition": "严格遵守传统律法的犹太教派别，常形成紧密社群网络"
-        }
-      ],
-      "trend": {
-        "nearTerm": "如果调查发现更多类似案件，可能促使SEC设立专项打击小组",
-        "mediumTerm": "若立法加强社群投资信息披露要求，可能减少此类欺诈发生频率",
-        "signalsToWatch": [
-          "SEC是否发布针对亲和性欺诈的投资者教育指南",
-          "相关社区组织是否建立预警机制",
-          "U.S. SEC的后续正式信息",
-          "独立可靠来源的交叉验证"
-        ]
-      },
-      "url": "https://www.sec.gov/newsroom/press-releases/2026-74-sec-charges-toms-river-trio-connection-alleged-47-million-fraud-targeting-orthodox-jewish",
-      "source": {
-        "name": "U.S. SEC",
-        "type": "official",
-        "reliability": "primary"
-      },
-      "sources": [
-        {
-          "name": "U.S. SEC",
-          "type": "official",
-          "reliability": "primary"
-        }
-      ],
-      "evidenceSources": [
-        {
-          "name": "U.S. SEC",
-          "type": "official",
-          "reliability": "primary",
-          "title": "SEC Charges Toms River Trio in Connection with Alleged $47 Million Fraud Targeting Orthodox Jewish Communities",
-          "publishedAt": "2026-08-13T20:32:19.000Z",
-          "url": "https://www.sec.gov/newsroom/press-releases/2026-74-sec-charges-toms-river-trio-connection-alleged-47-million-fraud-targeting-orthodox-jewish",
-          "discoveryMethod": "rss",
-          "materialLevel": "snippet-only"
-        }
-      ],
-      "factSources": [
-        {
-          "factIndex": 0,
-          "urls": [
-            "https://www.sec.gov/newsroom/press-releases/2026-74-sec-charges-toms-river-trio-connection-alleged-47-million-fraud-targeting-orthodox-jewish"
-          ]
-        }
-      ],
-      "publishedAt": "2026-08-13T20:32:19.000Z",
-      "evidence": {
-        "level": "single-source",
-        "sourceCount": 1,
-        "independentSourceCount": 0,
-        "primarySourcePresent": true
-      },
-      "tags": [
-        "投资欺诈",
-        "社群安全",
-        "监管执法"
+        "投资市场"
       ]
     },
     {
       "id": "c77136091fe9",
       "eventId": "c77136091fe9",
       "rank": 5,
-      "title": "下周市场聚焦欧洲央行利率决议、科技巨头财报及全球PMI初值",
-      "summary": "2026年8月下旬将迎来关键宏观窗口：欧洲央行公布7月利率决议并关注9月降息信号；Alphabet、特斯拉、英特尔等科技龙头披露Q2财报；美国、欧元区、日本集中发布7月PMI初值，检验三季度经济开局。",
+      "title": "一周前瞻：欧洲央行利率决议来袭；Alphabet、特斯拉、英特尔财报登场；全球PMI初值揭晓",
+      "summary": "TradingKey - 接下来的一周，全球金融市场将迎来7月最密集的央行与经济数据窗口。美联储、英国央行和日本央行将先后公布利率决定，国际油价重新突破100美元并推升通胀预期后，市场对主要央行进一步收紧政策的担忧明显升温。TradingKey7月26日 周日 ### 一周前瞻：美国6月CPI、PPI重磅来袭！美股Q2财报季正式开启，摩根大通、奈飞、台积电接力放榜 TradingKey - 接下来的一周，全球市场将迎来下半年首个真正意义上的“超级周”。美国6月CPI、PPI、零售销售等关键通胀与消费数据密集公布，将",
       "keyFacts": [
-        "欧洲央行将于周四公布利率决议,市场关注拉加德关于9月降息的表态",
-        "Alphabet、特斯拉、英特尔等公司将在盘后发布第二季度财报",
-        "周五全球主要经济体将公布7月制造业与服务业PMI初值"
+        "TradingKey - 接下来的一周，全球金融市场将迎来7月最密集的央行与经济数据窗口。美联储、英国央行和日本央行将先后公布利率决定，国际油价重新突破100美元并推升通胀预期后，市场对主要央行进一步收紧政策的担忧明显升温。",
+        "TradingKey7月26日 周日 ### 一周前瞻：美国6月CPI、PPI重磅来袭！美股Q2财报季正式开启，摩根大通、奈飞、台积电接力放榜 TradingKey - 接下来的一周，全球市场将迎来下半年首个真正意义上的“超级周”。美国6月CPI、PPI、零售销售等关键通胀与消费数据密集公布，将直接影响美联储7月底议…"
       ],
-      "whyItMatters": "央行政策信号、企业盈利质量与经济景气度数据三者叠加，将决定下半年全球资产配置方向，尤其影响科技股估值与汇率走势。",
-      "background": "欧洲央行自起进入降息周期，市场对其9月是否继续宽松高度敏感；PMI初值是领先经济指标，反映企业订单与生产活跃度；科技巨头财报则体现AI投资回报与消费需求韧性。",
+      "whyItMatters": "这条信息可能影响上市公司与投资者与行业上下游，但仍需结合后续数据判断真实影响。",
+      "background": "围绕“一周前瞻：欧洲央行利率决议来袭；Alphabet、特斯拉、英特尔财报登场；全球PMI初值揭晓”的公开材料已经给出主体、动作与对象；后续判断应继续区分正式宣布、实际执行和最终结果，不能用同领域的其他事件补充事实。",
       "impactChain": [
         "事件或政策信号出现",
         "相关主体调整资源与行为",
         "影响逐步传导至行业、市场或个人决策"
       ],
       "affectedParties": [
-        "外汇交易者",
-        "科技股投资者",
-        "跨国供应链管理者"
+        "上市公司与投资者",
+        "行业上下游",
+        "消费者与融资主体"
       ],
-      "uncertainties": "欧洲央行具体利率决策尚未公布；各公司财报指引存在不确定性；PMI数据可能受季节性因素干扰。",
-      "glossary": [
-        {
-          "term": "PMI初值",
-          "definition": "采购经理人指数初步数据，反映制造业与服务业景气程度"
-        },
-        {
-          "term": "资本开支",
-          "definition": "企业在设备、技术或基础设施上的长期投资支出"
-        }
-      ],
+      "uncertainties": "当前只依据 RSS 标题与摘要整理；当前只有一个来源，仍需等待独立信息补充。 未获来源明确确认的细节不作推断。",
+      "glossary": [],
       "trend": {
-        "nearTerm": "如果欧洲央行释放明确降息信号，欧元可能贬值，美债收益率下行压力增大",
-        "mediumTerm": "若科技巨头AI资本开支增速放缓，半导体与云计算板块估值可能面临回调",
+        "nearTerm": "如果后续出现官方补充信息或其他可靠来源的交叉验证，短期判断可能随证据变化。",
+        "mediumTerm": "若执行结果和后续数据持续印证，“一周前瞻：欧洲央行利率决议来袭；Alphabet、特斯拉、英特尔财报登场；全球PMI初值揭晓”的影响才可能从一次事件发展为更稳定的中期变化。",
         "signalsToWatch": [
-          "拉加德新闻发布会措辞变化",
-          "Alphabet云业务营收增长率",
-          "美国7月非农就业数据",
-          "tradingkey.com的后续正式信息"
+          "官方文件或数据",
+          "相关参与方行动",
+          "行业与市场的持续反应"
         ]
       },
       "url": "https://www.tradingkey.com/zh-hans/analysis/stocks/us-stock/262037452-week-ahead-ecb-rate-decision-earnings-alphabet-tesla-intel-tradingkey",
@@ -475,12 +410,6 @@
           "urls": [
             "https://www.tradingkey.com/zh-hans/analysis/stocks/us-stock/262037452-week-ahead-ecb-rate-decision-earnings-alphabet-tesla-intel-tradingkey"
           ]
-        },
-        {
-          "factIndex": 2,
-          "urls": [
-            "https://www.tradingkey.com/zh-hans/analysis/stocks/us-stock/262037452-week-ahead-ecb-rate-decision-earnings-alphabet-tesla-intel-tradingkey"
-          ]
         }
       ],
       "publishedAt": "2026-08-17T08:00:00.000Z",
@@ -491,9 +420,9 @@
         "primarySourcePresent": false
       },
       "tags": [
-        "央行决策",
-        "财报季",
-        "宏观经济"
+        "宏观",
+        "公司",
+        "监管"
       ]
     }
   ],
@@ -512,8 +441,10 @@
     "primarySourceCount": 4,
     "maxSourceConcentration": 2,
     "qualityStatus": "passed",
-    "warnings": [],
-    "articleFetchSuccess": 12,
+    "warnings": [
+      "Qwen 内容未通过门禁，程序已按固定槽位逐条回退：b7e4db6530ba 含有数字删除后的残缺量词；8a93365ae16c 含有数字删除后的残缺量词；摘要重复标题 1 条"
+    ],
+    "articleFetchSuccess": 14,
     "qwenRetries": 0,
     "contentQuality": {
       "repeatedSummaryCount": 0,
