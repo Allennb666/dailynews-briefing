@@ -297,6 +297,25 @@ test('固定槽位优先保留可独立兜底事件，不让观察性标题占�
   assert.ok(selected.every((event) => validateBriefingStory(buildRuleStory(event), event).length === 0))
 })
 
+test('固定槽位在候选充足时优先可靠来源，只有不足五条才使用一个 other', () => {
+  const reliable = eventsFor('learning').slice(0, 5)
+  const lowReliability = createEvent('learning', [candidate(
+    'low-reliability-assessment',
+    'learning',
+    '研究团队公布教育评估实验',
+    '研究团队公布教育评估实验，结果比较两种课堂反馈方式并涉及学生学习成效。',
+    'low.example',
+    300,
+  )])
+  lowReliability.primaryArticle.source = source('low.example', 'other')
+  const selected = selectFixedSlotEvents([lowReliability, ...reliable])
+  assert.equal(selected.some((event) => event.id === lowReliability.id), false)
+
+  const scarce = selectFixedSlotEvents([lowReliability, ...reliable.slice(0, 4)])
+  assert.equal(scarce.length, 5)
+  assert.equal(scarce.filter((event) => event.primaryArticle.source.reliability === 'other').length, 1)
+})
+
 test('固定槽位规则底稿使用已验证事件边界，不在最终写作前重新聚类', async () => {
   const events = eventsFor('learning').slice(0, 5)
   const invalidModel = {

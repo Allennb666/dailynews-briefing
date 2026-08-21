@@ -905,11 +905,13 @@ function selectedCollection(collection: CollectionResult, events: NewsEvent[]): 
 export function selectFixedSlotEvents(events: NewsEvent[]) {
   // Fixed slots must remain recoverable without asking Qwen for another event.
   // Keep the model's relative order, but place events with an independently
-  // publishable local baseline before events that only the model could rescue.
+  // publishable local baseline and non-`other` sources first.
   const locallyPublishable = (event: NewsEvent) => !validateBriefingStory(buildRuleStory(event), event).length
+  const orderedGroup = (items: NewsEvent[]) => [...items].sort((left, right) =>
+    Number(effectiveEventReliability(left) === 'other') - Number(effectiveEventReliability(right) === 'other'))
   const ordered = [true, false].flatMap((ready) => [
-    ...events.filter((event) => event.evidence.level !== 'unverified' && locallyPublishable(event) === ready),
-    ...events.filter((event) => event.evidence.level === 'unverified' && locallyPublishable(event) === ready),
+    ...orderedGroup(events.filter((event) => event.evidence.level !== 'unverified' && locallyPublishable(event) === ready)),
+    ...orderedGroup(events.filter((event) => event.evidence.level === 'unverified' && locallyPublishable(event) === ready)),
   ])
   const search = (
     start: number,
