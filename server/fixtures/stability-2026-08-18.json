@@ -26,6 +26,20 @@
       "title": "Federal Reserve Board issues enforcement action with former employee of Regions Bank",
       "source": "fed"
     },
+    "aiBackups": [
+      {
+        "title": "Strengthening democratic oversight in national security",
+        "source": "openai"
+      },
+      {
+        "title": "Partnering with CodeAI to prepare the first AI generation",
+        "source": "openai"
+      }
+    ],
+    "learningSecurity": {
+      "title": "French tax data hackers claim theft of Education Ministry info on millions of students",
+      "source": "lemonde-education"
+    },
     "learningBackups": [
       {
         "title": "Slow math: Kids may learn more when AI makes them review mistakes",

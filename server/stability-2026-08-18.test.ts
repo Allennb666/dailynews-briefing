@@ -31,6 +31,8 @@ type ArtifactFixture = {
     qualityStatus: Record<DomainId, string>
     marketRejected: { title: string; source: string }
     marketBackup: { title: string; source: string }
+    aiBackups: Array<{ title: string; source: string }>
+    learningSecurity: { title: string; source: string }
     learningBackups: Array<{ title: string; description: string }>
   }
   cases: {
@@ -211,6 +213,32 @@ test('真实缓存回放：教育英文事件均能生成具体中文备用稿�
     assert.match(story.title, /[\p{Script=Han}]/u, story.title)
     assert.equal(validateBriefingStory(story, event).length, 0, `${story.title}: ${validateBriefingStory(story, event).join('；')}`)
   }
+})
+
+test('第二次真实缓存回放：官方省略主体、教育数据泄露和 Sentence Transformers 歧义均被通用处理', async () => {
+  const data = await fixture()
+  for (const [index, item] of data.replay.aiBackups.entries()) {
+    const hit = candidate(`replay-ai-${index}`, 'ai-tech', item.title, item.title, item.source)
+    hit.source = source(item.source, 'primary')
+    const event = createEvent('ai-tech', [hit])
+    const story = buildRuleStory(event)
+    assert.equal(assessEventForPreselection(event).accepted, true)
+    assert.equal(validateBriefingStory(story, event).length, 0, `${story.title}: ${validateBriefingStory(story, event).join('；')}`)
+    assert.match(story.title, /OpenAI/)
+  }
+
+  const security = createEvent('learning', [candidate(
+    'replay-learning-security',
+    'learning',
+    data.replay.learningSecurity.title,
+    data.replay.learningSecurity.title,
+    data.replay.learningSecurity.source,
+  )])
+  assert.equal(assessEventForPreselection(security).accepted, true)
+  assert.equal(validateBriefingStory(buildRuleStory(security), security).length, 0)
+
+  assert.equal(extractActions('Sentence Transformers multi-vector embedding models').has('sentence'), false)
+  assert.equal(extractActions('A politician was sentenced to prison').has('sentence'), true)
 })
 
 test('真实误聚类：霍尔木兹油轮与黑海粮食供应拆成两个事件', async () => {
