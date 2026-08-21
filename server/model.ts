@@ -256,6 +256,15 @@ function normalizedNumberTokens(value: string) {
   return (value.match(/\d[\d,.]*(?:\.\d+)?%?/g) ?? []).map((token) => token.replaceAll(',', '').toLocaleLowerCase())
 }
 
+function normalizeEnglishNumberWords(value: string) {
+  const words: Record<string, string> = {
+    zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5',
+    six: '6', seven: '7', eight: '8', nine: '9', ten: '10',
+  }
+  return value.replace(/\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi,
+    (word) => words[word.toLocaleLowerCase()] ?? word)
+}
+
 function articleSupportsNumbers(article: NewsEvent['articles'][number], tokens: string[], sentence = tokens.join(' ')) {
   const material = `${article.title} ${cleanEventMaterial(article.title, article.description, article.domain)} ${cleanEventMaterial(article.title, article.fullText ?? '', article.domain)} ${article.source.name} ${article.publishedAt.slice(0, 10)}`
   // Number verification must inspect the original source fields as well. The
@@ -265,7 +274,7 @@ function articleSupportsNumbers(article: NewsEvent['articles'][number], tokens: 
   const materialClaims = extractKeyNumbers(numericMaterial)
   const tokenClaims = extractKeyNumbers(sentence)
   if (tokenClaims.length && (!materialClaims.length || !tokenClaims.every((claim) => keyNumbersCompatible([claim], materialClaims)))) return false
-  const normalizedMaterial = numericMaterial.replaceAll(',', '').toLocaleLowerCase()
+  const normalizedMaterial = normalizeEnglishNumberWords(numericMaterial).replaceAll(',', '').toLocaleLowerCase()
   const rawTokens = tokenClaims.length ? [] : tokens
   if (rawTokens.length && !rawTokens.every((token) => normalizedMaterial.includes(token))) return false
 
@@ -894,10 +903,14 @@ function selectedCollection(collection: CollectionResult, events: NewsEvent[]): 
 }
 
 export function selectFixedSlotEvents(events: NewsEvent[]) {
-  const ordered = [
-    ...events.filter((event) => event.evidence.level !== 'unverified'),
-    ...events.filter((event) => event.evidence.level === 'unverified'),
-  ]
+  // Fixed slots must remain recoverable without asking Qwen for another event.
+  // Keep the model's relative order, but place events with an independently
+  // publishable local baseline before events that only the model could rescue.
+  const locallyPublishable = (event: NewsEvent) => !validateBriefingStory(buildRuleStory(event), event).length
+  const ordered = [true, false].flatMap((ready) => [
+    ...events.filter((event) => event.evidence.level !== 'unverified' && locallyPublishable(event) === ready),
+    ...events.filter((event) => event.evidence.level === 'unverified' && locallyPublishable(event) === ready),
+  ])
   const search = (
     start: number,
     selected: NewsEvent[],
@@ -962,6 +975,7 @@ type StoryOption = {
 }
 
 const AUTHORITATIVE_PRIMARY_HOST = /(?:^|\.)(?:federalreserve|bls|bea|sec|eia|treasury)\.gov$/i
+const RELIABLE_TIER_ONE_HOST = /(?:^|\.)(?:reuters|apnews|bbc|bloomberg|ft|wsj|cnbc|npr|theguardian|dw|aljazeera|lemonde)\.(?:com|org|co\.uk|fr)$/i
 
 function effectiveEventReliability(event: NewsEvent) {
   const source = event.primaryArticle.source
@@ -969,6 +983,7 @@ function effectiveEventReliability(event: NewsEvent) {
   try {
     const hostname = new URL(event.primaryArticle.url).hostname.replace(/^www\./i, '')
     if (AUTHORITATIVE_PRIMARY_HOST.test(hostname)) return 'primary' as const
+    if (RELIABLE_TIER_ONE_HOST.test(hostname)) return 'tier-1' as const
   } catch {
     // Keep the collected reliability when a legacy fixture does not have a full URL.
   }

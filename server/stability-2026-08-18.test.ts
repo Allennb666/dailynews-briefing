@@ -5,7 +5,7 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import type { DailyBriefing, DomainId, SourceReliability } from '../shared/briefing.js'
 import { findCrossDomainDuplicates, validateCrossDomainUniqueness } from './editorial.js'
-import { stabilizeBriefingWithBackups, validateBriefing, validateBriefingStory } from './model.js'
+import { selectFixedSlotEvents, stabilizeBriefingWithBackups, validateBriefing, validateBriefingStory } from './model.js'
 import {
   assessEventForPreselection,
   assessSearchHit,
@@ -268,6 +268,48 @@ test('权威官方网站不会因搜索元数据陈旧而被计为 other 来源'
   }
   const briefing = buildRulesBriefing(collection('markets', events), new Date('2026-08-18T00:00:00.000Z'), events.map((event) => event.id))
   assert.equal(validateBriefing(briefing, events).some((error) => error.includes('other 来源')), false)
+})
+
+test('AP 等一级媒体不会因陈旧搜索标记占用 other 名额', () => {
+  const events = eventsFor('world').slice(0, 5)
+  events[0].primaryArticle.source = { ...events[0].primaryArticle.source, type: 'media', reliability: 'other' }
+  events[0].primaryArticle.url = 'https://apnews.com/article/example'
+  events[1].primaryArticle.source = { ...events[1].primaryArticle.source, type: 'media', reliability: 'other' }
+  events[1].primaryArticle.url = 'https://cryptobriefing.com/example'
+  const briefing = buildRulesBriefing(collection('world', events), new Date('2026-08-18T00:00:00.000Z'), events.map((event) => event.id))
+  assert.equal(validateBriefing(briefing, events).some((error) => error.includes('other 来源')), false)
+})
+
+test('固定槽位优先保留可独立兜底事件，不让观察性标题占掉安全备用名额', () => {
+  const ready = eventsFor('ai-tech').slice(0, 5)
+  const insufficient = createEvent('ai-tech', [candidate(
+    'open-model-observations',
+    'ai-tech',
+    'State of Open Models: Summer 2026 Observations',
+    'State of Open Models: Summer 2026 Observations',
+    'huggingface.co',
+    200,
+  )])
+  insufficient.primaryArticle.source = source('huggingface.co', 'primary')
+  const selected = selectFixedSlotEvents([insufficient, ...ready])
+  assert.equal(selected.length, 5)
+  assert.equal(selected.some((event) => event.id === insufficient.id), false)
+  assert.ok(selected.every((event) => validateBriefingStory(buildRuleStory(event), event).length === 0))
+})
+
+test('排名稿识别保持稳定动作，并允许来源英文数字词支持中文数字事实', () => {
+  const hit = candidate(
+    'france-ranking-numbers',
+    'learning',
+    '2026 Shanghai rankings: France holds steady while China advances',
+    'France has 27 higher education institutions in the ranking, with four French universities in the global top 100.',
+    'lemonde.fr',
+  )
+  const event = createEvent('learning', [hit])
+  const story = buildRuleStory(event)
+  assert.match(story.title, /法国.*维持.*世界大学排名/)
+  assert.match(story.summary, /27所.*4所/)
+  assert.equal(validateBriefingStory(story, event).length, 0, validateBriefingStory(story, event).join('；'))
 })
 
 test('最新真实回放：AI、国际与教育备用事件均可成稿，重复链不再夹带另一公告', async () => {

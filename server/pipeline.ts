@@ -249,7 +249,7 @@ const ACTION_GROUPS: Array<[string, RegExp]> = [
   ['implement', /\bimplement(?:s|ed|ing|ation)?\b|\brolls? out\b|实施|推进|启动/i],
   ['fraud-charge', /\bcharges?\b.{0,80}\bfraud|\bdefraud(?:s|ed|ing)?\b|指控.{0,40}欺诈|诈骗/i],
   ['sentence', /\bsentenced\b|\bsentencing\b|\b(?:court|judge)\b.{0,36}\bsentences?\b|\bjailed?\b|\bimprison(?:s|ed|ment)?\b|\bprison term\b|被判刑|判处|获刑|监禁|入狱/i],
-  ['maintain', /\bmaintain(?:s|ed|ing)?\b|\bholds?\b.{0,24}\brates?\b|\bkeeps?\b.{0,24}\brates?\b|维持|保持不变/i],
+  ['maintain', /\bmaintain(?:s|ed|ing)?\b|\bholds?\b.{0,24}\b(?:rates?|steady)\b|\bkeeps?\b.{0,24}\brates?\b|维持|保持(?:不变|稳定)/i],
   ['update', /\bupdat(?:e|es|ed|ing)\b|更新|修订/i],
   ['research-find', /\b(?:research|study|experiment)\b.{0,80}\b(?:finds?|found|shows?|showed|suggests?|suggested|demonstrates?|demonstrated)\b|\b(?:finds?|found|shows?|showed|suggests?|suggested)\b.{0,80}\b(?:learning|students?|pupils?|kids)\b|\b(?:may|can|could)\s+learn more\b|\blearn(?:ed|s)? more\b|研究(?:团队)?(?:发现|表明|显示)|实验(?:发现|表明|显示)|结果(?:显示|表明)/i],
   ['adopt', /\badopt(?:s|ed|ing|ion)?\b|\bdeploy(?:s|ed|ing|ment)?\b|\bintegrat(?:e|es|ed|ing|ion)\b|\buses?\b.{0,36}\b(?:AI|artificial intelligence)\b|采用|引入|部署|整合/i],
@@ -1704,6 +1704,13 @@ function materialSpecificDetails(value: string) {
     if (/draft(?:ed|ing)?|propos(?:al|e|ed|ing)|policy ideas?/i.test(value)) details.push('学生参与提出并起草AI教育政策建议')
     if (/\bK-?12\b/i.test(value) && /national|nationwide|federal/i.test(value)) details.push('建议面向全国K-12教育体系')
     else if (/\bK-?12\b/i.test(value)) details.push('建议聚焦K-12学校的AI使用规则')
+  }
+  if (/chief (?:revenue|commercial|operating|financial|technology) officer|首席(?:营收|商务|运营|财务|技术)官/i.test(value)) {
+    const joinsFrom = value.match(/(?:joins?|joined)\s+(?:[A-Z][\w.-]+\s+)?from\s+([A-Z][\w&.'-]*(?:\s+[A-Z][\w&.'-]*){0,3})/)
+    if (joinsFrom) details.push(`新任高管此前任职于${joinsFrom[1]}`)
+    if (/go-to-market|commercial strategy|revenue organization|sales organization/i.test(value)) {
+      details.push('新任高管将负责商业化与营收体系建设')
+    }
   }
   if (/evening mba/i.test(value) && /working professionals?|professionals? who work|在职专业人士/i.test(value)) {
     details.push('课程面向在职专业人士')
