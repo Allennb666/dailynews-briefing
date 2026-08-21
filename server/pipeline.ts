@@ -195,6 +195,7 @@ const ENTITY_ALIASES: Array<[string, RegExp]> = [
   ['uae', /\bUAE\b|united arab emirates|阿联酋/i],
   ['russia', /\brussia(?:n)?\b|俄罗斯|俄军/i],
   ['ukraine', /\bukrain(?:e|ian)\b|乌克兰|乌军/i],
+  ['france', /\bfrance\b|\bfrench\b|法国/i],
   ['groq', /\bgroq\b/i],
   ['hugging-face', /\bhugging\s*face\b|huggingface/i],
   ['research-team', /research team|研究团队/i],
@@ -311,8 +312,12 @@ const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
   ['ai-governance', /democratic oversight|national security oversight|ai governance|人工智能治理|国家安全治理|民主监督/i],
   ['ai-training', /prepare.{0,36}ai generation|ai generation.{0,36}(?:skills?|training|prepare)|ai workforce|ai talent|AI人才|人工智能人才|AI培训/i],
   ['identity-exposure', /identity.{0,24}(?:leak|reveal|expos)|(?:leak|breach).{0,24}(?:identity|identities)|(?:data|information).{0,24}leak|身份.{0,12}(?:泄露|曝光)|数据泄露/i],
+  ['threatened-person', /former Afghan police worker|Afghan former police|前阿富汗警员/i],
   ['model-report', /state of open models|open models?.{0,24}(?:report|observations?)|开源模型.{0,16}(?:报告|观察)/i],
   ['humanitarian-access', /humanitarian (?:access|workers?|aid)|famil(?:y|ies).{0,24}(?:besieg|trapp|surround)|人道工作者|人道援助|受困家庭|被围困.{0,12}家庭/i],
+  ['ai-policy-proposal', /policy ideas?|policy proposals?|政策建议|政策主张/i],
+  ['agent-data-workflow', /strands agents?|lerobot|storage buckets?|record,?\s*train,?\s*and deploy|智能体训练部署流程/i],
+  ['executive-appointment', /chief revenue officer|\bCRO\b|首席营收官/i],
 ]
 
 const INDICATOR_OBJECTS = new Set(['cpi', 'ppi', 'pce', 'interest-rate', 'bond-yield', 'earnings-results', 'oil-price'])
@@ -723,7 +728,7 @@ export function domainMatchSignals(config: DomainConfig, text: string, query = '
       ? [...objects].some((object) => ['sanctions-controls', 'military-strike', 'ceasefire-talks', 'shipping-route', 'earthquake', 'security-agreement', 'criminal-sentence', 'identity-exposure', 'humanitarian-access'].includes(object))
       : config.id === 'learning'
         ? [...objects].some((object) => ['course-curriculum', 'assessment', 'ai-literacy', 'education-policy', 'student-support', 'student-data', 'mba-program', 'creative-program', 'learning-science', 'teacher-training', 'education-report', 'learning-method', 'higher-education-trend', 'ai-teaching', 'research-program'].includes(object))
-        : [...objects].some((object) => ['product-release', 'funding-round', 'factory-capacity', 'memory-capacity', 'data-center', 'ai-center', 'watermark', 'coding-agent', 'ai-governance', 'ai-training', 'model-report'].includes(object))
+        : [...objects].some((object) => ['product-release', 'funding-round', 'factory-capacity', 'memory-capacity', 'data-center', 'ai-center', 'watermark', 'coding-agent', 'ai-governance', 'ai-policy-proposal', 'agent-data-workflow', 'executive-appointment', 'ai-training', 'model-report'].includes(object))
   const officialAffinity = Boolean(source?.type === 'official'
     && OFFICIAL_DOMAIN_AFFINITY[config.id].some((host) => source.id === host || source.id.endsWith(`.${host}`)))
   const learningFit = config.id === 'learning' ? learningPersonalRelevance(text) : null
@@ -1148,7 +1153,9 @@ function uniqueArticles(candidates: Candidate[]) {
   const byId = new Map<string, Candidate>()
   for (const candidate of candidates) {
     byId.set(candidate.id, candidate)
-    for (const duplicate of candidate.duplicates ?? []) byId.set(duplicate.id, duplicate)
+    for (const duplicate of candidate.duplicates ?? []) {
+      if (cleanUrl(candidate.url) === cleanUrl(duplicate.url) || eventMatch(candidate, duplicate)) byId.set(duplicate.id, duplicate)
+    }
   }
   return [...byId.values()].map(({ duplicates: _duplicates, ...candidate }) => candidate)
 }
@@ -1420,6 +1427,7 @@ const ENTITY_LABELS: Record<string, string> = {
   'sk-hynix': 'SK海力士', 'berkshire-hathaway': '伯克希尔', alphabet: 'Alphabet', grok: 'Grok',
   'mit-sloan': 'MIT斯隆管理学院', israel: '以色列', iran: '伊朗', oman: '阿曼', indonesia: '印度尼西亚',
   japan: '日本', 'south-korea': '韩国', 'north-korea': '朝鲜', uae: '阿联酋', russia: '俄罗斯', ukraine: '乌克兰', groq: 'Groq',
+  france: '法国',
   'hugging-face': 'Hugging Face',
   'research-team': '研究团队', 'education-department': '教育部门', hackers: '黑客', university: '大学',
   taliban: '塔利班', 'strait-of-hormuz': '霍尔木兹海峡船舶通行量',
@@ -1455,7 +1463,10 @@ const OBJECT_LABELS: Record<string, string> = {
   'research-program': '科研计划', 'financial-regulation': '金融监管事项',
   'student-data': '学生数据', 'ai-governance': '国家安全治理', 'ai-training': 'AI人才培养',
   'identity-exposure': '身份泄露', 'model-report': '开源模型观察报告',
+  'threatened-person': '一名前阿富汗警员',
   'humanitarian-access': '受困家庭',
+  'ai-policy-proposal': 'AI政策建议', 'agent-data-workflow': '智能体训练部署流程',
+  'executive-appointment': '高管任命',
 }
 
 function articleMaterial(article: Candidate) {
@@ -1504,6 +1515,9 @@ function contentActor(text: string, event: NewsEvent, includeEventMaterial = tru
 function contentAction(text: string) {
   const objectSet = extractEventObjects(text)
   const actions = fingerprintActions(text, objectSet)
+  if (objectSet.has('ai-policy-proposal')) return '提出'
+  if (objectSet.has('agent-data-workflow')) return '整合'
+  if (objectSet.has('executive-appointment')) return '任命'
   if (actions.has('security') && /\bhackers?\b|\btheft\b|黑客|窃取/i.test(text)) return '窃取'
   if (actions.has('decline') && objectSet.has('shipping-route')) return '下降'
   if (actions.has('data-release') && objectSet.has('model-report')) return '发布'
@@ -1518,13 +1532,15 @@ function contentAction(text: string) {
 
 function contentObject(text: string, event: NewsEvent) {
   const objects = extractEventObjects(text)
+  const executive = text.match(/appoints?\s+([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){1,3})\s+as\s+Chief Revenue Officer/i)
+  if (objects.has('executive-appointment') && executive) return `${executive[1]}为首席营收官`
   if (objects.has('fraud-case') && /pre[- ]?ipo/i.test(text)) return 'Pre-IPO投资骗局'
   if (objects.has('fraud-case') && /orthodox jewish communit(?:y|ies)/i.test(text)) return '针对正统派犹太社区的投资骗局'
   if (objects.has('identity-exposure') && /former Afghan police worker|Afghan former police|阿富汗前警员/i.test(text)) {
-    return '身份因泄密曝光的阿富汗前警员'
+    return extractActions(text).has('threaten') ? '一名前阿富汗警员' : '身份因泄密曝光的阿富汗前警员'
   }
   if (objects.has('funding-round') && (objects.has('data-center') || /ai compute infrastructure/i.test(text))) return 'AI算力基础设施融资平台'
-  const priority = ['memory-capacity', 'equity-stake', 'cpi', 'ppi', 'pce', 'ev-target', 'fraud-case', 'criminal-sentence', 'security-agreement', 'student-data', 'identity-exposure', 'humanitarian-access', 'learning-method', 'learning-science', 'ai-teaching', 'research-program', 'higher-education-trend', 'teacher-training', 'education-report', 'university-ranking', 'financial-regulation', 'ai-governance', 'ai-center', 'ai-training', 'model-report', 'sanctions-controls', 'earthquake', 'military-strike', 'shipping-route', 'ceasefire-talks', 'image-abuse', 'watermark', 'coding-agent', 'student-support', 'mba-program', 'creative-program', 'executive-governance', 'funding-round', 'factory-capacity', 'data-center', 'product-release']
+  const priority = ['memory-capacity', 'equity-stake', 'cpi', 'ppi', 'pce', 'ev-target', 'fraud-case', 'criminal-sentence', 'security-agreement', 'student-data', 'identity-exposure', 'threatened-person', 'humanitarian-access', 'learning-method', 'learning-science', 'ai-teaching', 'research-program', 'higher-education-trend', 'teacher-training', 'education-report', 'university-ranking', 'financial-regulation', 'ai-governance', 'ai-policy-proposal', 'agent-data-workflow', 'executive-appointment', 'ai-center', 'ai-training', 'model-report', 'sanctions-controls', 'earthquake', 'military-strike', 'shipping-route', 'ceasefire-talks', 'image-abuse', 'watermark', 'coding-agent', 'student-support', 'mba-program', 'creative-program', 'executive-governance', 'funding-round', 'factory-capacity', 'data-center', 'product-release']
   const object = priority.find((value) => objects.has(value)) ?? [...objects][0]
   if (object === 'equity-stake') {
     const entities = extractEntities(text)
@@ -1580,7 +1596,11 @@ export function claimMatchesEvent(value: string, event: NewsEvent) {
 export function articleSupportsClaim(article: Candidate, claim: string) {
   const cleanClaim = stripHtml(claim)
   if (!cleanClaim || isPlaceholderSummary(cleanClaim)) return false
-  const material = articleMaterial(article)
+  // An official publication may omit its own organisation from a concise
+  // headline (for example, "Strengthening democratic oversight...").  The
+  // publisher identity is still valid support for the actor, while the claim's
+  // action, object and numbers must continue to match the article material.
+  const material = `${articleMaterial(article)} ${article.source.name}`
   const claimFingerprint = fingerprintText(cleanClaim, article.domain)
   const materialFingerprint = fingerprintText(material, article.domain)
   const claimNumbers = extractKeyNumbers(cleanClaim)
@@ -1641,7 +1661,7 @@ function rawNumberLabels(value: string) {
 function materialSpecificDetails(value: string) {
   const details: string[] = []
   const fundedProjects = value.match(/fund(?:ed|s|ing)?\s+(\d[\d,.]*)\s+(?:independent\s+)?projects?/i)
-  if (fundedProjects) details.push(`此次资助${fundedProjects[1]}个独立研究项目`)
+  if (fundedProjects) details.push(`此次资助${fundedProjects[1]}个独立项目`)
   const partner = value.match(/partner(?:ed|s|ing)?\s+with\s+([A-Z][\w.-]*(?:\s+[A-Z][\w.-]*){0,2})/)
   if (partner) details.push(`合作方包括${partner[1].replace(/\s+(?:on|to|for)$/i, '')}`)
   if (/students?\s+and\s+workers?|learners?\s+and\s+(?:workers?|employees?)/i.test(value)) details.push('项目面向学生和从业者')
@@ -1652,6 +1672,12 @@ function materialSpecificDetails(value: string) {
   if (formerBankEmployee) details.push(`事件涉及${formerBankEmployee[1].trim()}一名前员工`)
   if (/retail investors?/i.test(value)) details.push('受影响对象包括散户投资者')
   if (/orthodox jewish communit(?:y|ies)/i.test(value)) details.push('事件针对正统派犹太社区')
+  if (/former Afghan police worker|Afghan former police/i.test(value) && /(?:MoD|ministry of defence).{0,40}(?:leak|reveal)|(?:leak|breach).{0,40}identity/i.test(value)) {
+    details.push('英国国防部数据泄露暴露了该警员身份')
+  }
+  if (/strands agents?/i.test(value) && /lerobot/i.test(value)) details.push('流程连接Strands Agents与LeRobot')
+  if (/record,?\s*train,?\s*and deploy/i.test(value)) details.push('流程覆盖数据记录、训练与部署')
+  if (/storage buckets?/i.test(value)) details.push('数据可写入Hugging Face存储桶')
   return [...new Set(details)]
 }
 

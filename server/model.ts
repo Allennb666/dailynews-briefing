@@ -257,11 +257,15 @@ function normalizedNumberTokens(value: string) {
 }
 
 function articleSupportsNumbers(article: NewsEvent['articles'][number], tokens: string[], sentence = tokens.join(' ')) {
-  const material = `${article.title} ${cleanEventMaterial(article.title, article.description, article.domain)} ${cleanEventMaterial(article.title, article.fullText ?? '', article.domain)} ${article.publishedAt.slice(0, 10)}`
-  const materialClaims = extractKeyNumbers(material)
+  const material = `${article.title} ${cleanEventMaterial(article.title, article.description, article.domain)} ${cleanEventMaterial(article.title, article.fullText ?? '', article.domain)} ${article.source.name} ${article.publishedAt.slice(0, 10)}`
+  // Number verification must inspect the original source fields as well. The
+  // prose cleaner intentionally removes short or incomplete English snippets,
+  // but those snippets can still contain the exact, source-backed quantity.
+  const numericMaterial = `${article.title} ${article.description} ${article.fullText ?? ''} ${article.publishedAt.slice(0, 10)}`
+  const materialClaims = extractKeyNumbers(numericMaterial)
   const tokenClaims = extractKeyNumbers(sentence)
   if (tokenClaims.length && (!materialClaims.length || !tokenClaims.every((claim) => keyNumbersCompatible([claim], materialClaims)))) return false
-  const normalizedMaterial = material.replaceAll(',', '').toLocaleLowerCase()
+  const normalizedMaterial = numericMaterial.replaceAll(',', '').toLocaleLowerCase()
   const rawTokens = tokenClaims.length ? [] : tokens
   if (rawTokens.length && !rawTokens.every((token) => normalizedMaterial.includes(token))) return false
 

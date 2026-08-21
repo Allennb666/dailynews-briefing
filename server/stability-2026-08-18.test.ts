@@ -36,6 +36,13 @@ type ArtifactFixture = {
     marketBackup: { title: string; source: string }
     marketGateFailures: Array<{ title: string; source: string }>
     aiBackups: Array<{ title: string; source: string; description?: string }>
+    latestGateFailures: {
+      aiPolicy: { title: string; description: string }
+      agentWorkflow: { title: string }
+      executiveAppointment: { title: string; unrelatedTitle: string }
+      talibanThreat: { title: string }
+      franceRanking: { title: string }
+    }
     learningSecurity: { title: string; source: string }
     publishedGateMisses: Array<{ domain: DomainId; title: string; source: string; url?: string; expected: 'reject' | 'publishable' | 'insufficient-material' }>
     learningBackups: Array<{ title: string; description: string }>
@@ -233,6 +240,33 @@ test('来源等级门禁以事件绑定来源为准，不受成稿中的陈旧�
   assert.equal(validateBriefing(stale, events).some((error) => error.includes('other 来源')), false)
 })
 
+test('最新真实回放：AI、国际与教育备用事件均可成稿，重复链不再夹带另一公告', async () => {
+  const data = await fixture()
+  const latest = data.replay.latestGateFailures
+  const cases: Array<{ domain: DomainId; title: string; description: string; sourceId: string; reliability: SourceReliability }> = [
+    { domain: 'ai-tech', title: latest.aiPolicy.title, description: latest.aiPolicy.description, sourceId: 'openai.com', reliability: 'primary' },
+    { domain: 'ai-tech', title: latest.agentWorkflow.title, description: latest.agentWorkflow.title, sourceId: 'huggingface.co', reliability: 'primary' },
+    { domain: 'world', title: latest.talibanThreat.title, description: latest.talibanThreat.title, sourceId: 'theguardian.com', reliability: 'tier-1' },
+    { domain: 'learning', title: latest.franceRanking.title, description: latest.franceRanking.title, sourceId: 'lemonde.fr', reliability: 'tier-1' },
+  ]
+  for (const [index, item] of cases.entries()) {
+    const hit = candidate(`latest-gate-${index}`, item.domain, item.title, item.description, item.sourceId)
+    hit.source = source(item.sourceId, item.reliability)
+    const event = createEvent(item.domain, [hit])
+    const story = buildRuleStory(event)
+    assert.equal(validateBriefingStory(story, event).length, 0, `${story.title}: ${validateBriefingStory(story, event).join('；')}`)
+  }
+
+  const appointment = candidate('appointment', 'ai-tech', latest.executiveAppointment.title, latest.executiveAppointment.title, 'openai.com')
+  appointment.source = source('openai.com', 'primary')
+  const daybreak = candidate('daybreak', 'ai-tech', latest.executiveAppointment.unrelatedTitle, latest.executiveAppointment.unrelatedTitle, 'openai.com')
+  daybreak.source = source('openai.com', 'primary')
+  appointment.duplicates = [daybreak]
+  const event = createEvent('ai-tech', [appointment])
+  assert.equal(event.articles.length, 1)
+  assert.doesNotMatch(event.articles.map((article) => article.title).join(' '), /Daybreak/)
+})
+
 test('真实缓存回放：教育英文事件均能生成具体中文备用稿并独立通过门禁', async () => {
   const data = await fixture()
   for (const [index, item] of data.replay.learningBackups.entries()) {
@@ -259,7 +293,7 @@ test('第二次真实缓存回放：官方省略主体按材料充足度处理�
     assert.equal(assessEventForPreselection(event).accepted, true)
     assert.match(story.title, /OpenAI/)
     assert.equal(validateBriefingStory(story, event).length, 0, validateBriefingStory(story, event).join('；'))
-    if (index === 0) assert.match(story.summary, /14个独立研究项目/)
+    if (index === 0) assert.match(story.summary, /14个独立项目/)
     else assert.match(story.summary, /CodeAI.*学生和从业者/)
   }
 
