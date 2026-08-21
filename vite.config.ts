@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  base: process.env.GITHUB_PAGES === 'true' ? '/dailynews-briefing/' : '/',
+  // Relative assets work both at the repository Pages URL
+  // (/dailynews-briefing/) and at the custom-domain root (/).
+  base: './',
   plugins: [react()],
 })

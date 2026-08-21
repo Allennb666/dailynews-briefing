@@ -2,6 +2,7 @@ import type { BriefingStory, DailyBriefing, DailyDigest, DomainId } from '../sha
 import {
   cleanUrl,
   createEvent,
+  crossDomainEventConfidence,
   crossDomainEventMatch,
   eventDomainFit,
   titleSimilarity,
@@ -87,9 +88,10 @@ export function findCrossDomainDuplicates(
       if (stories[index].domain === stories[other].domain) continue
       const left = { ...stories[index], event: eventByDomainAndId.get(`${stories[index].domain}:${stories[index].story.id}`) }
       const right = { ...stories[other], event: eventByDomainAndId.get(`${stories[other].domain}:${stories[other].story.id}`) }
-      const sameEvent = left.event && right.event ? crossDomainEventMatch(left.event, right.event) : false
-      const titleDuplicate = titleSimilarity(left.story.title, right.story.title) >= 0.7
-      if (!sameEvent && !titleDuplicate) continue
+      const sameEvent = left.event && right.event
+        ? crossDomainEventConfidence(left.event, right.event) === 'high'
+        : titleSimilarity(left.story.title, right.story.title) >= 0.98
+      if (!sameEvent) continue
       if (sameEvent && editorialAnglesAreDistinct(left.story, right.story)) continue
       const ranked = [left, right].sort((a, b) => {
         const fit = (b.event ? eventDomainFit(b.event, b.domain) : 0) - (a.event ? eventDomainFit(a.event, a.domain) : 0)
@@ -103,6 +105,26 @@ export function findCrossDomainDuplicates(
     }
   }
   return conflicts
+}
+
+export function findCrossDomainSimilarityWarnings(
+  briefings: DailyBriefing[],
+  selections: Array<{ domain: DomainId; events: NewsEvent[] }> = [],
+) {
+  const eventByDomainAndId = new Map(selections.flatMap((selection) => selection.events.map((event) => [`${selection.domain}:${event.id}`, event] as const)))
+  const stories = briefings.flatMap((briefing) => briefing.stories.map((story) => ({ domain: briefing.domain, story })))
+  const warnings: string[] = []
+  for (let index = 0; index < stories.length; index += 1) {
+    for (let other = index + 1; other < stories.length; other += 1) {
+      if (stories[index].domain === stories[other].domain) continue
+      const left = eventByDomainAndId.get(`${stories[index].domain}:${stories[index].story.id}`)
+      const right = eventByDomainAndId.get(`${stories[other].domain}:${stories[other].story.id}`)
+      if (left && right && crossDomainEventConfidence(left, right) === 'medium') {
+        warnings.push(`${stories[index].story.id} 与 ${stories[other].story.id} 仅为低置信主题相似，已记录但不阻止发布`)
+      }
+    }
+  }
+  return warnings
 }
 
 export function validateCrossDomainUniqueness(

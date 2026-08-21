@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { DailyBriefing, DailyDigest, DomainId } from '../shared/briefing.js'
 import { DiagnosticRecorder, type RunDiagnostics } from './diagnostics.js'
-import { buildDailyDigest, deduplicateAcrossDomains, validateCrossDomainUniqueness } from './editorial.js'
+import { buildDailyDigest, deduplicateAcrossDomains, findCrossDomainSimilarityWarnings, validateCrossDomainUniqueness } from './editorial.js'
 import { enrichImportantEvents } from './enrichment.js'
 import { ArticleReader, materializeEvents, recoverMissingCandidateDates } from './material.js'
 import { createEditorialModelFromEnvironment, finalizeBriefing, preselectEvents } from './model.js'
@@ -188,14 +188,17 @@ async function main() {
       console.warn(`[DailyNews] 跨领域重复已自动换入 ${stabilized.replacements.length} 个备用事件：${stabilized.replacements.map((item) => `${item.removedEventId}→${item.addedEventId}`).join('，')}`)
     }
     const crossDomainErrors = validateCrossDomainUniqueness(briefings, selections)
+    const crossDomainWarnings = findCrossDomainSimilarityWarnings(briefings, selections)
     const degraded = briefings.some((briefing) => briefing.pipeline.qualityStatus !== 'passed')
     const lines = summaryLines(briefings, searchRuntime, articleReader)
     diagnostics.captureFinal(briefings, [
       ...briefings.flatMap((briefing) => briefing.pipeline.warnings),
+      ...crossDomainWarnings,
       ...crossDomainErrors,
     ])
     lines.forEach((line) => console.log(`[DailyNews] ${line}`))
     if (crossDomainErrors.length) console.error(`[DailyNews] 跨领域门禁失败：${crossDomainErrors.join('；')}`)
+    if (crossDomainWarnings.length) console.warn(`[DailyNews] 跨领域低置信相似：${crossDomainWarnings.join('；')}`)
     if (degraded || crossDomainErrors.length) {
       diagnosticStatus = 'held'
       console.error('[DailyNews] 严重质量门禁未通过；保留上一期 latest 和历史文件，不发布降级稿。')

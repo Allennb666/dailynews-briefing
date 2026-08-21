@@ -17,35 +17,29 @@ export function resolveCrossDomainDuplicatesWithBackups(
 ): CrossDomainStabilityResult {
   let current = [...briefings]
   const replacements: BriefingReplacement[] = []
-  const failedPairs = new Set<string>()
 
-  for (let attempt = 0; attempt < briefings.length * 5; attempt += 1) {
-    const conflict = findCrossDomainDuplicates(current, selections).find((item) => {
-      const key = `${item.winner.domain}:${item.winner.story.id}|${item.loser.domain}:${item.loser.story.id}`
-      return !failedPairs.has(key)
-    })
-    if (!conflict) break
-    const key = `${conflict.winner.domain}:${conflict.winner.story.id}|${conflict.loser.domain}:${conflict.loser.story.id}`
-    const loserBriefing = current.find((briefing) => briefing.domain === conflict.loser.domain)
-    const collection = collections.find((item) => item.domain === conflict.loser.domain)
-    const selection = selections.find((item) => item.domain === conflict.loser.domain)
-    if (!loserBriefing || !collection || !selection) {
-      failedPairs.add(key)
-      continue
+  for (let attempt = 0; attempt < briefings.length; attempt += 1) {
+    const conflicts = findCrossDomainDuplicates(current, selections)
+    if (!conflicts.length) break
+    const rejectByDomain = new Map<DomainId, Set<string>>()
+    for (const conflict of conflicts) {
+      const rejected = rejectByDomain.get(conflict.loser.domain) ?? new Set<string>()
+      rejected.add(conflict.loser.story.id)
+      rejectByDomain.set(conflict.loser.domain, rejected)
     }
-    const stabilized = stabilizeBriefingWithBackups(
-      collection,
-      loserBriefing,
-      selection.events,
-      now,
-      [conflict.loser.story.id],
-    )
-    if (stabilized.unresolvedRejectIds.length || stabilized.errors.length || !stabilized.replacements.length) {
-      failedPairs.add(key)
-      continue
+    let progressed = false
+    for (const [domain, rejectIds] of [...rejectByDomain].sort(([left], [right]) => left.localeCompare(right))) {
+      const loserBriefing = current.find((briefing) => briefing.domain === domain)
+      const collection = collections.find((item) => item.domain === domain)
+      const selection = selections.find((item) => item.domain === domain)
+      if (!loserBriefing || !collection || !selection) continue
+      const stabilized = stabilizeBriefingWithBackups(collection, loserBriefing, selection.events, now, [...rejectIds].sort())
+      if (stabilized.unresolvedRejectIds.length || stabilized.errors.length) continue
+      current = current.map((briefing) => briefing.domain === domain ? stabilized.briefing : briefing)
+      replacements.push(...stabilized.replacements)
+      progressed = true
     }
-    current = current.map((briefing) => briefing.domain === loserBriefing.domain ? stabilized.briefing : briefing)
-    replacements.push(...stabilized.replacements)
+    if (!progressed) break
   }
 
   return {

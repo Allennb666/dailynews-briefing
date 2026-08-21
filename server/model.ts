@@ -10,7 +10,9 @@ import type { CollectionResult, NewsEvent } from './pipeline.js'
 import {
   buildCandidatePool,
   buildEventSpecificContent,
+  buildRuleStory,
   buildRulesBriefing,
+  assessEventForPreselection,
   claimMatchesEvent,
   cleanEventMaterial,
   eventFingerprint,
@@ -373,12 +375,18 @@ export function sanitizeModelFacts(event: NewsEvent, facts: string[], incomingSo
     const linkedArticles = incomingUrls.length ? event.articles.filter((article) => incomingUrls.includes(article.url)) : event.articles
     const safeFact = removeUnsupportedNumericExpressions(normalized, event, linkedArticles)
     if (!safeFact || keyFacts.includes(safeFact)) return
+    const numericMatches = supportingArticlesForText(safeFact, event, event.articles)
+    const claimMatches = supportingUrlsForClaim(event, safeFact)
+    const actualSupportingUrls = numericMatches.length
+      ? numericMatches.map((article) => article.url)
+      : claimMatches
+    const incomingSupported = incomingUrls.filter((url) => actualSupportingUrls.includes(url))
+    const urls = incomingSupported.length ? incomingSupported
+      : actualSupportingUrls.length ? actualSupportingUrls.slice(0, 2)
+        : []
+    if (!urls.length) return
     const factIndex = keyFacts.length
     keyFacts.push(safeFact)
-    const numericMatches = supportingArticlesForText(safeFact, event, linkedArticles)
-    const urls = incomingUrls.length ? incomingUrls
-      : numericMatches.length ? numericMatches.slice(0, 2).map((article) => article.url)
-        : [event.primaryArticle.url]
     factSources.push({ factIndex, urls: [...new Set(urls)].filter(Boolean) })
   })
   if (!keyFacts.length) {
@@ -880,7 +888,7 @@ const USER_TOPIC_PRIORITY: Record<NewsEvent['domain'], RegExp> = {
 }
 const LOW_VALUE_TOPIC = /celebrity|viral|shocking|奇闻|网红|明星八卦|普通校园活动|校友聚会|校长任命|school board meeting|campus event/i
 
-function backupPriority(event: NewsEvent, domain: NewsEvent['domain'], originalIndex: number) {
+function backupPriority(event: NewsEvent, domain: NewsEvent['domain'], _originalIndex: number) {
   const material = event.articles.map((article) => `${article.title} ${article.description}`).join(' ')
   const priorityMatches = material.match(new RegExp(USER_TOPIC_PRIORITY[domain].source, 'gi'))?.length ?? 0
   const reliability = event.primaryArticle.source.reliability === 'primary' ? 5
@@ -888,13 +896,36 @@ function backupPriority(event: NewsEvent, domain: NewsEvent['domain'], originalI
   const officialLearning = domain === 'learning' && event.primaryArticle.source.type === 'official' ? 5 : 0
   return event.primaryArticle.score + eventDomainFit(event, domain) * 0.25
     + Math.min(priorityMatches, 4) * 4 + reliability + officialLearning
-    - (LOW_VALUE_TOPIC.test(material) ? 18 : 0) - originalIndex / 1_000
+    - (LOW_VALUE_TOPIC.test(material) ? 18 : 0)
 }
 
 export type BriefingReplacement = {
   removedEventId: string
   addedEventId: string
   reason: 'content-gate' | 'cross-domain-duplicate'
+}
+
+type StoryOption = {
+  event: NewsEvent
+  story: BriefingStory
+  originalRank: number | null
+  preservesQwenStory: boolean
+  priority: number
+}
+
+function combinations<T>(items: T[], size: number) {
+  const result: T[][] = []
+  const visit = (start: number, selected: T[]) => {
+    if (selected.length === size) {
+      result.push(selected)
+      return
+    }
+    for (let index = start; index <= items.length - (size - selected.length); index += 1) {
+      visit(index + 1, [...selected, items[index]])
+    }
+  }
+  visit(0, [])
+  return result
 }
 
 export function stabilizeBriefingWithBackups(
@@ -905,62 +936,65 @@ export function stabilizeBriefingWithBackups(
   forcedRejectIds: string[] = [],
 ) {
   const eventById = new Map(events.map((event) => [event.id, event]))
-  let current = briefing
-  let currentEvents = current.stories.map((story) => eventById.get(story.id)).filter((event): event is NewsEvent => Boolean(event))
   const forced = new Set(forcedRejectIds)
-  const replacements: BriefingReplacement[] = []
-  const rejected = new Set<string>()
+  const originalById = new Map(briefing.stories.map((story) => [story.id, story]))
+  const options: StoryOption[] = events.flatMap((event, index) => {
+    if (forced.has(event.id) || !assessEventForPreselection(event, collection.domain).accepted) return []
+    const original = originalById.get(event.id)
+    const originalValid = Boolean(original && !validateBriefingStory(original, event).length)
+    const story = originalValid ? original! : buildRuleStory(event, original?.rank ?? 99)
+    if (validateBriefingStory(story, event).length) return []
+    return [{
+      event,
+      story,
+      originalRank: original?.rank ?? null,
+      preservesQwenStory: originalValid,
+      priority: backupPriority(event, collection.domain, index),
+    }]
+  }).sort((left, right) => {
+    const preserved = Number(right.preservesQwenStory) - Number(left.preservesQwenStory)
+    if (preserved) return preserved
+    const original = Number(right.originalRank !== null) - Number(left.originalRank !== null)
+    if (original) return original
+    if (left.originalRank !== null && right.originalRank !== null) return left.originalRank - right.originalRank
+    return right.priority - left.priority || left.event.id.localeCompare(right.event.id)
+  })
 
-  while (replacements.length < events.length) {
-    const invalidIds = current.stories.flatMap((story) => {
-      const event = eventById.get(story.id)
-      return forced.has(story.id) || validateBriefingStory(story, event).length ? [story.id] : []
-    }).filter((id) => !rejected.has(id))
-    const rejectedId = invalidIds[0]
-    if (!rejectedId) break
-    rejected.add(rejectedId)
-
-    const usedIds = new Set(current.stories.map((story) => story.id))
-    const backups = events
-      .map((event, index) => ({ event, score: backupPriority(event, collection.domain, index) }))
-      .filter(({ event }) => !usedIds.has(event.id) && !rejected.has(event.id))
-      .sort((left, right) => right.score - left.score || left.event.id.localeCompare(right.event.id))
-    let best: { briefing: DailyBriefing; events: NewsEvent[]; errors: string[]; event: NewsEvent } | null = null
-    const currentErrorCount = validateBriefing(current, currentEvents).length
-
-    for (const { event: backup } of backups) {
-      const trialEvents = currentEvents.map((event) => event.id === rejectedId ? backup : event)
-      try {
-        const ruleDraft = buildRulesBriefing(selectedCollection(collection, trialEvents), now, trialEvents.map((event) => event.id))
-        const replacementStory = ruleDraft.stories.find((story) => story.id === backup.id)
-        if (!replacementStory || validateBriefingStory(replacementStory, backup).length) continue
-        const replaced = normalizeRanking({
-          ...current,
-          stories: current.stories.map((story) => story.id === rejectedId
-            ? { ...replacementStory, rank: story.rank }
-            : story),
-        })
-        const orderedEvents = replaced.stories.map((story) => trialEvents.find((event) => event.id === story.id)!)
-        const errors = validateBriefing(replaced, orderedEvents)
-        if (!best || errors.length < best.errors.length) best = { briefing: replaced, events: orderedEvents, errors, event: backup }
-        if (!errors.length) break
-      } catch {
-        // A backup that cannot form a complete, source-diverse five-story set is skipped.
-      }
+  let best: { briefing: DailyBriefing; events: NewsEvent[]; errors: string[]; score: number; key: string } | null = null
+  let consideredCombinations = 0
+  for (const chosen of combinations(options, 5)) {
+    consideredCombinations += 1
+    const ordered = [...chosen].sort((left, right) => {
+      const leftRank = left.originalRank ?? Number.POSITIVE_INFINITY
+      const rightRank = right.originalRank ?? Number.POSITIVE_INFINITY
+      return leftRank - rightRank || right.priority - left.priority || left.event.id.localeCompare(right.event.id)
+    })
+    const trial = normalizeRanking({ ...briefing, stories: ordered.map((option) => option.story) })
+    const trialEvents = trial.stories.map((story) => eventById.get(story.id)!).filter(Boolean)
+    const errors = validateBriefing(trial, trialEvents)
+    const score = ordered.reduce((total, option) => total
+      + Number(option.preservesQwenStory) * 1_000_000
+      + Number(option.originalRank !== null) * 100_000
+      + option.priority, 0)
+    const key = trial.stories.map((story) => story.id).join('|')
+    if (!best || errors.length < best.errors.length
+      || (errors.length === best.errors.length && (score > best.score || (score === best.score && key < best.key)))) {
+      best = { briefing: trial, events: trialEvents, errors, score, key }
     }
-
-    const forcedReplacement = forced.has(rejectedId)
-    if (!best || (best.errors.length >= currentErrorCount && !forcedReplacement)) continue
-    const reason = forcedReplacement ? 'cross-domain-duplicate' as const : 'content-gate' as const
-    replacements.push({ removedEventId: rejectedId, addedEventId: best.event.id, reason })
-    forced.delete(rejectedId)
-    current = best.briefing
-    currentEvents = best.events
   }
 
-  const errors = validateBriefing(current, currentEvents)
-  const replacedForcedIds = new Set(replacements.filter((item) => item.reason === 'cross-domain-duplicate').map((item) => item.removedEventId))
-  const unresolvedRejectIds = forcedRejectIds.filter((id) => !replacedForcedIds.has(id))
+  const current = best?.briefing ?? briefing
+  const currentEvents = best?.events ?? briefing.stories.map((story) => eventById.get(story.id)).filter((event): event is NewsEvent => Boolean(event))
+  const errors = best?.errors ?? validateBriefing(current, currentEvents)
+  const finalIds = new Set(current.stories.map((story) => story.id))
+  const removed = briefing.stories.filter((story) => !finalIds.has(story.id))
+  const added = current.stories.filter((story) => !originalById.has(story.id))
+  const replacements: BriefingReplacement[] = removed.map((story, index) => ({
+    removedEventId: story.id,
+    addedEventId: added[index]?.id ?? added.at(-1)?.id ?? '',
+    reason: forced.has(story.id) ? 'cross-domain-duplicate' as const : 'content-gate' as const,
+  })).filter((item) => item.addedEventId)
+  const unresolvedRejectIds = forcedRejectIds.filter((id) => finalIds.has(id) || !best || best.errors.length > 0)
   const replacementWarnings = replacements.map((item) =>
     `${item.reason === 'content-gate' ? '内容门禁' : '跨领域去重'}已将 ${item.removedEventId} 替换为备用事件 ${item.addedEventId}`)
   return {
@@ -976,6 +1010,8 @@ export function stabilizeBriefingWithBackups(
     replacements,
     errors,
     unresolvedRejectIds,
+    consideredCombinations,
+    eligibleOptionIds: options.map((option) => option.event.id),
   }
 }
 
@@ -1069,7 +1105,7 @@ export async function finalizeBriefing(
           }
         }
         const stabilized = stabilizeBriefingWithBackups(collection, locallyRepaired, events, now)
-        if (!stabilized.errors.length && stabilized.replacements.length) {
+        if (!stabilized.errors.length) {
           const stableBriefing = stabilized.briefing
           return {
             ...stableBriefing,
@@ -1078,7 +1114,7 @@ export async function finalizeBriefing(
               qualityStatus: 'passed' as const,
               warnings: [
                 ...stableBriefing.pipeline.warnings,
-                '程序保留合格成稿字段，并用预选备用事件替换仍未通过门禁的单条新闻',
+                `程序保留合格成稿字段，并通过整体组合选择修复不合格槽位（检查 ${stabilized.consideredCombinations} 种组合）`,
               ],
             },
           }
@@ -1108,7 +1144,7 @@ export async function finalizeBriefing(
         }
       }
       const stabilizedFallback = stabilizeBriefingWithBackups(collection, fallback, events, now)
-      if (!stabilizedFallback.errors.length && stabilizedFallback.replacements.length) {
+      if (!stabilizedFallback.errors.length) {
         const stableBriefing = stabilizedFallback.briefing
         return {
           ...stableBriefing,

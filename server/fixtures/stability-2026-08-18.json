@@ -1,0 +1,97 @@
+{
+  "source": {
+    "runId": 32082002807,
+    "diagnosticArtifactId": 9305532769,
+    "startedAt": "2026-08-17T23:49:03.806Z",
+    "status": "held",
+    "published": false,
+    "searchCalls": 32,
+    "cacheHits": 0
+  },
+  "realFailures": {
+    "ai-tech": {
+      "selectedIds": ["cd13d12fd947", "82045b23ffcc", "44ad25a4dec0", "2e2e79f6439e", "dfa27d278f87"],
+      "badIds": ["dfa27d278f87"],
+      "errors": ["摘要没有标题之外的来源支持信息", "标题与摘要不属于同一事件", "关键事实与关联来源不是同一事件"]
+    },
+    "markets": {
+      "selectedIds": ["f023c537038f", "cbf435e12aa0", "d8d5d02dcaa1", "bb249d35603c", "51140141090d"],
+      "badIds": ["bb249d35603c", "51140141090d"],
+      "errors": ["两条摘要没有新增事实", "两条关键事实来源错配"]
+    },
+    "world": {
+      "selectedIds": ["8eef6c825c1f", "84c9ef4ac213", "fa009b14dc36", "0de118ab93b2", "0ddbc4a1af65"],
+      "badIds": ["fa009b14dc36", "0de118ab93b2", "0ddbc4a1af65"],
+      "errors": ["霍尔木兹油轮与黑海粮食被误合并", "多来源地震事实绑定错误", "jailed 未识别为动作"]
+    },
+    "learning": {
+      "selectedIds": ["0eba55b550e8", "bfd588b90b89", "ba02b25b1134", "07a3997b08c8", "f2af7007955b"],
+      "replacement": ["c2979eb1d98f", "ba02b25b1134"],
+      "status": "passed"
+    }
+  },
+  "cases": {
+    "irrelevantMarket": {
+      "id": "51140141090d",
+      "title": "To joke or not to joke?: How to write a good out-of-office message",
+      "source": "bbc.co.uk",
+      "url": "https://www.bbc.co.uk/news/articles/c934xy32919o",
+      "fingerprint": { "entities": ["bbc", "how"], "actions": [], "objects": [] }
+    },
+    "falseMergedWorld": {
+      "oldEventId": "fa009b14dc36",
+      "articles": [
+        {
+          "title": "2 UAE tankers attacked while transiting Strait of Hormuz, Emirati official says",
+          "source": "apnews.com",
+          "url": "https://apnews.com/article/iran-uae-us-strait-hormuz-august-14-2026-e8565c608ac5283ec8103c85df924b13",
+          "publishedAt": "2026-08-14T09:07:18.000Z"
+        },
+        {
+          "title": "Ukraine war briefing: Zelenskyy warns Egypt of food supply threat caused by Russian strikes in Black Sea - The Guardian",
+          "source": "theguardian.com",
+          "url": "https://www.theguardian.com/world/2026/aug/15/ukraine-war-briefing-zelenskyy-warns-egypt-of-food-supply-threat-caused-by-russian-strikes-in-black-sea",
+          "publishedAt": "2026-08-15T01:53:30.000Z"
+        }
+      ]
+    },
+    "falseCrossDomainDuplicate": {
+      "left": {
+        "id": "82045b23ffcc",
+        "domain": "ai-tech",
+        "title": "Groq raises $350M to fuel its pivot from AI chips to neocloud",
+        "source": "techcrunch.com",
+        "url": "https://techcrunch.com/2026/08/17/groq-raises-350m-to-fuel-its-pivot-from-ai-chips-to-neocloud",
+        "publishedAt": "2026-08-17T16:15:12.000Z"
+      },
+      "right": {
+        "id": "cbf435e12aa0",
+        "domain": "markets",
+        "title": "Nvidia backing $105 billion in financing for OpenAI data center in Ohio",
+        "source": "cnbc.com",
+        "url": "https://www.cnbc.com/2026/08/17/nvidia-financing-open-ai-data-center-ohio.html",
+        "publishedAt": "2026-08-17T21:22:37.000Z"
+      }
+    },
+    "actionSynonym": {
+      "id": "0ddbc4a1af65",
+      "title": "Russia's prominent anti-war politician jailed for 11 years",
+      "source": "bbc.co.uk",
+      "publishedAt": "2026-08-17T16:17:34.000Z"
+    },
+    "multiSourceNumbers": {
+      "id": "0de118ab93b2",
+      "title": "Photos: Indonesia earthquake rescue efforts continue as death toll hits 68",
+      "sources": ["aljazeera.com", "dw.com"],
+      "evidence": "corroborated"
+    }
+  },
+  "expected": {
+    "allDomainsPassed": true,
+    "storyCount": 20,
+    "templateCount": 0,
+    "hardCrossDomainDuplicates": 0,
+    "tavilyCallsDuringOfflineReplay": 0,
+    "productionSearchBudget": 32
+  }
+}

@@ -186,6 +186,12 @@ const ENTITY_ALIASES: Array<[string, RegExp]> = [
   ['south-korea', /\bsouth korea(?:n)?\b|韩国/i],
   ['north-korea', /\bnorth korea(?:n)?\b|朝鲜/i],
   ['uae', /\bUAE\b|united arab emirates|阿联酋/i],
+  ['russia', /\brussia(?:n)?\b|俄罗斯|俄军/i],
+  ['ukraine', /\bukrain(?:e|ian)\b|乌克兰|乌军/i],
+  ['groq', /\bgroq\b/i],
+  ['research-team', /research team|研究团队/i],
+  ['education-department', /department of education|education department|教育部门|教育主管部门/i],
+  ['university', /\buniversity\b|大学/i],
 ]
 
 const GENERIC_ENTITY_WORDS = new Set([
@@ -226,6 +232,9 @@ const ACTION_GROUPS: Array<[string, RegExp]> = [
   ['rescue', /\brescu(?:e|es|ed|ing)\b|\bsearch(?:es|ed|ing)? for survivors\b|救援|搜寻幸存者/i],
   ['implement', /\bimplement(?:s|ed|ing|ation)?\b|\brolls? out\b|实施|推进|启动/i],
   ['fraud-charge', /\bcharges?\b.{0,80}\bfraud|\bdefraud(?:s|ed|ing)?\b|指控.{0,40}欺诈|诈骗/i],
+  ['sentence', /\bsentenc(?:e|es|ed|ing)\b|\bjailed?\b|\bimprison(?:s|ed|ment)?\b|\bprison term\b|被判刑|判处|获刑|监禁|入狱/i],
+  ['maintain', /\bmaintain(?:s|ed|ing)?\b|\bholds?\b.{0,24}\brates?\b|\bkeeps?\b.{0,24}\brates?\b|维持|保持不变/i],
+  ['update', /\bupdat(?:e|es|ed|ing)\b|更新|修订/i],
 ]
 
 const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
@@ -263,6 +272,11 @@ const EVENT_OBJECT_GROUPS: Array<[string, RegExp]> = [
   ['creative-program', /digital creativity lab|digital arts|数字创意实验室|数字艺术/i],
   ['executive-governance', /executive departures?|talent exodus|ipo governance|高管离职|上市治理/i],
   ['vaccine-health', /vaccines?|autism|covid-?19|疫苗|自闭症|新冠/i],
+  ['security-agreement', /security agreement|defen[cs]e agreement|安全协议|防务合作/i],
+  ['criminal-sentence', /sentenced?|jailed?|imprison(?:ed|ment)?|prison term|判刑|获刑|监禁/i],
+  ['learning-science', /learning science|learning experiment|学习科学|学习实验/i],
+  ['teacher-training', /teacher training|faculty training|教师培训|师资培训/i],
+  ['education-report', /education trends? report|education report|教育趋势报告|教育报告/i],
 ]
 
 const INDICATOR_OBJECTS = new Set(['cpi', 'ppi', 'pce', 'interest-rate', 'bond-yield', 'earnings-results', 'oil-price'])
@@ -301,6 +315,10 @@ export function extractEntities(text: string) {
     if (!aliasesKnownEntity && !containsVerbOrConnector && !GENERIC_NAMED_ENTITY_TERMS.test(value) && !GENERIC_ENTITY_WORDS.has(normalized)) entities.add(normalized)
   }
   return [...entities]
+}
+
+function extractAliasedEntities(text: string) {
+  return new Set(ENTITY_ALIASES.filter(([, pattern]) => pattern.test(text)).map(([entity]) => entity))
 }
 
 export function extractActions(text: string) {
@@ -414,6 +432,9 @@ const LOCATION_ALIASES: Array<[string, RegExp]> = [
   ['north-korea', /\bnorth korea\b|朝鲜/i], ['israel', /\bisrael\b|以色列/i],
   ['lebanon', /\blebanon\b|黎巴嫩/i], ['iran', /\biran\b|伊朗/i], ['oman', /\boman\b|阿曼/i],
   ['pakistan', /\bpakistan\b|巴基斯坦/i], ['united-kingdom', /\bunited kingdom\b|\bUK\b|英国/i],
+  ['black-sea', /\bblack sea\b|黑海/i], ['strait-of-hormuz', /\bstrait of hormuz\b|霍尔木兹海峡/i],
+  ['egypt', /\begypt\b|埃及/i], ['uae', /\bUAE\b|united arab emirates|阿联酋/i],
+  ['russia', /\brussia\b|俄罗斯/i], ['ukraine', /\bukraine\b|乌克兰/i],
 ]
 
 export type EventFingerprint = {
@@ -548,6 +569,29 @@ export function assessEventMatch(a: Candidate, b: Candidate, strictVerification 
   if (hasReliableTime && timeDistanceHours > 72) return { matched: false, reason: 'event-mismatch' }
 
   const titleScore = titleSimilarity(a.title, b.title)
+  // The title is the safest identity anchor. Snippets frequently contain related-story
+  // widgets, so broad shipping/conflict/supply-chain language must never bridge two
+  // events whose named actors or locations plainly differ.
+  const leftTitleFingerprint = fingerprintText(a.title, a.domain)
+  const rightTitleFingerprint = fingerprintText(b.title, b.domain)
+  const leftAliasedEntities = extractAliasedEntities(a.title)
+  const rightAliasedEntities = extractAliasedEntities(b.title)
+  if (leftAliasedEntities.size && rightAliasedEntities.size
+    && overlapCoefficient(leftAliasedEntities, rightAliasedEntities) === 0
+    && titleScore < 0.94) return { matched: false, reason: 'entity-mismatch' }
+  if (leftTitleFingerprint.locations.length && rightTitleFingerprint.locations.length
+    && !overlaps(leftTitleFingerprint.locations, rightTitleFingerprint.locations)
+    && titleScore < 0.94) return { matched: false, reason: 'event-mismatch' }
+  if (leftTitleFingerprint.objects.length && rightTitleFingerprint.objects.length
+    && !overlaps(leftTitleFingerprint.objects, rightTitleFingerprint.objects)) {
+    const indicatorMismatch = leftTitleFingerprint.objects.some((object) => INDICATOR_OBJECTS.has(object))
+      && rightTitleFingerprint.objects.some((object) => INDICATOR_OBJECTS.has(object))
+    return { matched: false, reason: indicatorMismatch ? 'indicator-mismatch' : 'object-mismatch' }
+  }
+  if (leftTitleFingerprint.actions.length && rightTitleFingerprint.actions.length
+    && !overlaps(leftTitleFingerprint.actions, rightTitleFingerprint.actions)) {
+    return { matched: false, reason: 'action-mismatch' }
+  }
   const descriptionScore = setSimilarity(textTokens(a.description), textTokens(b.description))
   const leftText = `${a.title} ${a.description}`
   const rightText = `${b.title} ${b.description}`
@@ -634,16 +678,25 @@ export function domainMatchSignals(config: DomainConfig, text: string, query = '
   const queryMatches = [...queryTokens].filter((token) => candidateTokens.has(token)).length
   const entities = extractEntities(text).length
   const actions = extractActions(text).size
+  const objects = extractEventObjects(text)
+  const objectAffinity = config.id === 'markets'
+    ? [...objects].some((object) => INDICATOR_OBJECTS.has(object) || ['funding-round', 'equity-stake', 'fraud-case'].includes(object))
+    : config.id === 'world'
+      ? [...objects].some((object) => ['sanctions-controls', 'military-strike', 'ceasefire-talks', 'shipping-route', 'earthquake', 'security-agreement', 'criminal-sentence'].includes(object))
+      : config.id === 'learning'
+        ? [...objects].some((object) => ['course-curriculum', 'assessment', 'ai-literacy', 'education-policy', 'student-support', 'mba-program', 'creative-program', 'learning-science', 'teacher-training', 'education-report'].includes(object))
+        : [...objects].some((object) => ['product-release', 'funding-round', 'factory-capacity', 'memory-capacity', 'data-center', 'ai-center', 'watermark'].includes(object))
   const officialAffinity = Boolean(source?.type === 'official'
     && OFFICIAL_DOMAIN_AFFINITY[config.id].some((host) => source.id === host || source.id.endsWith(`.${host}`)))
   const learningFit = config.id === 'learning' ? learningPersonalRelevance(text) : null
   const score = topics * 4 + impacts * 1.5 + tags * 2.5 + Math.min(queryMatches, 5) * 1.25
-    + Math.min(entities, 3) + Math.min(actions, 2) * 1.5 + (officialAffinity ? 8 : 0) + (learningFit?.score ?? 0)
+    + Math.min(entities, 3) + Math.min(actions, 2) * 1.5 + (objectAffinity ? 5 : 0) + (officialAffinity ? 8 : 0) + (learningFit?.score ?? 0)
   const relevant = topics > 0
     || officialAffinity
+    || (objectAffinity && (entities > 0 || actions > 0))
     || (tags > 0 && (entities > 0 || actions > 0 || queryMatches > 0))
     || (queryMatches >= 2 && (entities > 0 || actions > 0))
-  return { score, relevant, topics, impacts, tags, queryMatches, entities, actions, officialAffinity, learningFit }
+  return { score, relevant, topics, impacts, tags, queryMatches, entities, actions, objectAffinity, officialAffinity, learningFit }
 }
 
 export function domainRelevanceScore(config: DomainConfig, text: string, query = '', source?: FeedSource) {
@@ -1142,33 +1195,46 @@ export function clusterCandidates(candidates: Candidate[]) {
     .sort((a, b) => compareCandidates(a.primaryArticle, b.primaryArticle))
 }
 
-export function crossDomainEventMatch(left: NewsEvent, right: NewsEvent) {
+export type CrossDomainEventConfidence = 'high' | 'medium' | 'none'
+
+export function crossDomainEventConfidence(left: NewsEvent, right: NewsEvent): CrossDomainEventConfidence {
   const leftTime = new Date(left.latestUpdateAt).getTime()
   const rightTime = new Date(right.latestUpdateAt).getTime()
   const timeDistance = Math.abs(leftTime - rightTime) / 3_600_000
-  if (!Number.isFinite(timeDistance) || timeDistance > 72) return false
-  if (left.articles.some((article) => right.articles.some((other) => cleanUrl(article.url) === cleanUrl(other.url)))) return true
-  if (normalizeTitle(left.canonicalTitle) === normalizeTitle(right.canonicalTitle)) return true
+  if (!Number.isFinite(timeDistance) || timeDistance > 72) return 'none'
+  if (left.articles.some((article) => right.articles.some((other) => cleanUrl(article.url) === cleanUrl(other.url)))) return 'high'
+  if (normalizeTitle(left.canonicalTitle) === normalizeTitle(right.canonicalTitle)) return 'high'
 
-  const leftText = left.articles.map((article) => `${article.title} ${article.description}`).join(' ')
-  const rightText = right.articles.map((article) => `${article.title} ${article.description}`).join(' ')
-  const entityScore = overlapCoefficient(new Set(extractEntities(leftText)), new Set(extractEntities(rightText)))
-  const leftObjects = extractEventObjects(leftText)
-  const rightObjects = extractEventObjects(rightText)
+  const leftTitle = fingerprintText(left.canonicalTitle, left.domain)
+  const rightTitle = fingerprintText(right.canonicalTitle, right.domain)
+  const leftEntities = extractAliasedEntities(left.canonicalTitle)
+  const rightEntities = extractAliasedEntities(right.canonicalTitle)
+  const entityScore = overlapCoefficient(leftEntities, rightEntities)
+  const leftObjects = new Set(leftTitle.objects)
+  const rightObjects = new Set(rightTitle.objects)
   const objectScore = overlapCoefficient(leftObjects, rightObjects)
   const leftIndicators = new Set([...leftObjects].filter((object) => INDICATOR_OBJECTS.has(object)))
   const rightIndicators = new Set([...rightObjects].filter((object) => INDICATOR_OBJECTS.has(object)))
-  if (leftIndicators.size && rightIndicators.size && overlapCoefficient(leftIndicators, rightIndicators) === 0) return false
-  if (leftObjects.size && rightObjects.size && objectScore === 0) return false
-  const leftActions = fingerprintActions(leftText, leftObjects)
-  const rightActions = fingerprintActions(rightText, rightObjects)
+  if (leftIndicators.size && rightIndicators.size && overlapCoefficient(leftIndicators, rightIndicators) === 0) return 'none'
+  if (leftObjects.size && rightObjects.size && objectScore === 0) return 'none'
+  const leftActions = new Set(leftTitle.actions)
+  const rightActions = new Set(rightTitle.actions)
   const actionScore = overlapCoefficient(leftActions, rightActions)
-  if (leftActions.size && rightActions.size && actionScore === 0) return false
-  const leftNumbers = extractKeyNumbers(leftText)
-  const rightNumbers = extractKeyNumbers(rightText)
-  if (!keyNumbersCompatible(leftNumbers, rightNumbers)) return false
+  if (leftActions.size && rightActions.size && actionScore === 0) return 'none'
+  if (leftTitle.locations.length && rightTitle.locations.length && !overlaps(leftTitle.locations, rightTitle.locations)) return 'none'
+  if (!keyNumbersCompatible(leftTitle.numbers, rightTitle.numbers)) return 'none'
   const titleScore = titleSimilarity(left.canonicalTitle, right.canonicalTitle)
-  return titleScore >= 0.9 || (entityScore > 0 && actionScore > 0 && objectScore > 0)
+  const completeCore = entityScore > 0 && actionScore > 0 && objectScore > 0 && timeDistance <= 48
+  if (completeCore || (titleScore >= 0.92 && entityScore > 0 && (actionScore > 0 || objectScore > 0))) return 'high'
+
+  const leftText = left.articles.map((article) => article.title).join(' ')
+  const rightText = right.articles.map((article) => article.title).join(' ')
+  const broaderEntities = overlapCoefficient(new Set(extractEntities(leftText)), new Set(extractEntities(rightText)))
+  return titleScore >= 0.62 || broaderEntities > 0 || actionScore > 0 || objectScore > 0 ? 'medium' : 'none'
+}
+
+export function crossDomainEventMatch(left: NewsEvent, right: NewsEvent) {
+  return crossDomainEventConfidence(left, right) === 'high'
 }
 
 export function eventDomainFit(event: NewsEvent, domain: DomainId) {
@@ -1191,6 +1257,35 @@ export function eventDomainFit(event: NewsEvent, domain: DomainId) {
     + Math.min(2, extractKeyNumbers(text).length) * 0.5
     + (Number.isFinite(new Date(event.publishedAt).getTime()) ? 1 : 0)
   return best + evidence + featureDepth + (domain === 'learning' ? learningPersonalRelevance(text).score : 0)
+}
+
+const LOW_NEWS_VALUE_PATTERN = /\b(?:how to|tips? for|life hacks?|out[- ]of[- ]office|celebrity tribute|fashion|recipe|horoscope|viral video|odd news)\b|生活技巧|职场技巧|自动回复|猎奇|明星八卦|奇闻/i
+
+export type EventPreselectionAssessment = {
+  accepted: boolean
+  reason: 'accepted' | 'low-news-value' | 'no-event-action' | 'domain-mismatch' | 'non-article-page'
+  domainFit: number
+}
+
+export function assessEventForPreselection(event: NewsEvent, domain: DomainId = event.domain): EventPreselectionAssessment {
+  const config = DOMAIN_CONFIGS[domain]
+  const materials = event.articles.map((article) => {
+    const cleanDescription = cleanEventMaterial(article.title, `${article.description} ${article.fullText ?? ''}`, domain)
+    return { article, text: `${article.title} ${cleanDescription}`.trim() }
+  })
+  if (event.articles.every((article) => isNonArticlePage(article.title, article.url, article.description))) {
+    return { accepted: false, reason: 'non-article-page', domainFit: 0 }
+  }
+  const combined = materials.map((item) => item.text).join(' ')
+  const domainFit = eventDomainFit(event, domain)
+  if (LOW_NEWS_VALUE_PATTERN.test(combined)) return { accepted: false, reason: 'low-news-value', domainFit }
+  const hasConcreteEvent = materials.some(({ text }) => extractEntities(text).length > 0
+    && (fingerprintActions(text, extractEventObjects(text)).size > 0 || extractEventObjects(text).size > 0))
+  if (!hasConcreteEvent) return { accepted: false, reason: 'no-event-action', domainFit }
+  const matches = materials.map(({ article, text }) => domainMatchSignals(config, text, article.query ?? '', article.source))
+  const relevant = matches.some((match) => match.relevant && match.score >= 4)
+  if (!relevant || domainFit < 8) return { accepted: false, reason: 'domain-mismatch', domainFit }
+  return { accepted: true, reason: 'accepted', domainFit }
 }
 
 function buildEventLayer(collection: CollectionResult) {
@@ -1230,6 +1325,7 @@ export function buildCandidatePool(collection: CollectionResult, limit = 60) {
   const { events } = buildEventLayer(collection)
   const previousTitles = collection.previousTitles ?? []
   return events
+    .filter((event) => assessEventForPreselection(event, collection.domain).accepted)
     .map((event) => ({
       event,
       adjustedScore: event.primaryArticle.score
@@ -1273,7 +1369,8 @@ const ENTITY_LABELS: Record<string, string> = {
   oecd: 'OECD', unesco: 'UNESCO', 'international-baccalaureate': 'IB', 'world-bank': '世界银行', imf: 'IMF',
   'sk-hynix': 'SK海力士', 'berkshire-hathaway': '伯克希尔', alphabet: 'Alphabet', grok: 'Grok',
   'mit-sloan': 'MIT斯隆管理学院', israel: '以色列', iran: '伊朗', oman: '阿曼', indonesia: '印度尼西亚',
-  'south-korea': '韩国', 'north-korea': '朝鲜', uae: '阿联酋',
+  'south-korea': '韩国', 'north-korea': '朝鲜', uae: '阿联酋', russia: '俄罗斯', ukraine: '乌克兰', groq: 'Groq',
+  'research-team': '研究团队', 'education-department': '教育部门', university: '大学',
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -1282,7 +1379,7 @@ const ACTION_LABELS: Record<string, string> = {
   restriction: '实施限制', attack: '发动袭击', policy: '实施新规', build: '扩建', 'stake-change': '增持',
   reduce: '下调', support: '推出支持措施', negotiate: '推进谈判', death: '确认去世', 'rank-change': '公布排名变化',
   misuse: '卷入滥用争议', explain: '公布细节', rescue: '开展救援', implement: '启动实施', 'fraud-charge': '指控欺诈',
-  'data-release': '发布数据', occur: '发生',
+  sentence: '被判刑', maintain: '维持', update: '更新', 'data-release': '发布数据', occur: '发生',
 }
 
 const OBJECT_LABELS: Record<string, string> = {
@@ -1296,6 +1393,8 @@ const OBJECT_LABELS: Record<string, string> = {
   'fraud-case': '投资欺诈案件', 'university-ranking': '世界大学排名', 'image-abuse': '图像滥用问题',
   watermark: '模型水印机制', 'student-support': '学生父母支持计划', 'mba-program': 'MBA课程',
   'creative-program': '数字创意项目', 'executive-governance': '上市前治理', 'vaccine-health': '疫苗与健康议题',
+  'security-agreement': '安全协议', 'criminal-sentence': '刑事判决',
+  'learning-science': '学习科学实验', 'teacher-training': '教师培训', 'education-report': '教育趋势报告',
 }
 
 function articleMaterial(article: Candidate) {
@@ -1324,7 +1423,7 @@ function contentAction(text: string) {
   const actions = fingerprintActions(text, objectSet)
   if (objectSet.has('funding-round') && actions.has('agreement')) return '联合设立'
   if ((objectSet.has('memory-capacity') || objectSet.has('factory-capacity')) && actions.has('build')) return '扩建'
-  const priority = ['fraud-charge', 'attack', 'rescue', 'negotiate', 'stake-change', 'reduce', 'misuse', 'death', 'rank-change', 'support', 'implement', 'funding', 'build', 'launch', 'explain']
+  const priority = ['fraud-charge', 'sentence', 'maintain', 'update', 'attack', 'rescue', 'negotiate', 'stake-change', 'reduce', 'misuse', 'death', 'rank-change', 'support', 'implement', 'funding', 'build', 'launch', 'explain']
   const action = priority.find((value) => actions.has(value)) ?? [...actions][0]
   return ACTION_LABELS[action] ?? ''
 }
@@ -1332,7 +1431,7 @@ function contentAction(text: string) {
 function contentObject(text: string, event: NewsEvent) {
   const objects = extractEventObjects(text)
   if (objects.has('funding-round') && (objects.has('data-center') || /ai compute infrastructure/i.test(text))) return 'AI算力基础设施融资平台'
-  const priority = ['memory-capacity', 'equity-stake', 'cpi', 'ppi', 'pce', 'ev-target', 'fraud-case', 'university-ranking', 'earthquake', 'military-strike', 'shipping-route', 'ceasefire-talks', 'image-abuse', 'watermark', 'student-support', 'mba-program', 'creative-program', 'executive-governance', 'funding-round', 'factory-capacity', 'data-center', 'ai-center', 'product-release']
+  const priority = ['memory-capacity', 'equity-stake', 'cpi', 'ppi', 'pce', 'ev-target', 'fraud-case', 'criminal-sentence', 'security-agreement', 'learning-science', 'teacher-training', 'education-report', 'university-ranking', 'earthquake', 'military-strike', 'shipping-route', 'ceasefire-talks', 'image-abuse', 'watermark', 'student-support', 'mba-program', 'creative-program', 'executive-governance', 'funding-round', 'factory-capacity', 'data-center', 'ai-center', 'product-release']
   const object = priority.find((value) => objects.has(value)) ?? [...objects][0]
   if (object === 'equity-stake') {
     const entities = extractEntities(text)
@@ -1372,7 +1471,7 @@ export function hasConcreteActorAndAction(value: string, event: NewsEvent) {
   const text = stripHtml(value)
   if (isPlaceholderTitle(text)) return false
   const hasObjectOrResult = extractEventObjects(text).size > 0
-    || /造成|导致|引发|获得|获批|拒绝|去世|死亡|受损|增长|下降|上升|持平|扩大|收缩|survivors?|concern|growth|decline|dead|damage/iu.test(text)
+    || /造成|导致|引发|获得|获批|拒绝|去世|死亡|受损|增长|下降|上升|持平|扩大|收缩|判刑|获刑|监禁|survivors?|concern|growth|decline|dead|damage|sentenced?|jailed?|imprisoned?/iu.test(text)
   return Boolean(contentActor(text, event, false))
     && Boolean(contentAction(text))
     && hasObjectOrResult
@@ -1556,6 +1655,10 @@ function ruleAnalysis(config: DomainConfig, event: NewsEvent, rank: number): Bri
     evidence: event.evidence,
     tags: event.topicTags,
   }
+}
+
+export function buildRuleStory(event: NewsEvent, rank = 1): BriefingStory {
+  return ruleAnalysis(DOMAIN_CONFIGS[event.domain], event, rank)
 }
 
 export type CollectionResult = {
