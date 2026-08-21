@@ -95,6 +95,12 @@ class QwenEditorialModel implements EditorialModel {
   constructor(private readonly provider: ProviderConfig, private readonly fetchImpl: typeof fetch = fetch) {}
 
   async complete(prompt: string, maxTokens: number) {
+    const retryDelays = (process.env.QWEN_NETWORK_RETRY_DELAYS_MS ?? '10000,30000')
+      .split(',')
+      .map((value) => Number(value.trim()))
+      .filter((value) => Number.isFinite(value) && value >= 0)
+      .slice(0, 2)
+    while (retryDelays.length < 2) retryDelays.push(retryDelays.at(-1) ?? 10_000)
     const request = () => this.fetchImpl(`${this.provider.baseUrl.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${this.provider.apiKey}`, 'Content-Type': 'application/json' },
@@ -117,7 +123,11 @@ class QwenEditorialModel implements EditorialModel {
         response = await request()
       } catch (error) {
         networkError = error
-        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1_000 * (attempt + 1)))
+        // Keep the same maximum of three HTTP attempts, but spread retries far
+        // enough apart to survive the short GitHub Actions → DashScope routing
+        // outages seen in real scheduled runs. A normal response still makes
+        // exactly one request and failed connections do not consume tokens.
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, retryDelays[attempt]))
       }
     }
     if (!response) {

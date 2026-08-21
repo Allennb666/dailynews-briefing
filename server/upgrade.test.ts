@@ -560,10 +560,12 @@ test('Qwen 只对无响应的网络连接做短重试，正常响应仍只调用
     provider: process.env.AI_PROVIDER,
     key: process.env.DASHSCOPE_API_KEY,
     baseUrl: process.env.QWEN_BASE_URL,
+    retryDelays: process.env.QWEN_NETWORK_RETRY_DELAYS_MS,
   }
   process.env.AI_PROVIDER = 'qwen'
   process.env.DASHSCOPE_API_KEY = 'test-only-key'
   process.env.QWEN_BASE_URL = 'https://dashscope.test/v1'
+  process.env.QWEN_NETWORK_RETRY_DELAYS_MS = '1,1'
   let calls = 0
   const fetchImpl = (async () => {
     calls += 1
@@ -581,6 +583,8 @@ test('Qwen 只对无响应的网络连接做短重试，正常响应仍只调用
     else process.env.DASHSCOPE_API_KEY = previous.key
     if (previous.baseUrl == null) delete process.env.QWEN_BASE_URL
     else process.env.QWEN_BASE_URL = previous.baseUrl
+    if (previous.retryDelays == null) delete process.env.QWEN_NETWORK_RETRY_DELAYS_MS
+    else process.env.QWEN_NETWORK_RETRY_DELAYS_MS = previous.retryDelays
   }
 })
 
