@@ -100,7 +100,10 @@ async function writeActionsSummary(lines: string[], published: boolean) {
 }
 
 async function main() {
-  const startedAt = new Date()
+  const replayDate = process.env.BRIEFING_REPLAY_DATE?.trim() ?? ''
+  const startedAt = /^20\d{2}-\d{2}-\d{2}$/.test(replayDate)
+    ? new Date(`${replayDate}T07:30:00+08:00`)
+    : new Date()
   const diagnostics = new DiagnosticRecorder(startedAt)
   const searchRuntime = createSearchRuntimeFromEnvironment(fetch, startedAt)
   const articleReader = new ArticleReader()
