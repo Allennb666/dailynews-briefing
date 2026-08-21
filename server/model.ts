@@ -1144,7 +1144,15 @@ export async function finalizeBriefing(
   now = new Date(),
 ) {
   const slotEvents = selectFixedSlotEvents(events)
-  const fallback = buildRulesBriefing(selectedCollection(collection, slotEvents), now, slotEvents.map((event) => event.id))
+  const rebuiltFallback = buildRulesBriefing(selectedCollection(collection, slotEvents), now, slotEvents.map((event) => event.id))
+  // buildRulesBriefing normally rebuilds the Event layer from articles. That is
+  // useful for rules-only generation, but fixed Qwen slots already carry the
+  // verified event boundaries. Re-clustering here can change a slot's members
+  // and make the fallback differ from the exact story that was pre-validated.
+  const fallback: DailyBriefing = {
+    ...rebuiltFallback,
+    stories: slotEvents.map((event, index) => buildRuleStory(event, index + 1)),
+  }
   if (!model) return {
     ...fallback,
     pipeline: {

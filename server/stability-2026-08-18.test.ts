@@ -297,6 +297,24 @@ test('固定槽位优先保留可独立兜底事件，不让观察性标题占�
   assert.ok(selected.every((event) => validateBriefingStory(buildRuleStory(event), event).length === 0))
 })
 
+test('固定槽位规则底稿使用已验证事件边界，不在最终写作前重新聚类', async () => {
+  const events = eventsFor('learning').slice(0, 5)
+  const invalidModel = {
+    mode: 'qwen' as const,
+    async complete() {
+      return {
+        overview: '', keyTakeaway: '', logic: '', newKnowledge: '', outlook: '', trendRadar: [], watchNext: [],
+        stories: events.map((_, index) => ({ slot: index + 1, title: '相关更新', summary: '来源材料发布了相关新信息。', keyFacts: [], factSources: [], whyItMatters: '', background: '', impactChain: [], affectedParties: [], uncertainties: '', glossary: [], trend: { nearTerm: '', mediumTerm: '', signalsToWatch: [] }, tags: [] })),
+      }
+    },
+  }
+  const { finalizeBriefing } = await import('./model.js')
+  const briefing = await finalizeBriefing(collection('learning', events), events, invalidModel, new Date('2026-08-18T00:00:00.000Z'))
+  assert.equal(briefing.pipeline.qualityStatus, 'passed')
+  assert.deepEqual(briefing.stories.map((story) => story.id), events.map((event) => event.id))
+  assert.ok(briefing.stories.every((story, index) => validateBriefingStory(story, events[index]).length === 0))
+})
+
 test('排名稿识别保持稳定动作，并允许来源英文数字词支持中文数字事实', () => {
   const hit = candidate(
     'france-ranking-numbers',
