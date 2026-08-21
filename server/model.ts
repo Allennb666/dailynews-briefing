@@ -845,11 +845,12 @@ export function validateBriefing(briefing: DailyBriefing, events: NewsEvent[]) {
   }
   if ([...sourceCounts.values()].some((count) => count > 2)) errors.push('同一主来源超过 2 条')
   if (sourceCounts.size < 3) errors.push('主来源少于 3 个')
-  if (briefing.stories.filter((story) => story.source.reliability === 'other').length > 1) errors.push('other 来源超过 1 条')
+  const reliabilityForStory = (story: BriefingStory) => eventById.get(story.id)?.primaryArticle.source.reliability ?? story.source.reliability
+  if (briefing.stories.filter((story) => reliabilityForStory(story) === 'other').length > 1) errors.push('other 来源超过 1 条')
   const unverified = briefing.stories.filter((story) => story.evidence.level === 'unverified')
   if (unverified.length > 1 || briefing.stories.slice(0, 3).some((story) => story.evidence.level === 'unverified')) errors.push('unverified 数量或排名不合规')
   const first = briefing.stories[0]
-  if (first?.source.reliability === 'other' && first.evidence.level === 'single-source') errors.push('第一名不能是 other + single-source')
+  if (first && reliabilityForStory(first) === 'other' && first.evidence.level === 'single-source') errors.push('第一名不能是 other + single-source')
   if ([...entityCounts.values()].some((count) => count > 2)) errors.push('同一公司或狭窄子话题超过 2 条')
   const contentMetrics = contentQualityMetrics(briefing, events)
   if (contentMetrics.repeatedSummaryCount) errors.push(`摘要重复标题 ${contentMetrics.repeatedSummaryCount} 条`)

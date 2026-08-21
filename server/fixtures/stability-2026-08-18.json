@@ -26,6 +26,20 @@
       "title": "Federal Reserve Board issues enforcement action with former employee of Regions Bank",
       "source": "fed"
     },
+    "marketGateFailures": [
+      {
+        "title": "SEC Charges Boiler Room Operator and Three Entities with Defrauding Retail Investors in $74 Million Pre-IPO Investment Scam",
+        "source": "sec.gov"
+      },
+      {
+        "title": "SEC Charges Toms River Trio in Connection with Alleged $47 Million Fraud Targeting Orthodox Jewish Communities",
+        "source": "sec.gov"
+      },
+      {
+        "title": "Federal Reserve Board issues enforcement action with former employee of Regions Bank",
+        "source": "federalreserve.gov"
+      }
+    ],
     "aiBackups": [
       {
         "title": "Strengthening democratic oversight in national security",

@@ -169,7 +169,7 @@ const ENTITY_ALIASES: Array<[string, RegExp]> = [
   ['intel', /\bintel\b|英特尔/i],
   ['tsmc', /\btsmc\b|台积电/i],
   ['federal-reserve', /\bfederal reserve\b|\bthe fed\b|美联储/i],
-  ['sec', /\bu\.?s\.? sec\b|\bsecurities and exchange commission\b|美国证监会/i],
+  ['sec', /\bu\.?s\.? sec\b|\bSEC\b|\bsecurities and exchange commission\b|美国(?:证监会|证交会)/i],
   ['united-nations', /\bunited nations\b|\bun\b|联合国/i],
   ['china', /\bchina\b|中国/i],
   ['united-states', /\bunited states\b|\bu\.?s\.?\b|美国/i],
@@ -1518,6 +1518,8 @@ function contentAction(text: string) {
 
 function contentObject(text: string, event: NewsEvent) {
   const objects = extractEventObjects(text)
+  if (objects.has('fraud-case') && /pre[- ]?ipo/i.test(text)) return 'Pre-IPO投资骗局'
+  if (objects.has('fraud-case') && /orthodox jewish communit(?:y|ies)/i.test(text)) return '针对正统派犹太社区的投资骗局'
   if (objects.has('identity-exposure') && /former Afghan police worker|Afghan former police|阿富汗前警员/i.test(text)) {
     return '身份因泄密曝光的阿富汗前警员'
   }
@@ -1646,6 +1648,10 @@ function materialSpecificDetails(value: string) {
   else if (/enterprise customers?/i.test(value)) details.push('产品面向企业客户')
   if (/identify\s+(?:AI[- ]?)?generated (?:material|content)/i.test(value)) details.push('该机制用于识别生成内容')
   if (/collaborative (?:software )?development|code review and collaborative development/i.test(value)) details.push('产品用于协作开发')
+  const formerBankEmployee = value.match(/former employee of ([A-Z][A-Za-z0-9&.' -]{1,40}?)(?:[.,;]|$)/i)
+  if (formerBankEmployee) details.push(`事件涉及${formerBankEmployee[1].trim()}一名前员工`)
+  if (/retail investors?/i.test(value)) details.push('受影响对象包括散户投资者')
+  if (/orthodox jewish communit(?:y|ies)/i.test(value)) details.push('事件针对正统派犹太社区')
   return [...new Set(details)]
 }
 
@@ -1659,13 +1665,14 @@ function structuredChineseSummary(title: string, candidate: Candidate, event: Ne
     .filter((entity) => Boolean(ENTITY_LABELS[entity]))
     .map(displayEntity))]
     .filter((entity) => entity !== actor).slice(0, 4)
-  const numbers = rawNumberLabels(material).filter((number) => !title.includes(number)).slice(0, 2)
+  const rawSourceMaterial = stripHtml(`${candidate.title} ${candidate.description} ${candidate.fullText ?? ''}`)
+  const numbers = rawNumberLabels(rawSourceMaterial).filter((number) => !title.includes(number)).slice(0, 2)
   const locations = extractLocations(material).map((location) => ENTITY_LABELS[location] ?? LOCATION_ALIASES.find(([id]) => id === location)?.[0] ?? location)
   const dates = extractDates(material).filter((date) => !title.toLocaleLowerCase().includes(date)).slice(0, 2)
   // The cleaned article material intentionally drops some short English
   // fragments. Purpose/audience clauses are still useful for a Chinese rule
   // fallback, so inspect the sanitized source fields before that lossy step.
-  const materialDetails = materialSpecificDetails(stripHtml(`${candidate.title} ${candidate.description} ${candidate.fullText ?? ''}`))
+  const materialDetails = materialSpecificDetails(rawSourceMaterial)
   const details: string[] = []
   let substantiveDetailCount = 0
   if (materialDetails.length) {

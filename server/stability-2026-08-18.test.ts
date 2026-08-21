@@ -34,6 +34,7 @@ type ArtifactFixture = {
     qualityStatus: Record<DomainId, string>
     marketRejected: { title: string; source: string }
     marketBackup: { title: string; source: string }
+    marketGateFailures: Array<{ title: string; source: string }>
     aiBackups: Array<{ title: string; source: string; description?: string }>
     learningSecurity: { title: string; source: string }
     publishedGateMisses: Array<{ domain: DomainId; title: string; source: string; url?: string; expected: 'reject' | 'publishable' | 'insufficient-material' }>
@@ -201,6 +202,35 @@ test('真实缓存回放：家庭生活故事退出市场池，美联储监管�
   backup.articles[0].source = source('fed', 'primary')
   assert.equal(assessEventForPreselection(rejected).accepted, false)
   assert.equal(assessEventForPreselection(backup).accepted, true)
+})
+
+test('最新真实回放：两宗 SEC 案件与美联储执法稿可生成不同的具体摘要', async () => {
+  const data = await fixture()
+  const stories = data.replay.marketGateFailures.map((item, index) => {
+    const hit = candidate(`market-gate-${index}`, 'markets', item.title, item.title, item.source)
+    hit.source = source(item.source, 'primary')
+    const event = createEvent('markets', [hit])
+    return { event, story: buildRuleStory(event) }
+  })
+  for (const { event, story } of stories) {
+    assert.equal(validateBriefingStory(story, event).length, 0, `${story.title}: ${validateBriefingStory(story, event).join('；')}`)
+  }
+  assert.notEqual(stories[0].story.title, stories[1].story.title)
+  assert.match(stories[0].story.summary, /散户投资者.*74 Million/)
+  assert.match(stories[1].story.summary, /正统派犹太社区.*47 Million/)
+  assert.match(stories[2].story.summary, /Regions Bank.*前员工/)
+})
+
+test('来源等级门禁以事件绑定来源为准，不受成稿中的陈旧来源元数据误伤', () => {
+  const events = eventsFor('world').slice(0, 5)
+  const briefing = buildRulesBriefing(collection('world', events), new Date('2026-08-18T00:00:00.000Z'), events.map((event) => event.id))
+  const stale = {
+    ...briefing,
+    stories: briefing.stories.map((story, index) => index < 2
+      ? { ...story, source: { ...story.source, reliability: 'other' as const } }
+      : story),
+  }
+  assert.equal(validateBriefing(stale, events).some((error) => error.includes('other 来源')), false)
 })
 
 test('真实缓存回放：教育英文事件均能生成具体中文备用稿并独立通过门禁', async () => {
