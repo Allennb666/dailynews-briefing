@@ -1505,7 +1505,8 @@ function contentActor(text: string, event: NewsEvent, includeEventMaterial = tru
   if (extractActions(material).has('research-find')) return '研究团队'
   const actorText = stripHtml(text).replace(/^Press Release Details?\s*/i, '')
   const actionLead = actorText.match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+(?:launches?|announces?|appoints?|acquires?|builds?|opens?|funds?|partners?|helps?|warns?|threatens?|releases?|introduces?|expands?)\b/i)?.[1]
-  if (actionLead && !/^(?:what|how|why|when|where|who|latest|new)$/i.test(actionLead)) return actionLead
+  if (actionLead && !/^(?:what|how|why|when|where|who|latest|new|test)(?:\s|$)/i.test(actionLead)
+    && !/\b(?:news|press release|report)$|price index news/i.test(actionLead)) return actionLead
   const entity = firstAliasedEntity(material)
   if (entity) return displayEntity(entity)
   if (event.primaryArticle.source.type === 'official') {
@@ -1513,7 +1514,8 @@ function contentActor(text: string, event: NewsEvent, includeEventMaterial = tru
     if (sourceEntity) return displayEntity(sourceEntity)
   }
   const englishLead = actorText.match(/^([A-Z][A-Za-z0-9.&'-]*(?:\s+[A-Z][A-Za-z0-9.&'-]*){0,3})\s+/)?.[1]
-  if (englishLead && !/^(?:what|how|why|when|where|who|latest|new)(?:\s|$)/i.test(englishLead)) return englishLead
+  if (englishLead && !/^(?:what|how|why|when|where|who|latest|new|test)(?:\s|$)/i.test(englishLead)
+    && !/\b(?:news|press release|report)$|price index news/i.test(englishLead)) return englishLead
   return stripHtml(text).match(/^([\p{Script=Han}A-Za-z0-9·.-]{2,20})(?:正|已|将)?(?=发布|推出|宣布|公布|启动|设立|建立|联合|合作|投资|融资|扩产|增持|收购|指控|调查|下调|发生|袭击|警告|警示|威胁|提议|签署|实施|推进|去世)/u)?.[1] ?? ''
 }
 
@@ -1672,6 +1674,7 @@ function materialSpecificDetails(value: string) {
   if (partner) details.push(`合作方包括${partner[1].replace(/\s+(?:on|to|for)$/i, '')}`)
   if (/students?\s+and\s+workers?|learners?\s+and\s+(?:workers?|employees?)/i.test(value)) details.push('项目面向学生和从业者')
   else if (/enterprise customers?/i.test(value)) details.push('产品面向企业客户')
+  else if (/(?:artificial intelligence|AI) infrastructure customers?/i.test(value)) details.push('项目面向AI基础设施客户')
   if (/identify\s+(?:AI[- ]?)?generated (?:material|content)/i.test(value)) details.push('该机制用于识别生成内容')
   if (/collaborative (?:software )?development|code review and collaborative development/i.test(value)) details.push('产品用于协作开发')
   const formerBankEmployee = value.match(/former employee of ([A-Z][A-Za-z0-9&.' -]{1,40}?)(?:[.,;]|$)/i)
@@ -1686,6 +1689,13 @@ function materialSpecificDetails(value: string) {
   if (/storage buckets?/i.test(value)) details.push('数据可写入Hugging Face存储桶')
   if (/famil(?:y|ies).{0,48}(?:trapp|besieg|surround)|(?:trapp|besieg|surround).{0,48}famil(?:y|ies)/i.test(value)
     && /settlers?/i.test(value)) details.push('受影响家庭此前被定居者围困数日')
+  const frenchInstitutions = value.match(/(\d[\d,.]*)\s+French\s+(?:universit(?:y|ies)|higher education institutions?)/i)
+  if (frenchInstitutions) details.push(`法国共有${frenchInstitutions[1]}所高校入榜`)
+  const frenchTopHundred = value.match(/(\d[\d,.]*)\s+(?:French\s+)?(?:universit(?:y|ies)|institutions?).{0,32}(?:top|global)\s*100/i)
+  if (frenchTopHundred) details.push(`其中${frenchTopHundred[1]}所法国高校进入全球前100`)
+  if (/evening mba/i.test(value) && /working professionals?|professionals? who work|在职专业人士/i.test(value)) {
+    details.push('课程面向在职专业人士')
+  }
   return [...new Set(details)]
 }
 
@@ -1734,9 +1744,7 @@ function structuredChineseSummary(title: string, candidate: Candidate, event: Ne
   // supplied material beyond its headline. A title-only candidate must not turn
   // into an apparently informative summary merely because the crawler knows its
   // publication time.
-  const sourceAddsDetail = normalizeTitle(stripHtml(candidate.description)) !== normalizeTitle(stripHtml(candidate.title))
-    && normalizeTitle(stripHtml(candidate.description)).length >= 12
-  if (!substantiveDetailCount && !sourceAddsDetail) return ''
+  if (!substantiveDetailCount) return ''
   const result = details.slice(0, 2).join('；')
   if (!result) return ''
   const action = (isPlaceholderTitle(candidate.title) ? '' : contentAction(candidate.title)) || contentAction(anchor) || contentAction(material)

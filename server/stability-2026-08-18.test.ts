@@ -51,6 +51,7 @@ type ArtifactFixture = {
       archiveUrl: string
       courseTitle: string
       classroomTitle: string
+      testModeratorTitle: string
       truncatedMarketSummary: string
       brokenEducationSummary: string
     }
@@ -316,6 +317,12 @@ test('成功发布后的人工复核：归档页、残缺摘要和伪具体规�
   classroom.source = source('edsurge.com', 'tier-1')
   const classroomEvent = createEvent('learning', [classroom])
   assert.notEqual(validateBriefingStory(buildRuleStory(classroomEvent), classroomEvent).length, 0)
+
+  const moderator = candidate('published-moderator', 'learning', misses.testModeratorTitle, misses.testModeratorTitle, 'newscientist.com')
+  moderator.source = source('newscientist.com', 'other')
+  const moderatorEvent = createEvent('learning', [moderator])
+  assert.doesNotMatch(buildRuleStory(moderatorEvent).title, /^Test/)
+  assert.notEqual(validateBriefingStory(buildRuleStory(moderatorEvent), moderatorEvent).length, 0)
 
   const valid = buildRuleStory(factoryEvent)
   assert.ok(validateBriefingStory({ ...valid, summary: misses.truncatedMarketSummary }, factoryEvent).some((error) => error.includes('摘要') || error.includes('HTML')))
