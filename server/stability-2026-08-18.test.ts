@@ -335,6 +335,30 @@ test('可靠未验证候选在前三之后优先于 other 来源', () => {
   assert.ok(selected.findIndex((event) => event.id === unverified.id) >= 3)
 })
 
+test('最新真实诊断的国际来源结构由整组校验选满五条，不走未校验前五回退', () => {
+  const events = eventsFor('world')
+  const sourceCases = [
+    { id: 'apnews.com', reliability: 'other' as const, url: 'https://apnews.com/article/hormuz-tankers' },
+    { id: 'un-news', reliability: 'primary' as const, url: 'https://news.un.org/feed/view/en/story/2026/08/example' },
+    { id: 'guardian-world', reliability: 'tier-1' as const, url: 'https://www.theguardian.com/world/2026/aug/16/example' },
+    { id: 'cryptobriefing.com', reliability: 'other' as const, url: 'https://cryptobriefing.com/example' },
+    { id: 'theguardian.com', reliability: 'tier-1' as const, url: 'https://www.theguardian.com/world/2026/aug/15/example' },
+    { id: 'seatrade-maritime.com', reliability: 'other' as const, url: 'https://www.seatrade-maritime.com/example' },
+    { id: 'icis.com', reliability: 'other' as const, url: 'https://www.icis.com/example' },
+  ]
+  events.forEach((event, index) => {
+    const item = sourceCases[index]
+    event.primaryArticle.source = source(item.id, item.reliability)
+    event.primaryArticle.url = item.url
+  })
+  const selected = selectFixedSlotEvents(events)
+  const shell = buildRulesBriefing(collection('world', selected), new Date('2026-08-18T00:00:00.000Z'), selected.map((event) => event.id))
+  const briefing = { ...shell, stories: selected.map((event, index) => buildRuleStory(event, index + 1)) }
+  assert.equal(selected.length, 5)
+  assert.equal(validateBriefing(briefing, selected).some((error) => error.includes('other 来源')), false)
+  assert.equal(selected.some((event) => event.primaryArticle.source.id === 'apnews.com'), true)
+})
+
 test('固定槽位规则底稿使用已验证事件边界，不在最终写作前重新聚类', async () => {
   const events = eventsFor('learning').slice(0, 5)
   const invalidModel = {
@@ -377,7 +401,15 @@ test('大学排名结果标题以测量对象和方向变化构成具体事件�
     'rankings.example',
   )
   const event = createEvent('learning', [hit])
+  const otherCountries = createEvent('learning', [candidate(
+    'ranking-result-other-countries',
+    'learning',
+    'Global university rankings show Brazil holding steady while India advances',
+    'Brazil kept the same number of ranked institutions while Indian universities moved higher in the table.',
+    'rankings.example',
+  )])
   assert.equal(hasConcreteActorAndAction('上海大学排名显示法国高校持平、中国高校继续上升', event), true)
+  assert.equal(hasConcreteActorAndAction('全球大学排名显示巴西高校持平、印度高校继续上升', otherCountries), true)
   assert.equal(hasConcreteActorAndAction('2026年榜单结果', event), false)
 })
 

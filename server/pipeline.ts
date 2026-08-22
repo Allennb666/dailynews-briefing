@@ -1593,7 +1593,7 @@ export function hasConcreteActorAndAction(value: string, event: NewsEvent) {
   // when the current event is actually a university-ranking event and the
   // headline names both a measured participant and a directional result.
   const rankingResult = eventFingerprint(event).objects.includes('university-ranking')
-    && /(?:高校|大学|院校|France|French|China|Chinese|法国|中国|美国|英国)/iu.test(text)
+    && Boolean(contentActor(text, event, false))
     && /(?:持平|保持稳定|上升|下降|进步|下滑|进入|跻身|升至|降至|holds? steady|advances?|rises?|falls?|declines?)/iu.test(text)
     && /(?:排名|榜单|rankings?)/iu.test(text)
   const hasObjectOrResult = extractEventObjects(text).size > 0

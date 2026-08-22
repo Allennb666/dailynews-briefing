@@ -928,34 +928,44 @@ export function selectFixedSlotEvents(events: NewsEvent[]) {
       ...orderedGroup(group.filter((event) => event.evidence.level === 'unverified' && effectiveEventReliability(event) === 'other')),
     ]
   })
-  const search = (
-    start: number,
-    selected: NewsEvent[],
-    sourceCounts: Map<string, number>,
-    entityCounts: Map<string, number>,
-    otherCount: number,
-    unverifiedCount: number,
-  ): NewsEvent[] | null => {
-    if (selected.length === 5) return sourceCounts.size >= 3 ? selected : null
-    if (ordered.length - start < 5 - selected.length) return null
-    for (let index = start; index < ordered.length; index += 1) {
-      const event = ordered[index]
-      const sourceId = event.primaryArticle.source.id
-      const narrow = event.entities[0] ?? event.topicTags[0] ?? event.id
-      const isOther = effectiveEventReliability(event) === 'other'
-      const isUnverified = event.evidence.level === 'unverified'
-      if ((sourceCounts.get(sourceId) ?? 0) >= 2 || (entityCounts.get(narrow) ?? 0) >= 2) continue
-      if (isOther && otherCount >= 1) continue
-      if (isUnverified && (unverifiedCount >= 1 || selected.length < 3)) continue
-      if (!selected.length && isOther && event.evidence.level === 'single-source') continue
-      const nextSources = new Map(sourceCounts).set(sourceId, (sourceCounts.get(sourceId) ?? 0) + 1)
-      const nextEntities = new Map(entityCounts).set(narrow, (entityCounts.get(narrow) ?? 0) + 1)
-      const result = search(index + 1, [...selected, event], nextSources, nextEntities, otherCount + Number(isOther), unverifiedCount + Number(isUnverified))
-      if (result) return result
+  const sourceKey = (event: NewsEvent) => {
+    try {
+      return new URL(event.primaryArticle.url).hostname.replace(/^www\./i, '')
+    } catch {
+      return event.primaryArticle.source.id
     }
-    return null
   }
-  return search(0, [], new Map(), new Map(), 0, 0) ?? fallbackPreselection(events).slice(0, 5)
+  const validSet = (selected: NewsEvent[]) => {
+    if (selected.length !== 5 || selected.some((event) => !locallyPublishable(event))) return false
+    const sourceCounts = new Map<string, number>()
+    const entityCounts = new Map<string, number>()
+    for (const event of selected) {
+      const source = sourceKey(event)
+      const narrow = event.entities[0] ?? event.topicTags[0] ?? event.id
+      sourceCounts.set(source, (sourceCounts.get(source) ?? 0) + 1)
+      entityCounts.set(narrow, (entityCounts.get(narrow) ?? 0) + 1)
+    }
+    if (sourceCounts.size < 3 || [...sourceCounts.values()].some((count) => count > 2)) return false
+    if ([...entityCounts.values()].some((count) => count > 2)) return false
+    if (selected.filter((event) => effectiveEventReliability(event) === 'other').length > 1) return false
+    const unverified = selected.filter((event) => event.evidence.level === 'unverified')
+    if (unverified.length > 1 || selected.slice(0, 3).some((event) => event.evidence.level === 'unverified')) return false
+    return !(effectiveEventReliability(selected[0]) === 'other' && selected[0].evidence.level === 'single-source')
+  }
+
+  // Evaluate the whole five-event slate.  The previous recursive selector had
+  // an unsafe `fallbackPreselection(...).slice(0, 5)` escape hatch: if no path
+  // was found, it could return a set that had never passed the source and
+  // evidence constraints.  With at most ten preselected events this bounded
+  // search examines only 252 combinations and remains fully local.
+  for (const selected of combinations(ordered, 5)) {
+    if (validSet(selected)) return selected
+  }
+
+  // Keep failure explicit when the candidate pool genuinely cannot satisfy the
+  // gate.  Returning the best deterministic five is still useful for a clearly
+  // labelled held diagnostic, but it can no longer bypass a valid combination.
+  return ordered.slice(0, 5)
 }
 
 const USER_TOPIC_PRIORITY: Record<NewsEvent['domain'], RegExp> = {
